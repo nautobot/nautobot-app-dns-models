@@ -85,7 +85,7 @@ class DnsZoneModel(PrimaryModel):
 #     class Meta:
 #         abstract=True
 
-class NSRecordModel(DnsRecordModel):
+class NSRecordModel(PrimaryModel):
     """Model for DNS NS Records.
     """
     
@@ -96,7 +96,7 @@ class NSRecordModel(DnsRecordModel):
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
 
-class ARecordModel(DnsRecordModel):
+class ARecordModel(PrimaryModel):
     """Model for DNS A Records."""
 
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
@@ -113,7 +113,7 @@ class ARecordModel(DnsRecordModel):
         return self.name
 
 
-class AAAARecordModel(DnsRecordModel):
+class AAAARecordModel(PrimaryModel):
     """Model for DNS AAAA Records."""
 
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
@@ -190,7 +190,7 @@ class TXTRecordModel(PrimaryModel):
 
     value = models.CharField(help_text="Value of the Text Record.", max_length=256)
     zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT)
-    slug = AutoSlugField(populate_from="name")
+    slug = AutoSlugField(populate_from="value")
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
