@@ -24,39 +24,41 @@ from nautobot.extras.models.change_logging import ChangeLoggedModel
 # class DnsModel
 
 
-class DnsModel(PrimaryModel):
-    """Abstract Model for Nautobot DNS Models."""
+# class DnsModel(PrimaryModel):
+#     """Abstract Model for Nautobot DNS Models."""
 
     
+    
+
+#     class Meta:
+#         """Meta class."""
+
+#         abstract = True
+
+#         # Option for fixing capitalization (i.e. "Snmp" vs "SNMP")
+#         # verbose_name = "Nautobot DNS Models"
+
+#         # Option for fixing plural name (i.e. "Chicken Tenders" vs "Chicken Tendies")
+#         # verbose_name_plural = "Nautobot DNS Modelss"
+
+#     # def get_absolute_url(self):
+#     #     """Return detail view for DnsZoneModel."""
+#     #     return reverse("plugins:nautobot_dns_models:dnszonemodel", args=[self.slug])
+
+#     def __str__(self):
+#         """Stringify instance."""
+#         return self.name
+
+
+class DnsZoneModel(PrimaryModel):
+    """Model for DNS SOA Records. An SOA Record defines a DNS Zone"""
+
+    name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD.")
     slug = AutoSlugField(populate_from="name")
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
 
-    class Meta:
-        """Meta class."""
-
-        abstract = True
-
-        # Option for fixing capitalization (i.e. "Snmp" vs "SNMP")
-        # verbose_name = "Nautobot DNS Models"
-
-        # Option for fixing plural name (i.e. "Chicken Tenders" vs "Chicken Tendies")
-        # verbose_name_plural = "Nautobot DNS Modelss"
-
-    # def get_absolute_url(self):
-    #     """Return detail view for DnsZoneModel."""
-    #     return reverse("plugins:nautobot_dns_models:dnszonemodel", args=[self.slug])
-
-    def __str__(self):
-        """Stringify instance."""
-        return self.name
-
-
-class DnsZoneModel(DnsModel):
-    """Model for DNS SOA Records. An SOA Record defines a DNS Zone"""
-
-    name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD.")
     mname = models.CharField(max_length=200, help_text="FQDN of the Authoritative Name Server for Zone.")
     rname = models.EmailField(help_text="Admin Email for the Zone in the form user@zone.tld.")
     refresh = models.IntegerField(
@@ -76,25 +78,34 @@ class DnsZoneModel(DnsModel):
     )
 
 
-class DnsRecordModel(DnsModel):
-    """Abstract Model for DNS Records.
-    """
+# class DnsRecordModel(DnsModel):
+#     """Abstract Model for DNS Records.
+#     """
 
-    zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT)
-    
-    class Meta:
-        abstract=True
+#     class Meta:
+#         abstract=True
 
 class NSRecordModel(DnsRecordModel):
     """Model for DNS NS Records.
     """
+    
     server = models.CharField(max_length=200, help_text="FQDN of an authoratative Name Server.")
+    zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT)
+    slug = AutoSlugField(populate_from="name")
+    ttl = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+    )
 
 class ARecordModel(DnsRecordModel):
     """Model for DNS A Records."""
 
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
-   
+    zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT)
+    slug = AutoSlugField(populate_from="name")
+    ttl = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+    )
+
     def get_absolute_url(self):
         return reverse("plugins:nautobot_example_dns_manager:arecordmodel", args=[self.slug])
 
@@ -106,6 +117,11 @@ class AAAARecordModel(DnsRecordModel):
     """Model for DNS AAAA Records."""
 
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
+    zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT)
+    slug = AutoSlugField(populate_from="name")
+    ttl = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+    )
 
     def get_absolute_url(self):
         return reverse("plugins:nautobot_example_dns_manager:aaaarecordmodel", args=[self.slug])
@@ -123,6 +139,12 @@ class MXRecordModel(PrimaryModel):
     )
     value = models.CharField(help_text="FQDN of the mail-server.", max_length=253)
 
+    zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT)
+    slug = AutoSlugField(populate_from="name")
+    ttl = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+    )
+
     def get_absolute_url(self):
         return reverse("plugins:nautobot_example_dns_manager:mxrecordmodel", args=[self.slug])
 
@@ -133,7 +155,11 @@ class CNameRecordModel(PrimaryModel):
     """Model representing CName records."""
 
     value = models.CharField(help_text="FQDN of where the CName record redirects to.", max_length=253)
-
+    zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT)
+    slug = AutoSlugField(populate_from="name")
+    ttl = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+    )
     def get_absolute_url(self):
         return reverse("plugins:nautobot_example_dns_manager:cnamerecordmodel", args=[self.slug])
 
@@ -147,6 +173,11 @@ class PTRRecordModel(PrimaryModel):
 
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
     value = models.CharField(help_text="FQDN of where the PTR record.", max_length=253)
+    zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT)
+    slug = AutoSlugField(populate_from="name")
+    ttl = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+    )
 
     def get_absolute_url(self):
         return reverse("plugins:nautobot_example_dns_manager:ptrrecordmodel", args=[self.slug])
@@ -158,6 +189,11 @@ class TXTRecordModel(PrimaryModel):
     """Model representing TXT records."""
 
     value = models.CharField(help_text="Value of the Text Record.", max_length=256)
+    zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT)
+    slug = AutoSlugField(populate_from="name")
+    ttl = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+    )
 
     def get_absolute_url(self):
         return reverse("plugins:nautobot_example_dns_manager:txtrecordmodel", args=[self.slug])
