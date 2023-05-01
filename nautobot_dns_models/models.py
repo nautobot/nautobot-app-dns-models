@@ -8,7 +8,7 @@ from django.urls import reverse
 
 # Nautobot imports
 from nautobot.core.fields import AutoSlugField
-from nautobot.core.models import BaseModel, PrimaryModel
+from nautobot.apps.models import BaseModel, PrimaryModel
 from nautobot.extras.models.change_logging import ChangeLoggedModel
 
 
@@ -27,7 +27,7 @@ from nautobot.extras.models.change_logging import ChangeLoggedModel
 class DnsModel(PrimaryModel):
     """Abstract Model for Nautobot DNS Models."""
 
-    name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD.")
+    
     slug = AutoSlugField(populate_from="name")
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
@@ -56,6 +56,7 @@ class DnsModel(PrimaryModel):
 class DnsZoneModel(DnsModel):
     """Model for DNS SOA Records. An SOA Record defines a DNS Zone"""
 
+    name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD.")
     mname = models.CharField(max_length=200, help_text="FQDN of the Authoritative Name Server for Zone.")
     rname = models.EmailField(help_text="Admin Email for the Zone in the form user@zone.tld.")
     refresh = models.IntegerField(
@@ -115,7 +116,7 @@ class AAAARecordModel(DnsRecordModel):
 class MXRecordModel(PrimaryModel):
     """Model representing MX records."""
 
-    priority = models.PostiveIntegerField(
+    priority = models.PositiveIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(65535)],
         default=10,
         help_text="Distance/Priority/Preference of the MX Record.",
