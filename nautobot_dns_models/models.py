@@ -27,8 +27,6 @@ from nautobot.extras.models.change_logging import ChangeLoggedModel
 # class DnsModel(PrimaryModel):
 #     """Abstract Model for Nautobot DNS Models."""
 
-    
-    
 
 #     class Meta:
 #         """Meta class."""
@@ -85,16 +83,17 @@ class DnsZoneModel(PrimaryModel):
 #     class Meta:
 #         abstract=True
 
+
 class NSRecordModel(PrimaryModel):
-    """Model for DNS NS Records.
-    """
-    
+    """Model for DNS NS Records."""
+
     server = models.CharField(max_length=200, help_text="FQDN of an authoratative Name Server.")
     zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT)
     slug = AutoSlugField(populate_from="name")
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
+
 
 class ARecordModel(PrimaryModel):
     """Model for DNS A Records."""
@@ -129,6 +128,7 @@ class AAAARecordModel(PrimaryModel):
     def __str__(self):
         return self.name
 
+
 class MXRecordModel(PrimaryModel):
     """Model representing MX records."""
 
@@ -151,6 +151,7 @@ class MXRecordModel(PrimaryModel):
     def __str__(self):
         return self.name
 
+
 class CNameRecordModel(PrimaryModel):
     """Model representing CName records."""
 
@@ -160,16 +161,18 @@ class CNameRecordModel(PrimaryModel):
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
+
     def get_absolute_url(self):
         return reverse("plugins:nautobot_example_dns_manager:cnamerecordmodel", args=[self.slug])
 
     def __str__(self):
         return self.name
-    
+
+
 class PTRRecordModel(PrimaryModel):
     """Model representing PTR records."""
 
-    # TODO: Implement a clean to grab the address and format as a PTR record 
+    # TODO: Implement a clean to grab the address and format as a PTR record
 
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
     value = models.CharField(help_text="FQDN of where the PTR record.", max_length=253)
@@ -184,6 +187,7 @@ class PTRRecordModel(PrimaryModel):
 
     def __str__(self):
         return self.name
+
 
 class TXTRecordModel(PrimaryModel):
     """Model representing TXT records."""
