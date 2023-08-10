@@ -9,7 +9,7 @@ from nautobot_dns_models import models
 class DnsZoneModelNestedSerializer(WritableNestedSerializer):
     """DnsZoneModel Nested Serializer."""
 
-    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnszonemodel-detail")
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnszonemodel_detail")
 
     class Meta:
         """Meta attributes."""

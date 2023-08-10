@@ -69,7 +69,7 @@ class AAAARecordModelSerializer(ValidatedModelSerializer):
 class CNAMERecordModelSerializer(ValidatedModelSerializer):
     """CNAMERecordModel Serializer."""
 
-    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:CNAMERecordModel-detail")
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:CNAMERecordmodel-detail")
 
     class Meta:
         """Meta attributes."""
