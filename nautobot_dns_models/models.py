@@ -85,7 +85,7 @@ class DnsRecordModel(DnsModel):
     """Abstract Model for DNS Records.
     """
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
-    zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT)
+    zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT, related_name="%(class)s", related_query_name="%(class)s")
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
@@ -95,7 +95,7 @@ class DnsRecordModel(DnsModel):
         abstract=True
 
 class NSRecordModel(DnsRecordModel):
-    server = models.CharField(max_length=200, help_text="FQDN of an authoratative Name Server.")
+    server = models.CharField(max_length=200, help_text="FQDN of an authoritative Name Server.")
     slug = AutoSlugField(populate_from="name")
 
 class ARecordModel(DnsRecordModel):
