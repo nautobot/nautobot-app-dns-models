@@ -137,6 +137,10 @@ class ARecordModelForm(BootstrapMixin, forms.ModelForm):
         fields = [
             "name",
             "slug",
+            "address",
+            "ttl",
+            "zone",
+            "comment",
             "description",
         ]
 
@@ -164,6 +168,7 @@ class ARecordModelFilterForm(BootstrapMixin, forms.ModelForm):
     )
     name = forms.CharField(required=False, label="Name")
     slug = forms.CharField(required=False, label="Slug")
+    zone = forms.CharField(required=False, label="Zone")
 
     class Meta:
         """Meta attributes."""
@@ -188,6 +193,10 @@ class AAAARecordModelForm(BootstrapMixin, forms.ModelForm):
         fields = [
             "name",
             "slug",
+            "address",
+            "ttl",
+            "zone",
+            "comment",
             "description",
         ]
 
@@ -239,7 +248,9 @@ class CNAMERecordModelForm(BootstrapMixin, forms.ModelForm):
         model = models.CNAMERecordModel
         fields = [
             "name",
+            "alias",
             "slug",
+            "zone",
             "description",
         ]
 
@@ -293,6 +304,8 @@ class MXRecordModelForm(BootstrapMixin, forms.ModelForm):
         fields = [
             "name",
             "slug",
+            "preference",
+            "mail_server",
             "description",
         ]
 
@@ -346,6 +359,7 @@ class TXTRecordModelForm(BootstrapMixin, forms.ModelForm):
         fields = [
             "name",
             "slug",
+            "text",
             "description",
         ]
 
