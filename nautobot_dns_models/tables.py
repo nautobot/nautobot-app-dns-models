@@ -230,3 +230,66 @@ class TXTRecordModelTable(BaseTable):
         # )
 
 
+class PTRRecordModelTable(BaseTable):
+    # pylint: disable=R0903
+    """Table for list view."""
+
+    pk = ToggleColumn()
+    name = tables.Column(linkify=True)
+    actions = ButtonsColumn(
+        models.PTRRecordModel,
+        # Option for modifying the default action buttons on each row:
+        # buttons=("changelog", "edit", "delete"),
+        # Option for modifying the pk for the action buttons:
+        
+    )
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.PTRRecordModel
+        fields = (
+            "pk",
+            "name",
+            "ptrdname",
+            "description",
+        )
+
+        # Option for modifying the columns that show up in the list view by default:
+        # default_columns = (
+        #     "pk",
+        #     "name",
+        #     "description",
+        # )
+
+class SOARecordModelTable(BaseTable):
+    # pylint: disable=R0903
+    """Table for list view."""
+
+    pk = ToggleColumn()
+    name = tables.Column(linkify=True)
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.SOARecordModel
+        fields = (
+            "pk",
+            "name",
+            "description",
+            "mname",
+            "rname",
+            "refresh",
+            "retry",
+            "expire",
+            "minimum",
+            "ttl",
+            "serial",
+        )
+
+        # Option for modifying the columns that show up in the list view by default:
+        # default_columns = (
+        #     "pk",
+        #     "name",
+        #     "description",
+        # )

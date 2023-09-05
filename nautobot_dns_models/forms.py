@@ -401,5 +401,115 @@ class TXTRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
             "description",
         ]
 
+class PTRRecordModelForm(BootstrapMixin, forms.ModelForm):
+    """PTRRecordModel creation/edit form."""
+    slug = SlugField()
 
+    class Meta:
+        """Meta attributes."""
 
+        model = models.PTRRecordModel
+        fields = [
+            "name",
+            "slug",
+            "ptrdname",
+            "ttl",
+            "zone",
+            "comment",
+            "description",
+        ]
+
+class PTRRecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
+    """PTRRecordModel bulk edit form."""
+
+    pk = forms.ModelMultipleChoiceField(queryset=models.PTRRecordModel.objects.all(), widget=forms.MultipleHiddenInput)
+    description = forms.CharField(required=False)
+
+    class Meta:
+        """Meta attributes."""
+
+        nullable_fields = [
+            "description",
+        ]   
+
+class PTRRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
+    """Filter form to filter searches."""
+
+    q = forms.CharField(
+        required=False,
+        label="Search",
+        help_text="Search within Name or Slug.",
+    )
+    name = forms.CharField(required=False, label="Name")
+    slug = forms.CharField(required=False, label="Slug")
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.PTRRecordModel
+        # Define the fields above for ordering and widget purposes
+        fields = [
+            "q",
+            "name",
+            "slug",
+            "description",
+        ]
+
+class SOARecordModelForm(BootstrapMixin, forms.ModelForm):
+    """SOARecordModel creation/edit form."""
+    slug = SlugField()
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.SOARecordModel
+        fields = [
+            "name",
+            "slug",
+            "mname",
+            "rname",
+            "refresh",
+            "retry",
+            "expire",
+            "minimum",
+            "ttl",
+            "zone",
+            "comment",
+            "description",
+        ]
+
+class SOARecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
+    """SOARecordModel bulk edit form."""
+
+    pk = forms.ModelMultipleChoiceField(queryset=models.SOARecordModel.objects.all(), widget=forms.MultipleHiddenInput)
+    description = forms.CharField(required=False)
+
+    class Meta:
+        """Meta attributes."""
+
+        nullable_fields = [
+            "description",
+        ]
+
+class SOARecordModelFilterForm(BootstrapMixin, forms.ModelForm):
+    """Filter form to filter searches."""
+
+    q = forms.CharField(
+        required=False,
+        label="Search",
+        help_text="Search within Name or Slug.",
+    )
+    name = forms.CharField(required=False, label="Name")
+    slug = forms.CharField(required=False, label="Slug")
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.SOARecordModel
+        # Define the fields above for ordering and widget purposes
+        fields = [
+            "q",
+            "name",
+            "slug",
+            "description",
+        ]

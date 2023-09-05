@@ -19,25 +19,25 @@ class DnsZoneModelViewSet(views.NautobotUIViewSet):
     queryset = DnsZoneModel.objects.all()
     table_class = DnsZoneModelTable
 
-    def get_extra_context(self, request, instance):
-        """Return extra context data for template."""
-        # instance will be true if it's not a list view
-        if instance is not None:
-            child_records = []
-            # record, name, value, description, url
-            # for record in instance.nsrecordmodel.all():
-            #     child_records.append(["NS", record.name, record.nameserver, record.description])
-            for record in instance.arecordmodel.all():
-                child_records.append(["A", record.name, record.address, record.description, record.get_absolute_url()])
-            for record in instance.aaaarecordmodel.all():
-                child_records.append(["AAAA", record.name, record.address, record.description, record.get_absolute_url()])
-            for record in instance.cnamerecordmodel.all():
-                child_records.append(["CNAME", record.name, record.alias, record.description, record.get_absolute_url()])
-            for record in instance.mxrecordmodel.all():
-                child_records.append(["MX", record.name, record.mail_server, record.description, record.get_absolute_url()])
-            for record in instance.txtrecordmodel.all():
-                child_records.append(["TXT", record.name, record.text, record.description, record.get_absolute_url()])
-            return {"child_records": child_records}
+    # def get_extra_context(self, request, instance):
+    #     """Return extra context data for template."""
+    #     # instance will be true if it's not a list view
+    #     if instance is not None:
+    #         child_records = []
+    #         # record, name, value, description, url
+    #         # for record in instance.nsrecordmodel.all():
+    #         #     child_records.append(["NS", record.name, record.nameserver, record.description])
+    #         for record in instance.arecordmodel.all():
+    #             child_records.append(["A", record.name, record.address, record.description, record.get_absolute_url()])
+    #         for record in instance.aaaarecordmodel.all():
+    #             child_records.append(["AAAA", record.name, record.address, record.description, record.get_absolute_url()])
+    #         for record in instance.cnamerecordmodel.all():
+    #             child_records.append(["CNAME", record.name, record.alias, record.description, record.get_absolute_url()])
+    #         for record in instance.mxrecordmodel.all():
+    #             child_records.append(["MX", record.name, record.mail_server, record.description, record.get_absolute_url()])
+    #         for record in instance.txtrecordmodel.all():
+    #             child_records.append(["TXT", record.name, record.text, record.description, record.get_absolute_url()])
+    #         return {"child_records": child_records}
 
 
 class NSRecordModelViewSet(views.NautobotUIViewSet):
@@ -105,3 +105,22 @@ class TXTRecordModelViewSet(views.NautobotUIViewSet):
     queryset = TXTRecordModel.objects.all()
     table_class = TXTRecordModelTable
 
+class PTRRecordModelViewSet(views.NautobotUIViewSet):
+    form_class = PTRRecordModelForm
+    bulk_edit_form_class = PTRRecordModelBulkEditForm
+    filterset_class = PTRRecordModelFilterSet
+    filterset_form_class = PTRRecordModelFilterForm
+    serializer_class = serializers.PTRRecordModelSerializer
+    lookup_field = "pk"
+    queryset = PTRRecordModel.objects.all()
+    table_class = PTRRecordModelTable
+
+class SOARecordModelViewSet(views.NautobotUIViewSet):
+    form_class = SOARecordModelForm
+    bulk_edit_form_class = SOARecordModelBulkEditForm
+    filterset_class = SOARecordModelFilterSet
+    filterset_form_class = SOARecordModelFilterForm
+    serializer_class = serializers.SOARecordModelSerializer
+    lookup_field = "pk"
+    queryset = SOARecordModel.objects.all()
+    table_class = SOARecordModelTable

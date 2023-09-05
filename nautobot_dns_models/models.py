@@ -56,25 +56,15 @@ class DnsZoneModel(PrimaryModel):
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
-
-    mname = models.CharField(max_length=200, help_text="FQDN of the Authoritative Name Server for Zone.")
-    rname = models.EmailField(help_text="Admin Email for the Zone in the form user@zone.tld.")
-    refresh = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
-        default="86400",
-        help_text="Number of seconds after which secondary name servers should query the master for the SOA record, to detect zone changes.",
-    )
-    retry = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
-        default=7200,
-        help_text="Number of seconds after which secondary name servers should retry to request the serial number from the master if the master does not respond.",
-    )
-    expire = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
-        default=3600000,
-        help_text="Number of seconds after which secondary name servers should stop answering request for this zone if the master does not respond. This value must be bigger than the sum of Refresh and Retry.",
-    )
+    filename = models.CharField(max_length=200, help_text="Filename of the Zone File.")
     description = models.TextField(help_text="Description of the Zone.", blank=True)
+    soa_record = models.OneToOneField(to="SOARecordModel", on_delete=models.CASCADE, help_text="SOA Record for the Zone.")
+    ns_records = models.ManyToManyField(to="nautobot_dns_models.NSRecordModel", help_text="NS Records for the Zone.")
+    a_records = models.ManyToManyField(to="nautobot_dns_models.ARecordModel", help_text="A Records for the Zone.")
+    aaaa_records = models.ManyToManyField(to="nautobot_dns_models.AAAARecordModel", help_text="AAAA Records for the Zone.")
+    cname_records = models.ManyToManyField(to="nautobot_dns_models.CnameRecordModel", help_text="CNAME Records for the Zone.")
+    ptr_records = models.ManyToManyField(to="nautobot_dns_models.PTRRecordModel", help_text="PTR Records for the Zone.")
+    mx_records = models.ManyToManyField(to="nautobot_dns_models.MXRecordModel", help_text="MX Records for the Zone.")
 
     def get_absolute_url(self):
         return reverse("plugins:nautobot_dns_models:dnszonemodel", args=[self.pk])
@@ -89,10 +79,14 @@ class DnsRecordModel(DnsModel):
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
+    description = models.TextField(help_text="Description of the Record.", blank=True)
     comment = models.CharField(max_length=200, help_text="Comment for the Record.")
-    description = models.TextField(help_text="Description of the Zone.", blank=True)
+
     class Meta:
         abstract=True
+    
+    def __str__(self):
+        return self.name
 
 class NSRecordModel(DnsRecordModel):
     server = models.CharField(max_length=200, help_text="FQDN of an authoritative Name Server.")
@@ -148,6 +142,49 @@ class TXTRecordModel(DnsRecordModel):
 
     def get_absolute_url(self):
         return reverse("plugins:nautobot_dns_models:txtrecordmodel", args=[self.pk])
+
+    def __str__(self):
+        return self.name
+
+class PTRRecordModel(DnsRecordModel):
+    ptrdname = models.CharField(max_length=200, help_text="A domain name that points to some location in the domain name space.")
+    slug = AutoSlugField(populate_from="name")
+
+    def get_absolute_url(self):
+        return reverse("plugins:nautobot_dns_models:ptrrecordmodel", args=[self.pk])
+
+    def __str__(self):
+        return self.ptrdname
+
+class SOARecordModel(DnsRecordModel):
+    mname = models.CharField(max_length=200, help_text="FQDN of the Authoritative Name Server for Zone.")
+    rname = models.EmailField(help_text="Admin Email for the Zone in the form")
+    refresh = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+        default="86400",
+        help_text="Number of seconds after which secondary name servers should query the master for the SOA record, to detect zone changes.",
+    )
+    retry = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+        default=7200,
+        help_text="Number of seconds after which secondary name servers should retry to request the serial number from the master if the master does not respond.",
+    )
+    expire = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+        default=3600000,
+        help_text="Number of seconds after which secondary name servers should stop answering request for this zone if the master does not respond. This value must be bigger than the sum of Refresh and Retry.",
+    )
+    serial = models.IntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(2147483647)],
+        default=0,
+        help_text="Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.",
+    )
+    minimum = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+        default=3600,
+        help_text="Minimum TTL for records in this zone.",
+    )
+    slug = AutoSlugField(populate_from="name")
 
     def __str__(self):
         return self.name
