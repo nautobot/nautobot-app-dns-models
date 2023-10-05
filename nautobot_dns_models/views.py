@@ -50,7 +50,7 @@ class DnsZoneModelViewSet(views.NautobotUIViewSet):
 
 class NSRecordModelViewSet(views.NautobotUIViewSet):
     form_class = NSRecordModelForm
-    bulk_edit_form_class = NSRecordModelBulkEditForm
+    bulk_update_form_class = NSRecordModelBulkEditForm
     filterset_class = NSRecordModelFilterSet
     filterset_form_class = NSRecordModelFilterForm
     serializer_class = serializers.NSRecordModelSerializer
@@ -61,7 +61,7 @@ class NSRecordModelViewSet(views.NautobotUIViewSet):
 
 class ARecordModelViewSet(views.NautobotUIViewSet):
     form_class = ARecordModelForm
-    bulk_edit_form_class = ARecordModelBulkEditForm
+    bulk_update_form_class = ARecordModelBulkEditForm
     filterset_class = ARecordModelFilterSet
     filterset_form_class = ARecordModelFilterForm
     serializer_class = serializers.ARecordModelSerializer
@@ -72,7 +72,7 @@ class ARecordModelViewSet(views.NautobotUIViewSet):
 
 class AAAARecordModelViewSet(views.NautobotUIViewSet):
     form_class = AAAARecordModelForm
-    bulk_edit_form_class = AAAARecordModelBulkEditForm
+    bulk_update_form_class = AAAARecordModelBulkEditForm
     filterset_class = AAAARecordModelFilterSet
     filterset_form_class = AAAARecordModelFilterForm
     serializer_class = serializers.AAAARecordModelSerializer
@@ -83,7 +83,7 @@ class AAAARecordModelViewSet(views.NautobotUIViewSet):
 
 class CNAMERecordModelViewSet(views.NautobotUIViewSet):
     form_class = CNAMERecordModelForm
-    bulk_edit_form_class = CNAMERecordModelBulkEditForm
+    bulk_update_form_class = CNAMERecordModelBulkEditForm
     filterset_class = CNAMERecordModelFilterSet
     filterset_form_class = CNAMERecordModelFilterForm
     serializer_class = serializers.CNAMERecordModelSerializer
@@ -94,7 +94,7 @@ class CNAMERecordModelViewSet(views.NautobotUIViewSet):
 
 class MXRecordModelViewSet(views.NautobotUIViewSet):
     form_class = MXRecordModelForm
-    bulk_edit_form_class = MXRecordModelBulkEditForm
+    bulk_update_form_class = MXRecordModelBulkEditForm
     filterset_class = MXRecordModelFilterSet
     filterset_form_class = MXRecordModelFilterForm
     serializer_class = serializers.MXRecordModelSerializer
@@ -105,7 +105,7 @@ class MXRecordModelViewSet(views.NautobotUIViewSet):
 
 class TXTRecordModelViewSet(views.NautobotUIViewSet):
     form_class = TXTRecordModelForm
-    bulk_edit_form_class = TXTRecordModelBulkEditForm
+    bulk_update_form_class = TXTRecordModelBulkEditForm
     filterset_class = TXTRecordModelFilterSet
     filterset_form_class = TXTRecordModelFilterForm
     serializer_class = serializers.TXTRecordModelSerializer
