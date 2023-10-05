@@ -22,6 +22,7 @@ class DnsZoneModelSerializer(ValidatedModelSerializer):
         # Option for disabling write for certain fields:
         # read_only_fields = []
 
+
 class NSRecordModelSerializer(ValidatedModelSerializer):
     """NSRecordModel Serializer."""
 
@@ -35,6 +36,7 @@ class NSRecordModelSerializer(ValidatedModelSerializer):
 
         # Option for disabling write for certain fields:
         # read_only_fields = []
+
 
 class ARecordModelSerializer(ValidatedModelSerializer):
     """ARecordModel Serializer."""
@@ -109,5 +111,3 @@ class TXTRecordModelSerializer(ValidatedModelSerializer):
 
         # Option for disabling write for certain fields:
         # read_only_fields = []
-
-

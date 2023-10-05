@@ -18,8 +18,10 @@ class DnsZoneModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     # Option for modifying the default HTTP methods:
     # http_method_names = ["get", "post", "put", "patch", "delete", "head", "options", "trace"]
 
+
 class ARecordModelViewSet(ModelViewSet):
     """"""
+
     queryset = models.ARecordModel.objects.all()
     serializer_class = serializers.ARecordModelSerializer
     filterset_class = filters.ARecordModelFilterSet
@@ -29,23 +31,23 @@ class ARecordModelViewSet(ModelViewSet):
 
 class AAAARecordModelViewSet(ModelViewSet):
     """"""
-    
+
     queryset = models.AAAARecordModel.objects.all()
     serializer_class = serializers.AAAARecordModelSerializer
     filterset_class = filters.AAAARecordModelFilterSet
 
     lookup_field = "pk"
 
-class CNameRecordModelViewSet(ModelViewSet):
 
+class CNameRecordModelViewSet(ModelViewSet):
     queryset = models.CNAMERecordModel.objects.all()
     serializer_class = serializers.CNAMERecordModelSerializer
     filterset_class = filters.CNAMERecordModelFilterSet
 
     lookup_field = "pk"
 
-class MXRecordModelViewSet(ModelViewSet):
 
+class MXRecordModelViewSet(ModelViewSet):
     queryset = models.MXRecordModel.objects.all()
     serializer_class = serializers.MXRecordModelSerializer
     filterset_class = filters.MXRecordModelFilterSet
@@ -54,7 +56,6 @@ class MXRecordModelViewSet(ModelViewSet):
 
 
 class TXTRecordModelViewSet(ModelViewSet):
-
     queryset = models.TXTRecordModel.objects.all()
     serializer_class = serializers.TXTRecordModelSerializer
     filterset_class = filters.TXTRecordModelFilterSet

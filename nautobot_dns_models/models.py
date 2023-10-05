@@ -27,7 +27,6 @@ from nautobot.extras.models.change_logging import ChangeLoggedModel
 class DnsModel(PrimaryModel):
     """Abstract Model for Nautobot DNS Models."""
 
-
     class Meta:
         """Meta class."""
 
@@ -78,25 +77,29 @@ class DnsZoneModel(PrimaryModel):
 
     def get_absolute_url(self):
         return reverse("plugins:nautobot_dns_models:dnszonemodel", args=[self.pk])
-    
 
 
 class DnsRecordModel(DnsModel):
-    """Abstract Model for DNS Records.
-    """
+    """Abstract Model for DNS Records."""
+
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
-    zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT, related_name="%(class)s", related_query_name="%(class)s")
+    zone = models.ForeignKey(
+        DnsZoneModel, on_delete=models.PROTECT, related_name="%(class)s", related_query_name="%(class)s"
+    )
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
-    comment = models.CharField(max_length=200, help_text="Comment for the Record.")
+    comment = models.CharField(max_length=200, help_text="Comment for the Record.", blank=True)
     description = models.TextField(help_text="Description of the Zone.", blank=True)
+
     class Meta:
-        abstract=True
+        abstract = True
+
 
 class NSRecordModel(DnsRecordModel):
     server = models.CharField(max_length=200, help_text="FQDN of an authoritative Name Server.")
     slug = AutoSlugField(populate_from="name")
+
 
 class ARecordModel(DnsRecordModel):
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
@@ -108,6 +111,7 @@ class ARecordModel(DnsRecordModel):
     def __str__(self):
         return self.name
 
+
 class AAAARecordModel(DnsRecordModel):
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
     slug = AutoSlugField(populate_from="name")
@@ -117,7 +121,8 @@ class AAAARecordModel(DnsRecordModel):
 
     def __str__(self):
         return self.name
-    
+
+
 class CNAMERecordModel(DnsRecordModel):
     alias = models.CharField(max_length=200, help_text="FQDN of the Alias.")
     slug = AutoSlugField(populate_from="name")
@@ -127,11 +132,13 @@ class CNAMERecordModel(DnsRecordModel):
 
     def __str__(self):
         return self.name
-    
+
 
 class MXRecordModel(DnsRecordModel):
     preference = models.IntegerField(
-        validators=[MinValueValidator(0), MaxValueValidator(65535)], default=10, help_text="Preference for the MX Record."
+        validators=[MinValueValidator(0), MaxValueValidator(65535)],
+        default=10,
+        help_text="Preference for the MX Record.",
     )
     mail_server = models.CharField(max_length=200, help_text="FQDN of the Mail Server.")
     slug = AutoSlugField(populate_from="name")
@@ -141,7 +148,8 @@ class MXRecordModel(DnsRecordModel):
 
     def __str__(self):
         return self.name
-    
+
+
 class TXTRecordModel(DnsRecordModel):
     text = models.CharField(max_length=256, help_text="Text for the TXT Record.")
     slug = AutoSlugField(populate_from="name")
@@ -151,6 +159,7 @@ class TXTRecordModel(DnsRecordModel):
 
     def __str__(self):
         return self.name
+
 
 # class NSRecordModel(PrimaryModel):
 #     """Model for DNS NS Records."""
@@ -172,8 +181,6 @@ class TXTRecordModel(DnsRecordModel):
 #     ttl = models.IntegerField(
 #         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
 #     )
-
-    
 
 
 # class AAAARecordModel(PrimaryModel):
