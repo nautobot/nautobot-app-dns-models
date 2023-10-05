@@ -45,7 +45,6 @@ class DnsZoneModelViewSet(views.NautobotUIViewSet):
             for record in instance.txtrecordmodel.all():
                 child_records.append(["TXT", record.name, record.text, record.description, record.get_absolute_url()])
 
-            print(child_records)
         return {"child_records": child_records}
 
 
