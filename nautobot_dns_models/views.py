@@ -11,7 +11,7 @@ from .filters import *
 class DnsZoneModelViewSet(views.NautobotUIViewSet):
     form_class = DnsZoneModelForm
     bulk_create_form_class = DnsZoneModelBulkCreateForm
-    bulk_edit_form_class = DnsZoneModelBulkEditForm
+    bulk_update_form_class = DnsZoneModelBulkEditForm
     filterset_class = DnsZoneModelFilterSet
     filterset_form_class = DnsZoneModelFilterForm
     serializer_class = serializers.DnsZoneModelSerializer
@@ -22,8 +22,8 @@ class DnsZoneModelViewSet(views.NautobotUIViewSet):
     def get_extra_context(self, request, instance):
         """Return extra context data for template."""
         # instance will be true if it's not a list view
+        child_records = []
         if instance is not None:
-            child_records = []
             # record, name, value, description, url
             # for record in instance.nsrecordmodel.all():
             #     child_records.append(["NS", record.name, record.nameserver, record.description])
@@ -37,7 +37,9 @@ class DnsZoneModelViewSet(views.NautobotUIViewSet):
                 child_records.append(["MX", record.name, record.mail_server, record.description, record.get_absolute_url()])
             for record in instance.txtrecordmodel.all():
                 child_records.append(["TXT", record.name, record.text, record.description, record.get_absolute_url()])
-            return {"child_records": child_records}
+
+            print(child_records)
+        return {"child_records": child_records}
 
 
 class NSRecordModelViewSet(views.NautobotUIViewSet):
