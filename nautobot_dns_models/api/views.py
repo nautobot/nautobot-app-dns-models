@@ -8,7 +8,7 @@ from nautobot_dns_models.api import serializers
 
 
 class DnsZoneModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
-    """DnsZoneModel viewset."""
+    """DnsZoneModel API ViewSet."""
 
     queryset = models.DnsZoneModel.objects.all()
     serializer_class = serializers.DnsZoneModelSerializer
@@ -20,7 +20,7 @@ class DnsZoneModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
 
 
 class ARecordModelViewSet(ModelViewSet):
-    """"""
+    """ARecordModel API ViewSet."""
 
     queryset = models.ARecordModel.objects.all()
     serializer_class = serializers.ARecordModelSerializer
@@ -30,7 +30,7 @@ class ARecordModelViewSet(ModelViewSet):
 
 
 class AAAARecordModelViewSet(ModelViewSet):
-    """"""
+    """AAAARecordModel API ViewSet."""
 
     queryset = models.AAAARecordModel.objects.all()
     serializer_class = serializers.AAAARecordModelSerializer
@@ -40,6 +40,8 @@ class AAAARecordModelViewSet(ModelViewSet):
 
 
 class CNameRecordModelViewSet(ModelViewSet):
+    """CNameRecordModel API ViewSet."""
+
     queryset = models.CNAMERecordModel.objects.all()
     serializer_class = serializers.CNAMERecordModelSerializer
     filterset_class = filters.CNAMERecordModelFilterSet
@@ -48,6 +50,8 @@ class CNameRecordModelViewSet(ModelViewSet):
 
 
 class MXRecordModelViewSet(ModelViewSet):
+    """MXRecordModel API ViewSet."""
+
     queryset = models.MXRecordModel.objects.all()
     serializer_class = serializers.MXRecordModelSerializer
     filterset_class = filters.MXRecordModelFilterSet
@@ -56,6 +60,8 @@ class MXRecordModelViewSet(ModelViewSet):
 
 
 class TXTRecordModelViewSet(ModelViewSet):
+    """TXTRecordModel API ViewSet."""
+
     queryset = models.TXTRecordModel.objects.all()
     serializer_class = serializers.TXTRecordModelSerializer
     filterset_class = filters.TXTRecordModelFilterSet

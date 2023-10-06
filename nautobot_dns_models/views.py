@@ -10,6 +10,8 @@ from .filters import *
 
 
 class DnsZoneModelViewSet(views.NautobotUIViewSet):
+    """DnsZoneModel UI ViewSet."""
+
     form_class = DnsZoneModelForm
     bulk_create_form_class = DnsZoneModelBulkCreateForm
     bulk_update_form_class = DnsZoneModelBulkEditForm
@@ -49,6 +51,8 @@ class DnsZoneModelViewSet(views.NautobotUIViewSet):
 
 
 class NSRecordModelViewSet(views.NautobotUIViewSet):
+    """NSRecordModel UI ViewSet."""
+
     form_class = NSRecordModelForm
     bulk_update_form_class = NSRecordModelBulkEditForm
     filterset_class = NSRecordModelFilterSet
@@ -60,6 +64,8 @@ class NSRecordModelViewSet(views.NautobotUIViewSet):
 
 
 class ARecordModelViewSet(views.NautobotUIViewSet):
+    """ARecordModel UI ViewSet."""
+
     form_class = ARecordModelForm
     bulk_update_form_class = ARecordModelBulkEditForm
     filterset_class = ARecordModelFilterSet
@@ -71,6 +77,8 @@ class ARecordModelViewSet(views.NautobotUIViewSet):
 
 
 class AAAARecordModelViewSet(views.NautobotUIViewSet):
+    """AAAARecordModel UI ViewSet."""
+
     form_class = AAAARecordModelForm
     bulk_update_form_class = AAAARecordModelBulkEditForm
     filterset_class = AAAARecordModelFilterSet
@@ -82,6 +90,8 @@ class AAAARecordModelViewSet(views.NautobotUIViewSet):
 
 
 class CNAMERecordModelViewSet(views.NautobotUIViewSet):
+    """CNAMERecordModel UI ViewSet."""
+
     form_class = CNAMERecordModelForm
     bulk_update_form_class = CNAMERecordModelBulkEditForm
     filterset_class = CNAMERecordModelFilterSet
@@ -93,6 +103,8 @@ class CNAMERecordModelViewSet(views.NautobotUIViewSet):
 
 
 class MXRecordModelViewSet(views.NautobotUIViewSet):
+    """MXRecordModel UI ViewSet."""
+
     form_class = MXRecordModelForm
     bulk_update_form_class = MXRecordModelBulkEditForm
     filterset_class = MXRecordModelFilterSet
@@ -104,6 +116,8 @@ class MXRecordModelViewSet(views.NautobotUIViewSet):
 
 
 class TXTRecordModelViewSet(views.NautobotUIViewSet):
+    """TXTRecordModel UI ViewSet."""
+
     form_class = TXTRecordModelForm
     bulk_update_form_class = TXTRecordModelBulkEditForm
     filterset_class = TXTRecordModelFilterSet
