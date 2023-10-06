@@ -261,8 +261,8 @@ class CNAMERecordModelForm(BootstrapMixin, forms.ModelForm):
         model = models.CNAMERecordModel
         fields = [
             "name",
-            "alias",
             "slug",
+            "alias",
             "zone",
             "description",
         ]
@@ -322,6 +322,7 @@ class MXRecordModelForm(BootstrapMixin, forms.ModelForm):
             "slug",
             "preference",
             "mail_server",
+            "zone",
             "description",
         ]
 
@@ -360,6 +361,7 @@ class MXRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
             "q",
             "name",
             "slug",
+            "preference",
             "description",
         ]
 
@@ -377,6 +379,7 @@ class TXTRecordModelForm(BootstrapMixin, forms.ModelForm):
             "name",
             "slug",
             "text",
+            "zone",
             "description",
         ]
 
