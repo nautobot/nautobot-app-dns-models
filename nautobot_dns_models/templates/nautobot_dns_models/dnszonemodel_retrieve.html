@@ -109,12 +109,10 @@
 				</tr>
 			</table>
 		</div>
-		
 		{% plugin_left_page object %}
 	</div>
 	<div class="col-md-10">
 		<div class="buttons">
-			
 		</div>
 		<div class="panel panel-default">
 			<div class="panel-heading text-right">
@@ -129,16 +127,16 @@
 							<li><a href="{% url 'plugins:nautobot_dns_models:arecordmodel_add' %}?zone={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">A</a></li>
 						{% endif %}
 						{% if perms.dcim.add_aaaarecord %}
-							<li><a href="{% url 'plugins:nautobot_dns_models:aaaarecordmodel_add' %}?device={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">AAAA</a></li>
+							<li><a href="{% url 'plugins:nautobot_dns_models:aaaarecordmodel_add' %}?zone={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">AAAA</a></li>
 						{% endif %}
 						{% if perms.dcim.add_cnamerecord %}
-							<li><a href="{% url 'plugins:nautobot_dns_models:cnamerecordmodel_add' %}?device={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">CName</a></li>
+							<li><a href="{% url 'plugins:nautobot_dns_models:cnamerecordmodel_add' %}?zone={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">CName</a></li>
 						{% endif %}
 						{% if perms.dcim.add_mxrecord %}
-							<li><a href="{% url 'plugins:nautobot_dns_models:mxrecordmodel_add' %}?device={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">MX</a></li>
+							<li><a href="{% url 'plugins:nautobot_dns_models:mxrecordmodel_add' %}?zone={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">MX</a></li>
 						{% endif %}
 						{% if perms.dcim.add_txtrecord %}
-							<li><a href="{% url 'plugins:nautobot_dns_models:txtrecordmodel_add' %}?device={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">TXT</a></li>
+							<li><a href="{% url 'plugins:nautobot_dns_models:txtrecordmodel_add' %}?zone={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">TXT</a></li>
 						{% endif %}
 					</ul>
 				</div>
@@ -148,7 +146,6 @@
 				<table class="table table-hover table-headings">
 				{% if child_records %}
 				<!-- record, name, value, description -->
-				
 				<thead>
 					<tr>
 						<th>Type</th>
@@ -163,7 +160,6 @@
 					<td>{{ record.1 }}</td>
 					<td><a href="{{ record.4 }}">{{ record.2 }}</a></td>
 					<td>{{ record.3 }}</td>
-				
 				</tr>
 				{% endfor %}
 				{% else %}

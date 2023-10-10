@@ -40,6 +40,7 @@ class ARecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
         # add any fields from the model that you would like to filter your searches by using those
         fields = ["id", "name", "slug", "description"]
 
+
 class AAAARecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
     """Filter for AAAARecordModel."""
 
@@ -51,6 +52,7 @@ class AAAARecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
         # add any fields from the model that you would like to filter your searches by using those
         fields = ["id", "name", "slug", "description"]
 
+
 class CNAMERecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
     """Filter for CNAMERecordModel."""
 
@@ -61,6 +63,7 @@ class CNAMERecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
 
         # add any fields from the model that you would like to filter your searches by using those
         fields = ["id", "name", "slug", "description"]
+
 
 class MXRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
     """Filter for MXRecordModel."""
@@ -84,6 +87,7 @@ class TXTRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
 
         # add any fields from the model that you would like to filter your searches by using those
         fields = ["id", "name", "slug", "description"]
+
 
 # class SRVRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
 #     """Filter for SRVRecordModel."""
@@ -118,5 +122,3 @@ class TXTRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
 
 #         # add any fields from the model that you would like to filter your searches by using those
 #         fields = ["id", "name", "slug", "primary_ns", "contact", "refresh", "retry", "expire", "minimum", "description"]
-
-

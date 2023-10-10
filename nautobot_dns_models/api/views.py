@@ -8,7 +8,7 @@ from nautobot_dns_models.api import serializers
 
 
 class DnsZoneModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
-    """DnsZoneModel viewset."""
+    """DnsZoneModel API ViewSet."""
 
     queryset = models.DnsZoneModel.objects.all()
     serializer_class = serializers.DnsZoneModelSerializer
@@ -18,8 +18,10 @@ class DnsZoneModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     # Option for modifying the default HTTP methods:
     # http_method_names = ["get", "post", "put", "patch", "delete", "head", "options", "trace"]
 
+
 class ARecordModelViewSet(ModelViewSet):
-    """"""
+    """ARecordModel API ViewSet."""
+
     queryset = models.ARecordModel.objects.all()
     serializer_class = serializers.ARecordModelSerializer
     filterset_class = filters.ARecordModelFilterSet
@@ -28,15 +30,17 @@ class ARecordModelViewSet(ModelViewSet):
 
 
 class AAAARecordModelViewSet(ModelViewSet):
-    """"""
-    
+    """AAAARecordModel API ViewSet."""
+
     queryset = models.AAAARecordModel.objects.all()
     serializer_class = serializers.AAAARecordModelSerializer
     filterset_class = filters.AAAARecordModelFilterSet
 
     lookup_field = "pk"
 
+
 class CNameRecordModelViewSet(ModelViewSet):
+    """CNameRecordModel API ViewSet."""
 
     queryset = models.CNAMERecordModel.objects.all()
     serializer_class = serializers.CNAMERecordModelSerializer
@@ -44,7 +48,9 @@ class CNameRecordModelViewSet(ModelViewSet):
 
     lookup_field = "pk"
 
+
 class MXRecordModelViewSet(ModelViewSet):
+    """MXRecordModel API ViewSet."""
 
     queryset = models.MXRecordModel.objects.all()
     serializer_class = serializers.MXRecordModelSerializer
@@ -54,6 +60,7 @@ class MXRecordModelViewSet(ModelViewSet):
 
 
 class TXTRecordModelViewSet(ModelViewSet):
+    """TXTRecordModel API ViewSet."""
 
     queryset = models.TXTRecordModel.objects.all()
     serializer_class = serializers.TXTRecordModelSerializer

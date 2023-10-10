@@ -24,6 +24,7 @@ class DnsZoneModelForm(BootstrapMixin, forms.ModelForm):
             "description",
         ]
 
+
 class DnsZoneModelBulkCreateForm(BootstrapMixin, forms.ModelForm):
     """DnsZoneModel bulk create form."""
 
@@ -38,6 +39,7 @@ class DnsZoneModelBulkCreateForm(BootstrapMixin, forms.ModelForm):
             "slug",
             "description",
         ]
+
 
 class DnsZoneModelBulkEditForm(BootstrapMixin, BulkEditForm):
     """DnsZoneModel bulk edit form."""
@@ -76,8 +78,10 @@ class DnsZoneModelFilterForm(BootstrapMixin, forms.ModelForm):
             "description",
         ]
 
+
 class NSRecordModelForm(BootstrapMixin, forms.ModelForm):
     """NSRecordModel creation/edit form."""
+
     slug = SlugField()
 
     class Meta:
@@ -89,6 +93,7 @@ class NSRecordModelForm(BootstrapMixin, forms.ModelForm):
             "slug",
             "description",
         ]
+
 
 class NSRecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
     """NSRecordModel bulk edit form."""
@@ -102,6 +107,7 @@ class NSRecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
         nullable_fields = [
             "description",
         ]
+
 
 class NSRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
     """Filter form to filter searches."""
@@ -126,8 +132,10 @@ class NSRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
             "description",
         ]
 
+
 class ARecordModelForm(BootstrapMixin, forms.ModelForm):
     """ARecordModel creation/edit form."""
+
     slug = SlugField()
 
     class Meta:
@@ -143,6 +151,7 @@ class ARecordModelForm(BootstrapMixin, forms.ModelForm):
             "comment",
             "description",
         ]
+
 
 class ARecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
     """ARecordModel bulk edit form."""
@@ -182,8 +191,10 @@ class ARecordModelFilterForm(BootstrapMixin, forms.ModelForm):
             "description",
         ]
 
+
 class AAAARecordModelForm(BootstrapMixin, forms.ModelForm):
     """AAAARecordModel creation/edit form."""
+
     slug = SlugField()
 
     class Meta:
@@ -199,6 +210,7 @@ class AAAARecordModelForm(BootstrapMixin, forms.ModelForm):
             "comment",
             "description",
         ]
+
 
 class AAAARecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
     """AAAARecordModel bulk edit form."""
@@ -240,6 +252,7 @@ class AAAARecordModelFilterForm(BootstrapMixin, forms.ModelForm):
 
 class CNAMERecordModelForm(BootstrapMixin, forms.ModelForm):
     """CNAMERecordModel creation/edit form."""
+
     slug = SlugField()
 
     class Meta:
@@ -248,8 +261,8 @@ class CNAMERecordModelForm(BootstrapMixin, forms.ModelForm):
         model = models.CNAMERecordModel
         fields = [
             "name",
-            "alias",
             "slug",
+            "alias",
             "zone",
             "description",
         ]
@@ -258,7 +271,9 @@ class CNAMERecordModelForm(BootstrapMixin, forms.ModelForm):
 class CNAMERecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
     """CNAMERecordModel bulk edit form."""
 
-    pk = forms.ModelMultipleChoiceField(queryset=models.CNAMERecordModel.objects.all(), widget=forms.MultipleHiddenInput)
+    pk = forms.ModelMultipleChoiceField(
+        queryset=models.CNAMERecordModel.objects.all(), widget=forms.MultipleHiddenInput
+    )
     description = forms.CharField(required=False)
 
     class Meta:
@@ -295,6 +310,7 @@ class CNAMERecordModelFilterForm(BootstrapMixin, forms.ModelForm):
 
 class MXRecordModelForm(BootstrapMixin, forms.ModelForm):
     """MXRecordModel creation/edit form."""
+
     slug = SlugField()
 
     class Meta:
@@ -306,6 +322,7 @@ class MXRecordModelForm(BootstrapMixin, forms.ModelForm):
             "slug",
             "preference",
             "mail_server",
+            "zone",
             "description",
         ]
 
@@ -344,12 +361,14 @@ class MXRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
             "q",
             "name",
             "slug",
+            "preference",
             "description",
         ]
 
 
 class TXTRecordModelForm(BootstrapMixin, forms.ModelForm):
     """TXTRecordModel creation/edit form."""
+
     slug = SlugField()
 
     class Meta:
@@ -360,6 +379,7 @@ class TXTRecordModelForm(BootstrapMixin, forms.ModelForm):
             "name",
             "slug",
             "text",
+            "zone",
             "description",
         ]
 
@@ -400,6 +420,3 @@ class TXTRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
             "slug",
             "description",
         ]
-
-
-
