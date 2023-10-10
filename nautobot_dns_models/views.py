@@ -8,10 +8,13 @@ from .tables import *
 from .forms import *
 from .filters import *
 
+
 class DnsZoneModelViewSet(views.NautobotUIViewSet):
+    """DnsZoneModel UI ViewSet."""
+
     form_class = DnsZoneModelForm
     bulk_create_form_class = DnsZoneModelBulkCreateForm
-    bulk_edit_form_class = DnsZoneModelBulkEditForm
+    bulk_update_form_class = DnsZoneModelBulkEditForm
     filterset_class = DnsZoneModelFilterSet
     filterset_form_class = DnsZoneModelFilterForm
     serializer_class = serializers.DnsZoneModelSerializer
@@ -19,30 +22,39 @@ class DnsZoneModelViewSet(views.NautobotUIViewSet):
     queryset = DnsZoneModel.objects.all()
     table_class = DnsZoneModelTable
 
-    # def get_extra_context(self, request, instance):
-    #     """Return extra context data for template."""
-    #     # instance will be true if it's not a list view
-    #     if instance is not None:
-    #         child_records = []
-    #         # record, name, value, description, url
-    #         # for record in instance.nsrecordmodel.all():
-    #         #     child_records.append(["NS", record.name, record.nameserver, record.description])
-    #         for record in instance.arecordmodel.all():
-    #             child_records.append(["A", record.name, record.address, record.description, record.get_absolute_url()])
-    #         for record in instance.aaaarecordmodel.all():
-    #             child_records.append(["AAAA", record.name, record.address, record.description, record.get_absolute_url()])
-    #         for record in instance.cnamerecordmodel.all():
-    #             child_records.append(["CNAME", record.name, record.alias, record.description, record.get_absolute_url()])
-    #         for record in instance.mxrecordmodel.all():
-    #             child_records.append(["MX", record.name, record.mail_server, record.description, record.get_absolute_url()])
-    #         for record in instance.txtrecordmodel.all():
-    #             child_records.append(["TXT", record.name, record.text, record.description, record.get_absolute_url()])
-    #         return {"child_records": child_records}
+    def get_extra_context(self, request, instance):
+        """Return extra context data for template."""
+        # instance will be true if it's not a list view
+        child_records = []
+        if instance is not None:
+            # record, name, value, description, url
+            # for record in instance.nsrecordmodel.all():
+            #     child_records.append(["NS", record.name, record.nameserver, record.description])
+            for record in instance.arecordmodel.all():
+                child_records.append(["A", record.name, record.address, record.description, record.get_absolute_url()])
+            for record in instance.aaaarecordmodel.all():
+                child_records.append(
+                    ["AAAA", record.name, record.address, record.description, record.get_absolute_url()]
+                )
+            for record in instance.cnamerecordmodel.all():
+                child_records.append(
+                    ["CNAME", record.name, record.alias, record.description, record.get_absolute_url()]
+                )
+            for record in instance.mxrecordmodel.all():
+                child_records.append(
+                    ["MX", record.name, record.mail_server, record.description, record.get_absolute_url()]
+                )
+            for record in instance.txtrecordmodel.all():
+                child_records.append(["TXT", record.name, record.text, record.description, record.get_absolute_url()])
+
+        return {"child_records": child_records}
 
 
 class NSRecordModelViewSet(views.NautobotUIViewSet):
+    """NSRecordModel UI ViewSet."""
+
     form_class = NSRecordModelForm
-    bulk_edit_form_class = NSRecordModelBulkEditForm
+    bulk_update_form_class = NSRecordModelBulkEditForm
     filterset_class = NSRecordModelFilterSet
     filterset_form_class = NSRecordModelFilterForm
     serializer_class = serializers.NSRecordModelSerializer
@@ -52,8 +64,10 @@ class NSRecordModelViewSet(views.NautobotUIViewSet):
 
 
 class ARecordModelViewSet(views.NautobotUIViewSet):
+    """ARecordModel UI ViewSet."""
+
     form_class = ARecordModelForm
-    bulk_edit_form_class = ARecordModelBulkEditForm
+    bulk_update_form_class = ARecordModelBulkEditForm
     filterset_class = ARecordModelFilterSet
     filterset_form_class = ARecordModelFilterForm
     serializer_class = serializers.ARecordModelSerializer
@@ -63,8 +77,10 @@ class ARecordModelViewSet(views.NautobotUIViewSet):
 
 
 class AAAARecordModelViewSet(views.NautobotUIViewSet):
+    """AAAARecordModel UI ViewSet."""
+
     form_class = AAAARecordModelForm
-    bulk_edit_form_class = AAAARecordModelBulkEditForm
+    bulk_update_form_class = AAAARecordModelBulkEditForm
     filterset_class = AAAARecordModelFilterSet
     filterset_form_class = AAAARecordModelFilterForm
     serializer_class = serializers.AAAARecordModelSerializer
@@ -74,8 +90,10 @@ class AAAARecordModelViewSet(views.NautobotUIViewSet):
 
 
 class CNAMERecordModelViewSet(views.NautobotUIViewSet):
+    """CNAMERecordModel UI ViewSet."""
+
     form_class = CNAMERecordModelForm
-    bulk_edit_form_class = CNAMERecordModelBulkEditForm
+    bulk_update_form_class = CNAMERecordModelBulkEditForm
     filterset_class = CNAMERecordModelFilterSet
     filterset_form_class = CNAMERecordModelFilterForm
     serializer_class = serializers.CNAMERecordModelSerializer
@@ -85,8 +103,10 @@ class CNAMERecordModelViewSet(views.NautobotUIViewSet):
 
 
 class MXRecordModelViewSet(views.NautobotUIViewSet):
+    """MXRecordModel UI ViewSet."""
+
     form_class = MXRecordModelForm
-    bulk_edit_form_class = MXRecordModelBulkEditForm
+    bulk_update_form_class = MXRecordModelBulkEditForm
     filterset_class = MXRecordModelFilterSet
     filterset_form_class = MXRecordModelFilterForm
     serializer_class = serializers.MXRecordModelSerializer
@@ -96,8 +116,10 @@ class MXRecordModelViewSet(views.NautobotUIViewSet):
 
 
 class TXTRecordModelViewSet(views.NautobotUIViewSet):
+    """TXTRecordModel UI ViewSet."""
+
     form_class = TXTRecordModelForm
-    bulk_edit_form_class = TXTRecordModelBulkEditForm
+    bulk_update_form_class = TXTRecordModelBulkEditForm
     filterset_class = TXTRecordModelFilterSet
     filterset_form_class = TXTRecordModelFilterForm
     serializer_class = serializers.TXTRecordModelSerializer

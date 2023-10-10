@@ -8,10 +8,10 @@ except ImportError:
 
 __version__ = metadata.version(__name__)
 
-from nautobot.extras.plugins import PluginConfig
+from nautobot.apps import NautobotAppConfig
 
 
-class NautobotDnsModelsConfig(PluginConfig):
+class NautobotDnsModelsConfig(NautobotAppConfig):
     """Plugin configuration for the nautobot_dns_models plugin."""
 
     name = "nautobot_dns_models"

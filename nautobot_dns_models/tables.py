@@ -49,7 +49,6 @@ class NSRecordModelTable(BaseTable):
         # Option for modifying the default action buttons on each row:
         # buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
-        
     )
 
     class Meta(BaseTable.Meta):
@@ -81,7 +80,6 @@ class ARecordModelTable(BaseTable):
         # Option for modifying the default action buttons on each row:
         # buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
-        
     )
 
     class Meta(BaseTable.Meta):
@@ -113,7 +111,6 @@ class AAAARecordModelTable(BaseTable):
         # Option for modifying the default action buttons on each row:
         # buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
-        
     )
 
     class Meta(BaseTable.Meta):
@@ -145,7 +142,6 @@ class CNAMERecordModelTable(BaseTable):
         # Option for modifying the default action buttons on each row:
         # buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
-        
     )
 
     class Meta(BaseTable.Meta):
@@ -177,7 +173,6 @@ class MXRecordModelTable(BaseTable):
         # Option for modifying the default action buttons on each row:
         # buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
-        
     )
 
     class Meta(BaseTable.Meta):
@@ -197,7 +192,7 @@ class MXRecordModelTable(BaseTable):
         #     "description",
         # )
 
-    
+
 class TXTRecordModelTable(BaseTable):
     # pylint: disable=R0903
     """Table for list view."""
@@ -209,7 +204,6 @@ class TXTRecordModelTable(BaseTable):
         # Option for modifying the default action buttons on each row:
         # buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
-        
     )
 
     class Meta(BaseTable.Meta):

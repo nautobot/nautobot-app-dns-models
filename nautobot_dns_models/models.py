@@ -27,7 +27,6 @@ from nautobot.extras.models.change_logging import ChangeLoggedModel
 class DnsModel(PrimaryModel):
     """Abstract Model for Nautobot DNS Models."""
 
-
     class Meta:
         """Meta class."""
 
@@ -49,7 +48,7 @@ class DnsModel(PrimaryModel):
 
 
 class DnsZoneModel(PrimaryModel):
-    """Model for DNS SOA Records. An SOA Record defines a DNS Zone"""
+    """Model for DNS SOA Records. An SOA Record defines a DNS Zone."""
 
     name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD.")
     slug = AutoSlugField(populate_from="name")
@@ -61,13 +60,13 @@ class DnsZoneModel(PrimaryModel):
     soa_record = models.OneToOneField(to="SOARecordModel", on_delete=models.CASCADE, help_text="SOA Record for the Zone.")
 
     def get_absolute_url(self):
+        """Return the canonical URL for DnsZoneModel."""
         return reverse("plugins:nautobot_dns_models:dnszonemodel", args=[self.pk])
-    
 
 
 class DnsRecordModel(DnsModel):
-    """Abstract Model for DNS Records.
-    """
+    """Primary Dns Record model for plugin."""
+
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
     zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT, related_name="%(class)s_records", related_query_name="%(class)s")
     ttl = models.IntegerField(
@@ -77,67 +76,96 @@ class DnsRecordModel(DnsModel):
     comment = models.CharField(max_length=200, help_text="Comment for the Record.")
 
     class Meta:
+        """Meta attributes for DnsRecordModel."""
         abstract=True
     
     def __str__(self):
         return self.name
 
 class NSRecordModel(DnsRecordModel):
+    """NS Record model."""
+
     server = models.CharField(max_length=200, help_text="FQDN of an authoritative Name Server.")
     slug = AutoSlugField(populate_from="name")
 
+
 class ARecordModel(DnsRecordModel):
+    """A Record model."""
+
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
     slug = AutoSlugField(populate_from="name")
 
     def get_absolute_url(self):
+        """Return the canonical URL for ARecordModel."""
         return reverse("plugins:nautobot_dns_models:arecordmodel", args=[self.pk])
 
     def __str__(self):
+        """String representation of ARecordModel."""
         return self.name
 
+
 class AAAARecordModel(DnsRecordModel):
+    """AAAA Record model."""
+
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
     slug = AutoSlugField(populate_from="name")
 
     def get_absolute_url(self):
+        """Return the canonical URL for AAAARecordModel."""
         return reverse("plugins:nautobot_dns_models:aaaarecordmodel", args=[self.pk])
 
     def __str__(self):
+        """String representation of AAAARecordModel."""
         return self.name
-    
+
+
 class CNAMERecordModel(DnsRecordModel):
+    """CNAME Record model."""
+
     alias = models.CharField(max_length=200, help_text="FQDN of the Alias.")
     slug = AutoSlugField(populate_from="name")
 
     def get_absolute_url(self):
+        """Return the canonical URL for CNAMERecordModel."""
         return reverse("plugins:nautobot_dns_models:cnamerecordmodel", args=[self.pk])
 
     def __str__(self):
+        """String representation of CNAMERecordModel."""
         return self.name
-    
+
 
 class MXRecordModel(DnsRecordModel):
+    """MX Record model."""
+
     preference = models.IntegerField(
-        validators=[MinValueValidator(0), MaxValueValidator(65535)], default=10, help_text="Preference for the MX Record."
+        validators=[MinValueValidator(0), MaxValueValidator(65535)],
+        default=10,
+        help_text="Preference for the MX Record.",
     )
     mail_server = models.CharField(max_length=200, help_text="FQDN of the Mail Server.")
     slug = AutoSlugField(populate_from="name")
 
     def get_absolute_url(self):
+        """Return the canonical URL for MXRecordModel."""
         return reverse("plugins:nautobot_dns_models:mxrecordmodel", args=[self.pk])
 
     def __str__(self):
+        """String representation of MXRecordModel."""
         return self.name
-    
+
+
 class TXTRecordModel(DnsRecordModel):
+    """TXT Record model."""
+
     text = models.CharField(max_length=256, help_text="Text for the TXT Record.")
     slug = AutoSlugField(populate_from="name")
 
     def get_absolute_url(self):
+        """Return the canonical URL for TXTRecordModel."""
         return reverse("plugins:nautobot_dns_models:txtrecordmodel", args=[self.pk])
 
     def __str__(self):
+        """String representation of TXTRecordModel."""
         return self.name
 
 class PTRRecordModel(DnsRecordModel):
