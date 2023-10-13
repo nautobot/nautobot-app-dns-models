@@ -8,20 +8,15 @@ readme = "README.md"
 homepage = "https://github.com/nautobot/nautobot-plugin-dns-models"
 repository = "https://github.com/nautobot/nautobot-plugin-dns-models"
 keywords = ["nautobot", "nautobot-plugin"]
-include = [
-    "LICENSE",
-    "README.md",
-]
-packages = [
-    { include = "nautobot_dns_models" },
-]
+include = ["LICENSE", "README.md"]
+packages = [{ include = "nautobot_dns_models" }]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = ">=3.8,<3.12"
 # Required for Python 3.7 for now. See: https://stackoverflow.com/a/73932581/194311
 importlib-metadata = "4.13.0"
 # Used for local development
-nautobot = { version = "^1.5.0", optional = true }
+nautobot = {version = "^1.6.0", optional = true}
 
 [tool.poetry.dev-dependencies]
 bandit = "*"
@@ -36,6 +31,7 @@ ipython = "*"
 pydocstyle = "*"
 pylint = "*"
 pylint-django = "*"
+pylint-nautobot = "*"
 pytest = "*"
 yamllint = "*"
 Markdown = "*"
@@ -78,12 +74,12 @@ exclude = '''
 
 [tool.pylint.master]
 # Include the pylint_django plugin to avoid spurious warnings about Django patterns
-load-plugins="pylint_django"
-ignore=".venv"
+load-plugins = ["pylint_django", "pylint_nautobot"]
+ignore = ".venv"
 
 [tool.pylint.basic]
 # No docstrings required for private methods (Pylint default), or for test_ functions, or for inner Meta classes.
-no-docstring-rgx="^(_|test_|Meta$)"
+no-docstring-rgx = "^(_|test_|Meta$)"
 
 [tool.pylint.messages_control]
 # Line length is enforced by Black, so pylint doesn't need to check it.
@@ -98,6 +94,9 @@ notes = """,
     FIXME,
     XXX,
     """
+
+[tool.pylint-nautobot]
+supported_nautobot_versions = ["1"]
 
 [tool.pydocstyle]
 convention = "google"
@@ -116,7 +115,5 @@ requires = ["poetry_core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
-testpaths = [
-    "tests"
-]
+testpaths = ["tests"]
 addopts = "-vv --doctest-modules"
