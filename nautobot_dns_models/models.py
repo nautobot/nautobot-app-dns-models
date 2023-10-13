@@ -24,7 +24,7 @@ from nautobot.extras.models.change_logging import ChangeLoggedModel
 # class DnsModel
 
 
-class DnsModel(PrimaryModel):
+class DnsModel(PrimaryModel):  # pylint: disable=too-many-ancestors
     """Abstract Model for Nautobot DNS Models."""
 
     class Meta:
@@ -47,7 +47,7 @@ class DnsModel(PrimaryModel):
         return self.name
 
 
-class DnsZoneModel(PrimaryModel):
+class DnsZoneModel(PrimaryModel):  # pylint: disable=too-many-ancestors
     """Model for DNS SOA Records. An SOA Record defines a DNS Zone."""
 
     name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD.")
@@ -80,7 +80,7 @@ class DnsZoneModel(PrimaryModel):
         return reverse("plugins:nautobot_dns_models:dnszonemodel", args=[self.pk])
 
 
-class DnsRecordModel(DnsModel):
+class DnsRecordModel(DnsModel):  # pylint: disable=too-many-ancestors
     """Primary Dns Record model for plugin."""
 
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
@@ -95,17 +95,18 @@ class DnsRecordModel(DnsModel):
 
     class Meta:
         """Meta attributes for DnsRecordModel."""
+
         abstract = True
 
 
-class NSRecordModel(DnsRecordModel):
+class NSRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     """NS Record model."""
 
     server = models.CharField(max_length=200, help_text="FQDN of an authoritative Name Server.")
     slug = AutoSlugField(populate_from="name")
 
 
-class ARecordModel(DnsRecordModel):
+class ARecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     """A Record model."""
 
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
@@ -120,7 +121,7 @@ class ARecordModel(DnsRecordModel):
         return self.name
 
 
-class AAAARecordModel(DnsRecordModel):
+class AAAARecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     """AAAA Record model."""
 
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
@@ -135,7 +136,7 @@ class AAAARecordModel(DnsRecordModel):
         return self.name
 
 
-class CNAMERecordModel(DnsRecordModel):
+class CNAMERecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     """CNAME Record model."""
 
     alias = models.CharField(max_length=200, help_text="FQDN of the Alias.")
@@ -150,7 +151,7 @@ class CNAMERecordModel(DnsRecordModel):
         return self.name
 
 
-class MXRecordModel(DnsRecordModel):
+class MXRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     """MX Record model."""
 
     preference = models.IntegerField(
@@ -170,7 +171,7 @@ class MXRecordModel(DnsRecordModel):
         return self.name
 
 
-class TXTRecordModel(DnsRecordModel):
+class TXTRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     """TXT Record model."""
 
     text = models.CharField(max_length=256, help_text="Text for the TXT Record.")
