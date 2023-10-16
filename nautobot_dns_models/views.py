@@ -1,12 +1,66 @@
 """DNS Plugin Views."""
 
 from nautobot.apps import views
-from .models import *
-from .api import serializers
-
-from .tables import *
-from .forms import *
-from .filters import *
+from nautobot_dns_models.api.serializers import (
+    AAAARecordModelSerializer,
+    ARecordModelSerializer,
+    CNAMERecordModelSerializer,
+    DnsZoneModelSerializer,
+    MXRecordModelSerializer,
+    NSRecordModelSerializer,
+    TXTRecordModelSerializer,
+)
+from nautobot_dns_models.filters import (
+    AAAARecordModelFilterSet,
+    ARecordModelFilterSet,
+    CNAMERecordModelFilterSet,
+    DnsZoneModelFilterSet,
+    MXRecordModelFilterSet,
+    NSRecordModelFilterSet,
+    TXTRecordModelFilterSet,
+)
+from nautobot_dns_models.forms import (
+    AAAARecordModelBulkEditForm,
+    AAAARecordModelFilterForm,
+    AAAARecordModelForm,
+    ARecordModelBulkEditForm,
+    ARecordModelFilterForm,
+    ARecordModelForm,
+    CNAMERecordModelBulkEditForm,
+    CNAMERecordModelFilterForm,
+    CNAMERecordModelForm,
+    DnsZoneModelBulkCreateForm,
+    DnsZoneModelBulkEditForm,
+    DnsZoneModelFilterForm,
+    DnsZoneModelForm,
+    MXRecordModelBulkEditForm,
+    MXRecordModelFilterForm,
+    MXRecordModelForm,
+    NSRecordModelBulkEditForm,
+    NSRecordModelFilterForm,
+    NSRecordModelForm,
+    TXTRecordModelBulkEditForm,
+    TXTRecordModelFilterForm,
+    TXTRecordModelForm,
+)
+from nautobot_dns_models.models import (
+    AAAARecordModel,
+    ARecordModel,
+    CNAMERecordModel,
+    DnsZoneModel,
+    MXRecordModel,
+    NSRecordModel,
+    TXTRecordModel,
+)
+from nautobot_dns_models.tables import (
+    AAAARecordModelTable,
+    ARecordModelTable,
+    CNAMERecordModelTable,
+    DnsZoneModelTable,
+    MXRecordModelTable,
+    NSRecordModelTable,
+    TXTRecordModelTable,
+)
 
 
 class DnsZoneModelViewSet(views.NautobotUIViewSet):
@@ -17,7 +71,7 @@ class DnsZoneModelViewSet(views.NautobotUIViewSet):
     bulk_update_form_class = DnsZoneModelBulkEditForm
     filterset_class = DnsZoneModelFilterSet
     filterset_form_class = DnsZoneModelFilterForm
-    serializer_class = serializers.DnsZoneModelSerializer
+    serializer_class = DnsZoneModelSerializer
     lookup_field = "pk"
     queryset = DnsZoneModel.objects.all()
     table_class = DnsZoneModelTable
@@ -57,7 +111,7 @@ class NSRecordModelViewSet(views.NautobotUIViewSet):
     bulk_update_form_class = NSRecordModelBulkEditForm
     filterset_class = NSRecordModelFilterSet
     filterset_form_class = NSRecordModelFilterForm
-    serializer_class = serializers.NSRecordModelSerializer
+    serializer_class = NSRecordModelSerializer
     lookup_field = "pk"
     queryset = NSRecordModel.objects.all()
     table_class = NSRecordModelTable
@@ -70,7 +124,7 @@ class ARecordModelViewSet(views.NautobotUIViewSet):
     bulk_update_form_class = ARecordModelBulkEditForm
     filterset_class = ARecordModelFilterSet
     filterset_form_class = ARecordModelFilterForm
-    serializer_class = serializers.ARecordModelSerializer
+    serializer_class = ARecordModelSerializer
     lookup_field = "pk"
     queryset = ARecordModel.objects.all()
     table_class = ARecordModelTable
@@ -83,7 +137,7 @@ class AAAARecordModelViewSet(views.NautobotUIViewSet):
     bulk_update_form_class = AAAARecordModelBulkEditForm
     filterset_class = AAAARecordModelFilterSet
     filterset_form_class = AAAARecordModelFilterForm
-    serializer_class = serializers.AAAARecordModelSerializer
+    serializer_class = AAAARecordModelSerializer
     lookup_field = "pk"
     queryset = AAAARecordModel.objects.all()
     table_class = AAAARecordModelTable
@@ -96,7 +150,7 @@ class CNAMERecordModelViewSet(views.NautobotUIViewSet):
     bulk_update_form_class = CNAMERecordModelBulkEditForm
     filterset_class = CNAMERecordModelFilterSet
     filterset_form_class = CNAMERecordModelFilterForm
-    serializer_class = serializers.CNAMERecordModelSerializer
+    serializer_class = CNAMERecordModelSerializer
     lookup_field = "pk"
     queryset = CNAMERecordModel.objects.all()
     table_class = CNAMERecordModelTable
@@ -109,7 +163,7 @@ class MXRecordModelViewSet(views.NautobotUIViewSet):
     bulk_update_form_class = MXRecordModelBulkEditForm
     filterset_class = MXRecordModelFilterSet
     filterset_form_class = MXRecordModelFilterForm
-    serializer_class = serializers.MXRecordModelSerializer
+    serializer_class = MXRecordModelSerializer
     lookup_field = "pk"
     queryset = MXRecordModel.objects.all()
     table_class = MXRecordModelTable
@@ -122,7 +176,7 @@ class TXTRecordModelViewSet(views.NautobotUIViewSet):
     bulk_update_form_class = TXTRecordModelBulkEditForm
     filterset_class = TXTRecordModelFilterSet
     filterset_form_class = TXTRecordModelFilterForm
-    serializer_class = serializers.TXTRecordModelSerializer
+    serializer_class = TXTRecordModelSerializer
     lookup_field = "pk"
     queryset = TXTRecordModel.objects.all()
     table_class = TXTRecordModelTable

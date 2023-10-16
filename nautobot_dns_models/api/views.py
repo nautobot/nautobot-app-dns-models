@@ -1,69 +1,89 @@
 """API views for nautobot_dns_models."""
 
 from nautobot.core.api.views import ModelViewSet
-
-from nautobot_dns_models import filters, models
-
-from nautobot_dns_models.api import serializers
+from nautobot_dns_models.api.serializers import (
+    AAAARecordModelSerializer,
+    ARecordModelSerializer,
+    CNAMERecordModelSerializer,
+    DnsZoneModelSerializer,
+    MXRecordModelSerializer,
+    TXTRecordModelSerializer,
+)
+from nautobot_dns_models.filters import (
+    AAAARecordModelFilterSet,
+    ARecordModelFilterSet,
+    CNAMERecordModelFilterSet,
+    DnsZoneModelFilterSet,
+    MXRecordModelFilterSet,
+    TXTRecordModelFilterSet,
+)
+from nautobot_dns_models.models import (
+    AAAARecordModel,
+    ARecordModel,
+    CNAMERecordModel,
+    DnsZoneModel,
+    MXRecordModel,
+    TXTRecordModel,
+)
 
 
 class DnsZoneModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     """DnsZoneModel API ViewSet."""
 
-    queryset = models.DnsZoneModel.objects.all()
-    serializer_class = serializers.DnsZoneModelSerializer
-    filterset_class = filters.DnsZoneModelFilterSet
+    queryset = DnsZoneModel.objects.all()
+    serializer_class = DnsZoneModelSerializer
+    filterset_class = DnsZoneModelFilterSet
 
     lookup_field = "pk"
     # Option for modifying the default HTTP methods:
     # http_method_names = ["get", "post", "put", "patch", "delete", "head", "options", "trace"]
 
 
-class ARecordModelViewSet(ModelViewSet):
+class ARecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     """ARecordModel API ViewSet."""
 
-    queryset = models.ARecordModel.objects.all()
-    serializer_class = serializers.ARecordModelSerializer
-    filterset_class = filters.ARecordModelFilterSet
+    queryset = ARecordModel.objects.all()
+    serializer_class = ARecordModelSerializer
+    filterset_class = ARecordModelFilterSet
 
     lookup_field = "pk"
 
 
-class AAAARecordModelViewSet(ModelViewSet):
+class AAAARecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     """AAAARecordModel API ViewSet."""
 
-    queryset = models.AAAARecordModel.objects.all()
-    serializer_class = serializers.AAAARecordModelSerializer
-    filterset_class = filters.AAAARecordModelFilterSet
+    queryset = AAAARecordModel.objects.all()
+    serializer_class = AAAARecordModelSerializer
+    filterset_class = AAAARecordModelFilterSet
 
     lookup_field = "pk"
 
 
-class CNameRecordModelViewSet(ModelViewSet):
+class CNameRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     """CNameRecordModel API ViewSet."""
 
-    queryset = models.CNAMERecordModel.objects.all()
-    serializer_class = serializers.CNAMERecordModelSerializer
-    filterset_class = filters.CNAMERecordModelFilterSet
+    queryset = CNAMERecordModel.objects.all()
+    serializer_class = CNAMERecordModelSerializer
+    filterset_class = CNAMERecordModelFilterSet
 
     lookup_field = "pk"
 
 
-class MXRecordModelViewSet(ModelViewSet):
+class MXRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     """MXRecordModel API ViewSet."""
 
-    queryset = models.MXRecordModel.objects.all()
-    serializer_class = serializers.MXRecordModelSerializer
-    filterset_class = filters.MXRecordModelFilterSet
+    queryset = MXRecordModel.objects.all()
+    serializer_class = MXRecordModelSerializer
+    filterset_class = MXRecordModelFilterSet
 
     lookup_field = "pk"
 
 
-class TXTRecordModelViewSet(ModelViewSet):
+class TXTRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     """TXTRecordModel API ViewSet."""
 
-    queryset = models.TXTRecordModel.objects.all()
-    serializer_class = serializers.TXTRecordModelSerializer
-    filterset_class = filters.TXTRecordModelFilterSet
+    queryset = TXTRecordModel.objects.all()
+    serializer_class = TXTRecordModelSerializer
+    filterset_class = TXTRecordModelFilterSet
 
     lookup_field = "pk"
