@@ -99,16 +99,6 @@ class PTRRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
         # add any fields from the model that you would like to filter your searches by using those
         fields = ["id", "name", "slug", "description"]
 
-class SOARecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
-    """Filter for SOARecordModel."""
-
-    class Meta:
-        """Meta attributes for filter."""
-
-        model = models.SOARecordModel
-
-        # add any fields from the model that you would like to filter your searches by using those
-        fields = ["id", "name", "slug", "mname", "rname", "refresh", "retry", "expire", "minimum", "description"]
 
 # class SRVRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
 #     """Filter for SRVRecordModel."""

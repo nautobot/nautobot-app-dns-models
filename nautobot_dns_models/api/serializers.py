@@ -126,17 +126,3 @@ class PTRRecordModelSerializer(ValidatedModelSerializer):
 
         # Option for disabling write for certain fields:
         # read_only_fields = []
-
-class SOARecordModelSerializer(ValidatedModelSerializer):
-    """SOARecordModel Serializer."""
-
-    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:soarecordmodel-detail")
-
-    class Meta:
-        """Meta attributes."""
-
-        model = models.SOARecordModel
-        fields = "__all__"
-
-        # Option for disabling write for certain fields:
-        # read_only_fields = []

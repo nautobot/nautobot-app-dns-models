@@ -57,7 +57,38 @@ class DnsZoneModel(PrimaryModel):
     )
     filename = models.CharField(max_length=200, help_text="Filename of the Zone File.")
     description = models.TextField(help_text="Description of the Zone.", blank=True)
-    soa_record = models.OneToOneField(to="SOARecordModel", on_delete=models.CASCADE, help_text="SOA Record for the Zone.")
+    soa_mname = models.CharField(
+        max_length=200, 
+        help_text="FQDN of the Authoritative Name Server for Zone.",
+        null=False,
+    )
+    soa_rname = models.EmailField(help_text="Admin Email for the Zone in the form")
+    soa_refresh = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+        default="86400",
+        help_text="Number of seconds after which secondary name servers should query the master for the SOA record, to detect zone changes.",
+    )
+    soa_retry = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+        default=7200,
+        help_text="Number of seconds after which secondary name servers should retry to request the serial number from the master if the master does not respond.",
+    )
+    soa_expire = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+        default=3600000,
+        help_text="Number of seconds after which secondary name servers should stop answering request for this zone if the master does not respond. This value must be bigger than the sum of Refresh and Retry.",
+    )
+    soa_serial = models.IntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(2147483647)],
+        default=0,
+        help_text="Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.",
+    )
+    soa_minimum = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+        default=3600,
+        help_text="Minimum TTL for records in this zone.",
+    )
+
 
     def get_absolute_url(self):
         """Return the canonical URL for DnsZoneModel."""
@@ -68,7 +99,7 @@ class DnsRecordModel(DnsModel):
     """Primary Dns Record model for plugin."""
 
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
-    zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT, related_name="%(class)s_records", related_query_name="%(class)s")
+    zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT, related_name="%(class)s", related_query_name="%(class)s")
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
@@ -177,36 +208,3 @@ class PTRRecordModel(DnsRecordModel):
 
     def __str__(self):
         return self.ptrdname
-
-class SOARecordModel(DnsRecordModel):
-    mname = models.CharField(max_length=200, help_text="FQDN of the Authoritative Name Server for Zone.")
-    rname = models.EmailField(help_text="Admin Email for the Zone in the form")
-    refresh = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
-        default="86400",
-        help_text="Number of seconds after which secondary name servers should query the master for the SOA record, to detect zone changes.",
-    )
-    retry = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
-        default=7200,
-        help_text="Number of seconds after which secondary name servers should retry to request the serial number from the master if the master does not respond.",
-    )
-    expire = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
-        default=3600000,
-        help_text="Number of seconds after which secondary name servers should stop answering request for this zone if the master does not respond. This value must be bigger than the sum of Refresh and Retry.",
-    )
-    serial = models.IntegerField(
-        validators=[MinValueValidator(0), MaxValueValidator(2147483647)],
-        default=0,
-        help_text="Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.",
-    )
-    minimum = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
-        default=3600,
-        help_text="Minimum TTL for records in this zone.",
-    )
-    slug = AutoSlugField(populate_from="name")
-
-    def __str__(self):
-        return self.name

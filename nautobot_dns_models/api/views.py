@@ -75,11 +75,3 @@ class PTRRecordModelViewSet(ModelViewSet):
     filterset_class = filters.PTRRecordModelFilterSet
 
     lookup_field = "pk"
-
-class SOARecordModelViewSet(ModelViewSet):
-
-    queryset = models.SOARecordModel.objects.all()
-    serializer_class = serializers.SOARecordModelSerializer
-    filterset_class = filters.SOARecordModelFilterSet
-
-    lookup_field = "pk"

@@ -1,5 +1,6 @@
 """DNS Plugin Views."""
 
+from django.shortcuts import redirect
 from nautobot.apps import views
 from .models import *
 from .api import serializers
@@ -48,7 +49,6 @@ class DnsZoneModelViewSet(views.NautobotUIViewSet):
                 child_records.append(["TXT", record.name, record.text, record.description, record.get_absolute_url()])
 
         return {"child_records": child_records}
-
 
 class NSRecordModelViewSet(views.NautobotUIViewSet):
     """NSRecordModel UI ViewSet."""
@@ -137,12 +137,3 @@ class PTRRecordModelViewSet(views.NautobotUIViewSet):
     queryset = PTRRecordModel.objects.all()
     table_class = PTRRecordModelTable
 
-class SOARecordModelViewSet(views.NautobotUIViewSet):
-    form_class = SOARecordModelForm
-    bulk_edit_form_class = SOARecordModelBulkEditForm
-    filterset_class = SOARecordModelFilterSet
-    filterset_form_class = SOARecordModelFilterForm
-    serializer_class = serializers.SOARecordModelSerializer
-    lookup_field = "pk"
-    queryset = SOARecordModel.objects.all()
-    table_class = SOARecordModelTable

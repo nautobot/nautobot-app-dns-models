@@ -14,7 +14,6 @@ router.register("cnamerecordmodel", views.CNameRecordModelViewSet)
 router.register("mxrecordmodel", views.MXRecordModelViewSet)
 router.register("txtrecordmodel", views.TXTRecordModelViewSet)
 router.register("ptrrecordmodel", views.PTRRecordModelViewSet)
-router.register("soarecordmodel", views.SOARecordModelViewSet)
 
 app_name = "nautobot_dns_models-api"
 urlpatterns = router.urls
