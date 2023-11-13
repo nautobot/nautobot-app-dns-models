@@ -16,6 +16,7 @@ router.register("aaaarecordmodel", views.AAAARecordModelViewSet)
 router.register("cnamerecordmodel", views.CNAMERecordModelViewSet)
 router.register("mxrecordmodel", views.MXRecordModelViewSet)
 router.register("txtrecordmodel", views.TXTRecordModelViewSet)
+router.register("ptrrecordmodel", views.PTRRecordModelViewSet)
 
 urlpatterns = [
     # path(
@@ -38,8 +39,7 @@ urlpatterns = [
     # ),
 ]
 
-
-urlpatterns = router.urls
+urlpatterns += router.urls
 
 # urlpatterns = [
 #     # DnsZoneModel URLs

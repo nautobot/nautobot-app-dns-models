@@ -87,3 +87,11 @@ class TXTRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     filterset_class = TXTRecordModelFilterSet
 
     lookup_field = "pk"
+
+class PTRRecordModelViewSet(ModelViewSet):
+
+    queryset = models.PTRRecordModel.objects.all()
+    serializer_class = serializers.PTRRecordModelSerializer
+    filterset_class = filters.PTRRecordModelFilterSet
+
+    lookup_field = "pk"

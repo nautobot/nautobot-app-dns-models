@@ -88,6 +88,17 @@ class TXTRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
         # add any fields from the model that you would like to filter your searches by using those
         fields = ["id", "name", "slug", "description"]
 
+class PTRRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
+    """Filter for PTRRecordModel."""
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.PTRRecordModel
+
+        # add any fields from the model that you would like to filter your searches by using those
+        fields = ["id", "name", "slug", "description"]
+
 
 # class SRVRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
 #     """Filter for SRVRecordModel."""
