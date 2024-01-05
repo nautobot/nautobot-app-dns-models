@@ -1,7 +1,7 @@
 """Tables for nautobot_dns_models."""
 
 import django_tables2 as tables
-from nautobot.utilities.tables import BaseTable, ButtonsColumn, ToggleColumn
+from nautobot.core.tables import BaseTable, ButtonsColumn, ToggleColumn
 
 from nautobot_dns_models import models
 
@@ -235,7 +235,7 @@ class PTRRecordModelTable(BaseTable):
         # Option for modifying the default action buttons on each row:
         # buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
-        
+
     )
 
     class Meta(BaseTable.Meta):

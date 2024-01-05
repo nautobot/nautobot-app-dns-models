@@ -1,6 +1,6 @@
 """Forms for nautobot_dns_models."""
 from django import forms
-from nautobot.utilities.forms import (
+from nautobot.core.forms import (
     BootstrapMixin,
     BulkEditForm,
     SlugField,
@@ -27,7 +27,7 @@ class DnsZoneModelForm(BootstrapMixin, forms.ModelForm):
             "soa_refresh",
             "soa_retry",
             "soa_expire",
-            "soa_serial",                        
+            "soa_serial",
             "soa_minimum",
         ]
 
@@ -456,7 +456,7 @@ class PTRRecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
 
         nullable_fields = [
             "description",
-        ]   
+        ]
 
 class PTRRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
     """Filter form to filter searches."""

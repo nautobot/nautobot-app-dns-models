@@ -7,7 +7,7 @@ from django.urls import reverse
 
 
 # Nautobot imports
-from nautobot.core.fields import AutoSlugField
+from nautobot.core.models.fields import AutoSlugField
 from nautobot.apps.models import BaseModel, PrimaryModel
 from nautobot.extras.models.change_logging import ChangeLoggedModel
 
@@ -58,7 +58,7 @@ class DnsZoneModel(PrimaryModel):  # pylint: disable=too-many-ancestors
     filename = models.CharField(max_length=200, help_text="Filename of the Zone File.")
     description = models.TextField(help_text="Description of the Zone.", blank=True)
     soa_mname = models.CharField(
-        max_length=200, 
+        max_length=200,
         help_text="FQDN of the Authoritative Name Server for Zone.",
         null=False,
     )

@@ -10,6 +10,7 @@ from nautobot_dns_models.api.serializers import (
     MXRecordModelSerializer,
     NSRecordModelSerializer,
     TXTRecordModelSerializer,
+    PTRRecordModelSerializer,
 )
 from nautobot_dns_models.filters import (
     AAAARecordModelFilterSet,
@@ -19,6 +20,7 @@ from nautobot_dns_models.filters import (
     MXRecordModelFilterSet,
     NSRecordModelFilterSet,
     TXTRecordModelFilterSet,
+    PTRRecordModelFilterSet,
 )
 from nautobot_dns_models.forms import (
     AAAARecordModelBulkEditForm,
@@ -43,6 +45,9 @@ from nautobot_dns_models.forms import (
     TXTRecordModelBulkEditForm,
     TXTRecordModelFilterForm,
     TXTRecordModelForm,
+    PTRRecordModelForm,
+    PTRRecordModelBulkEditForm,
+    PTRRecordModelFilterForm,
 )
 from nautobot_dns_models.models import (
     AAAARecordModel,
@@ -52,6 +57,7 @@ from nautobot_dns_models.models import (
     MXRecordModel,
     NSRecordModel,
     TXTRecordModel,
+    PTRRecordModel,
 )
 from nautobot_dns_models.tables import (
     AAAARecordModelTable,
@@ -61,6 +67,7 @@ from nautobot_dns_models.tables import (
     MXRecordModelTable,
     NSRecordModelTable,
     TXTRecordModelTable,
+    PTRRecordModelTable,
 )
 
 
@@ -103,6 +110,7 @@ class DnsZoneModelViewSet(views.NautobotUIViewSet):
                 child_records.append(["TXT", record.name, record.text, record.description, record.get_absolute_url()])
 
         return {"child_records": child_records}
+
 
 class NSRecordModelViewSet(views.NautobotUIViewSet):
     """NSRecordModel UI ViewSet."""
@@ -181,13 +189,13 @@ class TXTRecordModelViewSet(views.NautobotUIViewSet):
     queryset = TXTRecordModel.objects.all()
     table_class = TXTRecordModelTable
 
+
 class PTRRecordModelViewSet(views.NautobotUIViewSet):
     form_class = PTRRecordModelForm
     bulk_edit_form_class = PTRRecordModelBulkEditForm
     filterset_class = PTRRecordModelFilterSet
     filterset_form_class = PTRRecordModelFilterForm
-    serializer_class = serializers.PTRRecordModelSerializer
+    serializer_class = PTRRecordModelSerializer
     lookup_field = "pk"
     queryset = PTRRecordModel.objects.all()
     table_class = PTRRecordModelTable
-
