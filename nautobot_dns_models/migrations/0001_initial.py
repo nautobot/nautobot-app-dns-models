@@ -10,187 +10,504 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('ipam', '0039_alter_ipaddresstointerface_ip_address'),
-        ('extras', '0102_set_null_objectchange_contenttype'),
+        ("ipam", "0039_alter_ipaddresstointerface_ip_address"),
+        ("extras", "0102_set_null_objectchange_contenttype"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='DnsZoneModel',
+            name="DnsZoneModel",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True)),
-                ('created', models.DateTimeField(auto_now_add=True, null=True)),
-                ('last_updated', models.DateTimeField(auto_now=True, null=True)),
-                ('_custom_field_data', models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder)),
-                ('name', models.CharField(max_length=200)),
-                ('slug', nautobot.core.models.fields.AutoSlugField(blank=True, max_length=100, populate_from='name', unique=True)),
-                ('ttl', models.IntegerField(default=3600, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)])),
-                ('filename', models.CharField(max_length=200)),
-                ('description', models.TextField(blank=True)),
-                ('soa_mname', models.CharField(max_length=200)),
-                ('soa_rname', models.EmailField(max_length=254)),
-                ('soa_refresh', models.IntegerField(default='86400', validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)])),
-                ('soa_retry', models.IntegerField(default=7200, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)])),
-                ('soa_expire', models.IntegerField(default=3600000, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)])),
-                ('soa_serial', models.IntegerField(default=0, validators=[django.core.validators.MinValueValidator(0), django.core.validators.MaxValueValidator(2147483647)])),
-                ('soa_minimum', models.IntegerField(default=3600, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)])),
-                ('tags', nautobot.core.models.fields.TagsField(through='extras.TaggedItem', to='extras.Tag')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True
+                    ),
+                ),
+                ("created", models.DateTimeField(auto_now_add=True, null=True)),
+                ("last_updated", models.DateTimeField(auto_now=True, null=True)),
+                (
+                    "_custom_field_data",
+                    models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder),
+                ),
+                ("name", models.CharField(max_length=200)),
+                (
+                    "slug",
+                    nautobot.core.models.fields.AutoSlugField(
+                        blank=True, max_length=100, populate_from="name", unique=True
+                    ),
+                ),
+                (
+                    "ttl",
+                    models.IntegerField(
+                        default=3600,
+                        validators=[
+                            django.core.validators.MinValueValidator(300),
+                            django.core.validators.MaxValueValidator(2147483647),
+                        ],
+                    ),
+                ),
+                ("filename", models.CharField(max_length=200)),
+                ("description", models.TextField(blank=True)),
+                ("soa_mname", models.CharField(max_length=200)),
+                ("soa_rname", models.EmailField(max_length=254)),
+                (
+                    "soa_refresh",
+                    models.IntegerField(
+                        default="86400",
+                        validators=[
+                            django.core.validators.MinValueValidator(300),
+                            django.core.validators.MaxValueValidator(2147483647),
+                        ],
+                    ),
+                ),
+                (
+                    "soa_retry",
+                    models.IntegerField(
+                        default=7200,
+                        validators=[
+                            django.core.validators.MinValueValidator(300),
+                            django.core.validators.MaxValueValidator(2147483647),
+                        ],
+                    ),
+                ),
+                (
+                    "soa_expire",
+                    models.IntegerField(
+                        default=3600000,
+                        validators=[
+                            django.core.validators.MinValueValidator(300),
+                            django.core.validators.MaxValueValidator(2147483647),
+                        ],
+                    ),
+                ),
+                (
+                    "soa_serial",
+                    models.IntegerField(
+                        default=0,
+                        validators=[
+                            django.core.validators.MinValueValidator(0),
+                            django.core.validators.MaxValueValidator(2147483647),
+                        ],
+                    ),
+                ),
+                (
+                    "soa_minimum",
+                    models.IntegerField(
+                        default=3600,
+                        validators=[
+                            django.core.validators.MinValueValidator(300),
+                            django.core.validators.MaxValueValidator(2147483647),
+                        ],
+                    ),
+                ),
+                ("tags", nautobot.core.models.fields.TagsField(through="extras.TaggedItem", to="extras.Tag")),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
-            bases=(models.Model, nautobot.extras.models.mixins.DynamicGroupMixin, nautobot.extras.models.mixins.NotesMixin),
+            bases=(
+                models.Model,
+                nautobot.extras.models.mixins.DynamicGroupMixin,
+                nautobot.extras.models.mixins.NotesMixin,
+            ),
         ),
         migrations.CreateModel(
-            name='TXTRecordModel',
+            name="TXTRecordModel",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True)),
-                ('created', models.DateTimeField(auto_now_add=True, null=True)),
-                ('last_updated', models.DateTimeField(auto_now=True, null=True)),
-                ('_custom_field_data', models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder)),
-                ('name', models.CharField(max_length=200)),
-                ('ttl', models.IntegerField(default=3600, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)])),
-                ('description', models.TextField(blank=True)),
-                ('comment', models.CharField(max_length=200)),
-                ('text', models.CharField(max_length=256)),
-                ('slug', nautobot.core.models.fields.AutoSlugField(blank=True, max_length=100, populate_from='name', unique=True)),
-                ('tags', nautobot.core.models.fields.TagsField(through='extras.TaggedItem', to='extras.Tag')),
-                ('zone', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='txtrecordmodel', related_query_name='txtrecordmodel', to='nautobot_dns_models.dnszonemodel')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True
+                    ),
+                ),
+                ("created", models.DateTimeField(auto_now_add=True, null=True)),
+                ("last_updated", models.DateTimeField(auto_now=True, null=True)),
+                (
+                    "_custom_field_data",
+                    models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder),
+                ),
+                ("name", models.CharField(max_length=200)),
+                (
+                    "ttl",
+                    models.IntegerField(
+                        default=3600,
+                        validators=[
+                            django.core.validators.MinValueValidator(300),
+                            django.core.validators.MaxValueValidator(2147483647),
+                        ],
+                    ),
+                ),
+                ("description", models.TextField(blank=True)),
+                ("comment", models.CharField(max_length=200)),
+                ("text", models.CharField(max_length=256)),
+                (
+                    "slug",
+                    nautobot.core.models.fields.AutoSlugField(
+                        blank=True, max_length=100, populate_from="name", unique=True
+                    ),
+                ),
+                ("tags", nautobot.core.models.fields.TagsField(through="extras.TaggedItem", to="extras.Tag")),
+                (
+                    "zone",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="txtrecordmodel",
+                        related_query_name="txtrecordmodel",
+                        to="nautobot_dns_models.dnszonemodel",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
-            bases=(models.Model, nautobot.extras.models.mixins.DynamicGroupMixin, nautobot.extras.models.mixins.NotesMixin),
+            bases=(
+                models.Model,
+                nautobot.extras.models.mixins.DynamicGroupMixin,
+                nautobot.extras.models.mixins.NotesMixin,
+            ),
         ),
         migrations.CreateModel(
-            name='PTRRecordModel',
+            name="PTRRecordModel",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True)),
-                ('created', models.DateTimeField(auto_now_add=True, null=True)),
-                ('last_updated', models.DateTimeField(auto_now=True, null=True)),
-                ('_custom_field_data', models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder)),
-                ('name', models.CharField(max_length=200)),
-                ('ttl', models.IntegerField(default=3600, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)])),
-                ('description', models.TextField(blank=True)),
-                ('comment', models.CharField(max_length=200)),
-                ('ptrdname', models.CharField(max_length=200)),
-                ('slug', nautobot.core.models.fields.AutoSlugField(blank=True, max_length=100, populate_from='name', unique=True)),
-                ('tags', nautobot.core.models.fields.TagsField(through='extras.TaggedItem', to='extras.Tag')),
-                ('zone', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='ptrrecordmodel', related_query_name='ptrrecordmodel', to='nautobot_dns_models.dnszonemodel')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True
+                    ),
+                ),
+                ("created", models.DateTimeField(auto_now_add=True, null=True)),
+                ("last_updated", models.DateTimeField(auto_now=True, null=True)),
+                (
+                    "_custom_field_data",
+                    models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder),
+                ),
+                ("name", models.CharField(max_length=200)),
+                (
+                    "ttl",
+                    models.IntegerField(
+                        default=3600,
+                        validators=[
+                            django.core.validators.MinValueValidator(300),
+                            django.core.validators.MaxValueValidator(2147483647),
+                        ],
+                    ),
+                ),
+                ("description", models.TextField(blank=True)),
+                ("comment", models.CharField(max_length=200)),
+                ("ptrdname", models.CharField(max_length=200)),
+                (
+                    "slug",
+                    nautobot.core.models.fields.AutoSlugField(
+                        blank=True, max_length=100, populate_from="name", unique=True
+                    ),
+                ),
+                ("tags", nautobot.core.models.fields.TagsField(through="extras.TaggedItem", to="extras.Tag")),
+                (
+                    "zone",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="ptrrecordmodel",
+                        related_query_name="ptrrecordmodel",
+                        to="nautobot_dns_models.dnszonemodel",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
-            bases=(models.Model, nautobot.extras.models.mixins.DynamicGroupMixin, nautobot.extras.models.mixins.NotesMixin),
+            bases=(
+                models.Model,
+                nautobot.extras.models.mixins.DynamicGroupMixin,
+                nautobot.extras.models.mixins.NotesMixin,
+            ),
         ),
         migrations.CreateModel(
-            name='NSRecordModel',
+            name="NSRecordModel",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True)),
-                ('created', models.DateTimeField(auto_now_add=True, null=True)),
-                ('last_updated', models.DateTimeField(auto_now=True, null=True)),
-                ('_custom_field_data', models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder)),
-                ('name', models.CharField(max_length=200)),
-                ('ttl', models.IntegerField(default=3600, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)])),
-                ('description', models.TextField(blank=True)),
-                ('comment', models.CharField(max_length=200)),
-                ('server', models.CharField(max_length=200)),
-                ('slug', nautobot.core.models.fields.AutoSlugField(blank=True, max_length=100, populate_from='name', unique=True)),
-                ('tags', nautobot.core.models.fields.TagsField(through='extras.TaggedItem', to='extras.Tag')),
-                ('zone', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='nsrecordmodel', related_query_name='nsrecordmodel', to='nautobot_dns_models.dnszonemodel')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True
+                    ),
+                ),
+                ("created", models.DateTimeField(auto_now_add=True, null=True)),
+                ("last_updated", models.DateTimeField(auto_now=True, null=True)),
+                (
+                    "_custom_field_data",
+                    models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder),
+                ),
+                ("name", models.CharField(max_length=200)),
+                (
+                    "ttl",
+                    models.IntegerField(
+                        default=3600,
+                        validators=[
+                            django.core.validators.MinValueValidator(300),
+                            django.core.validators.MaxValueValidator(2147483647),
+                        ],
+                    ),
+                ),
+                ("description", models.TextField(blank=True)),
+                ("comment", models.CharField(max_length=200)),
+                ("server", models.CharField(max_length=200)),
+                (
+                    "slug",
+                    nautobot.core.models.fields.AutoSlugField(
+                        blank=True, max_length=100, populate_from="name", unique=True
+                    ),
+                ),
+                ("tags", nautobot.core.models.fields.TagsField(through="extras.TaggedItem", to="extras.Tag")),
+                (
+                    "zone",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="nsrecordmodel",
+                        related_query_name="nsrecordmodel",
+                        to="nautobot_dns_models.dnszonemodel",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
-            bases=(models.Model, nautobot.extras.models.mixins.DynamicGroupMixin, nautobot.extras.models.mixins.NotesMixin),
+            bases=(
+                models.Model,
+                nautobot.extras.models.mixins.DynamicGroupMixin,
+                nautobot.extras.models.mixins.NotesMixin,
+            ),
         ),
         migrations.CreateModel(
-            name='MXRecordModel',
+            name="MXRecordModel",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True)),
-                ('created', models.DateTimeField(auto_now_add=True, null=True)),
-                ('last_updated', models.DateTimeField(auto_now=True, null=True)),
-                ('_custom_field_data', models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder)),
-                ('name', models.CharField(max_length=200)),
-                ('ttl', models.IntegerField(default=3600, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)])),
-                ('description', models.TextField(blank=True)),
-                ('comment', models.CharField(max_length=200)),
-                ('preference', models.IntegerField(default=10, validators=[django.core.validators.MinValueValidator(0), django.core.validators.MaxValueValidator(65535)])),
-                ('mail_server', models.CharField(max_length=200)),
-                ('slug', nautobot.core.models.fields.AutoSlugField(blank=True, max_length=100, populate_from='name', unique=True)),
-                ('tags', nautobot.core.models.fields.TagsField(through='extras.TaggedItem', to='extras.Tag')),
-                ('zone', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='mxrecordmodel', related_query_name='mxrecordmodel', to='nautobot_dns_models.dnszonemodel')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True
+                    ),
+                ),
+                ("created", models.DateTimeField(auto_now_add=True, null=True)),
+                ("last_updated", models.DateTimeField(auto_now=True, null=True)),
+                (
+                    "_custom_field_data",
+                    models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder),
+                ),
+                ("name", models.CharField(max_length=200)),
+                (
+                    "ttl",
+                    models.IntegerField(
+                        default=3600,
+                        validators=[
+                            django.core.validators.MinValueValidator(300),
+                            django.core.validators.MaxValueValidator(2147483647),
+                        ],
+                    ),
+                ),
+                ("description", models.TextField(blank=True)),
+                ("comment", models.CharField(max_length=200)),
+                (
+                    "preference",
+                    models.IntegerField(
+                        default=10,
+                        validators=[
+                            django.core.validators.MinValueValidator(0),
+                            django.core.validators.MaxValueValidator(65535),
+                        ],
+                    ),
+                ),
+                ("mail_server", models.CharField(max_length=200)),
+                (
+                    "slug",
+                    nautobot.core.models.fields.AutoSlugField(
+                        blank=True, max_length=100, populate_from="name", unique=True
+                    ),
+                ),
+                ("tags", nautobot.core.models.fields.TagsField(through="extras.TaggedItem", to="extras.Tag")),
+                (
+                    "zone",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="mxrecordmodel",
+                        related_query_name="mxrecordmodel",
+                        to="nautobot_dns_models.dnszonemodel",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
-            bases=(models.Model, nautobot.extras.models.mixins.DynamicGroupMixin, nautobot.extras.models.mixins.NotesMixin),
+            bases=(
+                models.Model,
+                nautobot.extras.models.mixins.DynamicGroupMixin,
+                nautobot.extras.models.mixins.NotesMixin,
+            ),
         ),
         migrations.CreateModel(
-            name='CNAMERecordModel',
+            name="CNAMERecordModel",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True)),
-                ('created', models.DateTimeField(auto_now_add=True, null=True)),
-                ('last_updated', models.DateTimeField(auto_now=True, null=True)),
-                ('_custom_field_data', models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder)),
-                ('name', models.CharField(max_length=200)),
-                ('ttl', models.IntegerField(default=3600, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)])),
-                ('description', models.TextField(blank=True)),
-                ('comment', models.CharField(max_length=200)),
-                ('alias', models.CharField(max_length=200)),
-                ('slug', nautobot.core.models.fields.AutoSlugField(blank=True, max_length=100, populate_from='name', unique=True)),
-                ('tags', nautobot.core.models.fields.TagsField(through='extras.TaggedItem', to='extras.Tag')),
-                ('zone', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='cnamerecordmodel', related_query_name='cnamerecordmodel', to='nautobot_dns_models.dnszonemodel')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True
+                    ),
+                ),
+                ("created", models.DateTimeField(auto_now_add=True, null=True)),
+                ("last_updated", models.DateTimeField(auto_now=True, null=True)),
+                (
+                    "_custom_field_data",
+                    models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder),
+                ),
+                ("name", models.CharField(max_length=200)),
+                (
+                    "ttl",
+                    models.IntegerField(
+                        default=3600,
+                        validators=[
+                            django.core.validators.MinValueValidator(300),
+                            django.core.validators.MaxValueValidator(2147483647),
+                        ],
+                    ),
+                ),
+                ("description", models.TextField(blank=True)),
+                ("comment", models.CharField(max_length=200)),
+                ("alias", models.CharField(max_length=200)),
+                (
+                    "slug",
+                    nautobot.core.models.fields.AutoSlugField(
+                        blank=True, max_length=100, populate_from="name", unique=True
+                    ),
+                ),
+                ("tags", nautobot.core.models.fields.TagsField(through="extras.TaggedItem", to="extras.Tag")),
+                (
+                    "zone",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="cnamerecordmodel",
+                        related_query_name="cnamerecordmodel",
+                        to="nautobot_dns_models.dnszonemodel",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
-            bases=(models.Model, nautobot.extras.models.mixins.DynamicGroupMixin, nautobot.extras.models.mixins.NotesMixin),
+            bases=(
+                models.Model,
+                nautobot.extras.models.mixins.DynamicGroupMixin,
+                nautobot.extras.models.mixins.NotesMixin,
+            ),
         ),
         migrations.CreateModel(
-            name='ARecordModel',
+            name="ARecordModel",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True)),
-                ('created', models.DateTimeField(auto_now_add=True, null=True)),
-                ('last_updated', models.DateTimeField(auto_now=True, null=True)),
-                ('_custom_field_data', models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder)),
-                ('name', models.CharField(max_length=200)),
-                ('ttl', models.IntegerField(default=3600, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)])),
-                ('description', models.TextField(blank=True)),
-                ('comment', models.CharField(max_length=200)),
-                ('slug', nautobot.core.models.fields.AutoSlugField(blank=True, max_length=100, populate_from='name', unique=True)),
-                ('address', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='ipam.ipaddress')),
-                ('tags', nautobot.core.models.fields.TagsField(through='extras.TaggedItem', to='extras.Tag')),
-                ('zone', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='arecordmodel', related_query_name='arecordmodel', to='nautobot_dns_models.dnszonemodel')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True
+                    ),
+                ),
+                ("created", models.DateTimeField(auto_now_add=True, null=True)),
+                ("last_updated", models.DateTimeField(auto_now=True, null=True)),
+                (
+                    "_custom_field_data",
+                    models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder),
+                ),
+                ("name", models.CharField(max_length=200)),
+                (
+                    "ttl",
+                    models.IntegerField(
+                        default=3600,
+                        validators=[
+                            django.core.validators.MinValueValidator(300),
+                            django.core.validators.MaxValueValidator(2147483647),
+                        ],
+                    ),
+                ),
+                ("description", models.TextField(blank=True)),
+                ("comment", models.CharField(max_length=200)),
+                (
+                    "slug",
+                    nautobot.core.models.fields.AutoSlugField(
+                        blank=True, max_length=100, populate_from="name", unique=True
+                    ),
+                ),
+                ("address", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="ipam.ipaddress")),
+                ("tags", nautobot.core.models.fields.TagsField(through="extras.TaggedItem", to="extras.Tag")),
+                (
+                    "zone",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="arecordmodel",
+                        related_query_name="arecordmodel",
+                        to="nautobot_dns_models.dnszonemodel",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
-            bases=(models.Model, nautobot.extras.models.mixins.DynamicGroupMixin, nautobot.extras.models.mixins.NotesMixin),
+            bases=(
+                models.Model,
+                nautobot.extras.models.mixins.DynamicGroupMixin,
+                nautobot.extras.models.mixins.NotesMixin,
+            ),
         ),
         migrations.CreateModel(
-            name='AAAARecordModel',
+            name="AAAARecordModel",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True)),
-                ('created', models.DateTimeField(auto_now_add=True, null=True)),
-                ('last_updated', models.DateTimeField(auto_now=True, null=True)),
-                ('_custom_field_data', models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder)),
-                ('name', models.CharField(max_length=200)),
-                ('ttl', models.IntegerField(default=3600, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)])),
-                ('description', models.TextField(blank=True)),
-                ('comment', models.CharField(max_length=200)),
-                ('slug', nautobot.core.models.fields.AutoSlugField(blank=True, max_length=100, populate_from='name', unique=True)),
-                ('address', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='ipam.ipaddress')),
-                ('tags', nautobot.core.models.fields.TagsField(through='extras.TaggedItem', to='extras.Tag')),
-                ('zone', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='aaaarecordmodel', related_query_name='aaaarecordmodel', to='nautobot_dns_models.dnszonemodel')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True
+                    ),
+                ),
+                ("created", models.DateTimeField(auto_now_add=True, null=True)),
+                ("last_updated", models.DateTimeField(auto_now=True, null=True)),
+                (
+                    "_custom_field_data",
+                    models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder),
+                ),
+                ("name", models.CharField(max_length=200)),
+                (
+                    "ttl",
+                    models.IntegerField(
+                        default=3600,
+                        validators=[
+                            django.core.validators.MinValueValidator(300),
+                            django.core.validators.MaxValueValidator(2147483647),
+                        ],
+                    ),
+                ),
+                ("description", models.TextField(blank=True)),
+                ("comment", models.CharField(max_length=200)),
+                (
+                    "slug",
+                    nautobot.core.models.fields.AutoSlugField(
+                        blank=True, max_length=100, populate_from="name", unique=True
+                    ),
+                ),
+                ("address", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="ipam.ipaddress")),
+                ("tags", nautobot.core.models.fields.TagsField(through="extras.TaggedItem", to="extras.Tag")),
+                (
+                    "zone",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="aaaarecordmodel",
+                        related_query_name="aaaarecordmodel",
+                        to="nautobot_dns_models.dnszonemodel",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
-            bases=(models.Model, nautobot.extras.models.mixins.DynamicGroupMixin, nautobot.extras.models.mixins.NotesMixin),
+            bases=(
+                models.Model,
+                nautobot.extras.models.mixins.DynamicGroupMixin,
+                nautobot.extras.models.mixins.NotesMixin,
+            ),
         ),
     ]

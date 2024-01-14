@@ -36,6 +36,7 @@ def is_truthy(arg):
         return arg
     return bool(strtobool(arg))
 
+
 def extract_required_versions():
     """Extracts information from pyproject.toml."""
     with open("pyproject.toml", "r", encoding="utf8") as pyproject:
@@ -44,7 +45,7 @@ def extract_required_versions():
     NAUTOBOT_VERSION = parsed_toml["tool"]["poetry"]["dependencies"]["nautobot"]["version"].replace("^", "")
     RAW_PYTHON_VERSION = parsed_toml["tool"]["poetry"]["dependencies"]["python"]
 
-    m = re.search("\D+(\d\.\d).*", RAW_PYTHON_VERSION)
+    m = re.search(r"\D+(\d\.\d).*", RAW_PYTHON_VERSION)
     if not m:
         raise Exit(
             f"Could not extract python version correctly. Input: {RAW_PYTHON_VERSION}",
@@ -54,6 +55,7 @@ def extract_required_versions():
     PYTHON_VERSION = m.group(1)
 
     return dict(python_ver=PYTHON_VERSION, nautobot_ver=NAUTOBOT_VERSION)
+
 
 pyproject_values = extract_required_versions()
 

@@ -109,6 +109,9 @@ class DnsZoneModelViewSet(views.NautobotUIViewSet):
             for record in instance.txtrecordmodel.all():
                 child_records.append(["TXT", record.name, record.text, record.description, record.get_absolute_url()])
 
+            for record in instance.nsrecordmodel.all():
+                child_records.append(["NS", record.name, record.server, record.description, record.get_absolute_url()])
+
         return {"child_records": child_records}
 
 
@@ -191,6 +194,8 @@ class TXTRecordModelViewSet(views.NautobotUIViewSet):
 
 
 class PTRRecordModelViewSet(views.NautobotUIViewSet):
+    """PTRRecordModel UI ViewSet."""
+
     form_class = PTRRecordModelForm
     bulk_edit_form_class = PTRRecordModelBulkEditForm
     filterset_class = PTRRecordModelFilterSet

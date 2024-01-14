@@ -88,6 +88,7 @@ class TXTRecordModelFilterSet(NautobotFilterSet):
         # add any fields from the model that you would like to filter your searches by using those
         fields = ["id", "name", "slug", "description"]
 
+
 class PTRRecordModelFilterSet(NautobotFilterSet):
     """Filter for PTRRecordModel."""
 

@@ -96,7 +96,9 @@ class NSRecordModelForm(BootstrapMixin, forms.ModelForm):
         model = models.NSRecordModel
         fields = [
             "name",
+            "server",
             "slug",
+            "zone",
             "description",
         ]
 
@@ -427,8 +429,10 @@ class TXTRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
             "description",
         ]
 
+
 class PTRRecordModelForm(BootstrapMixin, forms.ModelForm):
     """PTRRecordModel creation/edit form."""
+
     slug = SlugField()
 
     class Meta:
@@ -445,6 +449,7 @@ class PTRRecordModelForm(BootstrapMixin, forms.ModelForm):
             "description",
         ]
 
+
 class PTRRecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
     """PTRRecordModel bulk edit form."""
 
@@ -457,6 +462,7 @@ class PTRRecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
         nullable_fields = [
             "description",
         ]
+
 
 class PTRRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
     """Filter form to filter searches."""
@@ -480,4 +486,3 @@ class PTRRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
             "slug",
             "description",
         ]
-

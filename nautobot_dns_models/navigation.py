@@ -14,7 +14,7 @@ items = [
                 link="plugins:nautobot_dns_models:dnszonemodel_add",
                 permissions=["nautobot_dns_models.add_dnszonemodel"],
             ),
-        )
+        ),
     )
 ]
 
