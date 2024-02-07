@@ -1,5 +1,5 @@
 """Unit tests for views."""
-from nautobot.utilities.testing import ViewTestCases
+from nautobot.core.testing import ViewTestCases
 
 from nautobot_dns_models import models
 from nautobot_dns_models.tests import fixtures

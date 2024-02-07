@@ -8,6 +8,8 @@ from nautobot_dns_models.api.serializers import (
     DnsZoneModelSerializer,
     MXRecordModelSerializer,
     TXTRecordModelSerializer,
+    PTRRecordModelSerializer,
+    NSRecordModelSerializer,
 )
 from nautobot_dns_models.filters import (
     AAAARecordModelFilterSet,
@@ -16,6 +18,8 @@ from nautobot_dns_models.filters import (
     DnsZoneModelFilterSet,
     MXRecordModelFilterSet,
     TXTRecordModelFilterSet,
+    PTRRecordModelFilterSet,
+    NSRecordModelFilterSet,
 )
 from nautobot_dns_models.models import (
     AAAARecordModel,
@@ -24,6 +28,8 @@ from nautobot_dns_models.models import (
     DnsZoneModel,
     MXRecordModel,
     TXTRecordModel,
+    PTRRecordModel,
+    NSRecordModel,
 )
 
 
@@ -37,6 +43,16 @@ class DnsZoneModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     lookup_field = "pk"
     # Option for modifying the default HTTP methods:
     # http_method_names = ["get", "post", "put", "patch", "delete", "head", "options", "trace"]
+
+
+class NSRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
+    """NSRecordModel API ViewSet."""
+
+    queryset = NSRecordModel.objects.all()
+    serializer_class = NSRecordModelSerializer
+    filterset_class = NSRecordModelFilterSet
+
+    lookup_field = "pk"
 
 
 class ARecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
@@ -88,10 +104,12 @@ class TXTRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
 
     lookup_field = "pk"
 
-class PTRRecordModelViewSet(ModelViewSet):
 
-    queryset = models.PTRRecordModel.objects.all()
-    serializer_class = serializers.PTRRecordModelSerializer
-    filterset_class = filters.PTRRecordModelFilterSet
+class PTRRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
+    """PTRRecordModel API ViewSet."""
+
+    queryset = PTRRecordModel.objects.all()
+    serializer_class = PTRRecordModelSerializer
+    filterset_class = PTRRecordModelFilterSet
 
     lookup_field = "pk"

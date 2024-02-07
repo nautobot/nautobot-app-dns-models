@@ -7,7 +7,7 @@ from django.urls import reverse
 
 
 # Nautobot imports
-from nautobot.core.fields import AutoSlugField
+from nautobot.core.models.fields import AutoSlugField
 from nautobot.apps.models import BaseModel, PrimaryModel
 from nautobot.extras.models.change_logging import ChangeLoggedModel
 
@@ -58,7 +58,7 @@ class DnsZoneModel(PrimaryModel):  # pylint: disable=too-many-ancestors
     filename = models.CharField(max_length=200, help_text="Filename of the Zone File.")
     description = models.TextField(help_text="Description of the Zone.", blank=True)
     soa_mname = models.CharField(
-        max_length=200, 
+        max_length=200,
         help_text="FQDN of the Authoritative Name Server for Zone.",
         null=False,
     )
@@ -89,7 +89,6 @@ class DnsZoneModel(PrimaryModel):  # pylint: disable=too-many-ancestors
         help_text="Minimum TTL for records in this zone.",
     )
 
-
     def get_absolute_url(self):
         """Return the canonical URL for DnsZoneModel."""
         return reverse("plugins:nautobot_dns_models:dnszonemodel", args=[self.pk])
@@ -99,7 +98,9 @@ class DnsRecordModel(DnsModel):  # pylint: disable=too-many-ancestors
     """Primary Dns Record model for plugin."""
 
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
-    zone = models.ForeignKey(DnsZoneModel, on_delete=models.PROTECT, related_name="%(class)s", related_query_name="%(class)s")
+    zone = models.ForeignKey(
+        DnsZoneModel, on_delete=models.PROTECT, related_name="%(class)s", related_query_name="%(class)s"
+    )
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
@@ -117,6 +118,14 @@ class NSRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
 
     server = models.CharField(max_length=200, help_text="FQDN of an authoritative Name Server.")
     slug = AutoSlugField(populate_from="name")
+
+    def get_absolute_url(self):
+        """Return the canonical URL for NSRecordModel."""
+        return reverse("plugins:nautobot_dns_models:nsrecordmodel", args=[self.pk])
+
+    def __str__(self):
+        """String representation of NSRecordModel."""
+        return self.name
 
 
 class ARecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
@@ -198,12 +207,19 @@ class TXTRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
         """String representation of TXTRecordModel."""
         return self.name
 
+
 class PTRRecordModel(DnsRecordModel):
-    ptrdname = models.CharField(max_length=200, help_text="A domain name that points to some location in the domain name space.")
+    """PTR Record model."""
+
+    ptrdname = models.CharField(
+        max_length=200, help_text="A domain name that points to some location in the domain name space."
+    )
     slug = AutoSlugField(populate_from="name")
 
     def get_absolute_url(self):
+        """Return the canonical URL for PTRRecordModel."""
         return reverse("plugins:nautobot_dns_models:ptrrecordmodel", args=[self.pk])
 
     def __str__(self):
+        """String representation of PTRRecordModel."""
         return self.ptrdname

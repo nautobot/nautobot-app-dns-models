@@ -1,11 +1,11 @@
 """Filtering for nautobot_dns_models."""
 
-from nautobot.utilities.filters import BaseFilterSet, NameSlugSearchFilterSet
+from nautobot.extras.filters import BaseFilterSet, NautobotFilterSet
 
 from nautobot_dns_models import models
 
 
-class DnsZoneModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
+class DnsZoneModelFilterSet(NautobotFilterSet):
     """Filter for DnsZoneModel."""
 
     class Meta:
@@ -17,7 +17,7 @@ class DnsZoneModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
         fields = ["id", "name", "slug", "description"]
 
 
-class NSRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
+class NSRecordModelFilterSet(NautobotFilterSet):
     """Filter for NSRecordModel."""
 
     class Meta:
@@ -29,7 +29,7 @@ class NSRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
         fields = ["id", "name", "slug", "description"]
 
 
-class ARecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
+class ARecordModelFilterSet(NautobotFilterSet):
     """Filter for ARecordModel."""
 
     class Meta:
@@ -41,7 +41,7 @@ class ARecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
         fields = ["id", "name", "slug", "description"]
 
 
-class AAAARecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
+class AAAARecordModelFilterSet(NautobotFilterSet):
     """Filter for AAAARecordModel."""
 
     class Meta:
@@ -53,7 +53,7 @@ class AAAARecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
         fields = ["id", "name", "slug", "description"]
 
 
-class CNAMERecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
+class CNAMERecordModelFilterSet(NautobotFilterSet):
     """Filter for CNAMERecordModel."""
 
     class Meta:
@@ -65,7 +65,7 @@ class CNAMERecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
         fields = ["id", "name", "slug", "description"]
 
 
-class MXRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
+class MXRecordModelFilterSet(NautobotFilterSet):
     """Filter for MXRecordModel."""
 
     class Meta:
@@ -77,7 +77,7 @@ class MXRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
         fields = ["id", "name", "slug", "description"]
 
 
-class TXTRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
+class TXTRecordModelFilterSet(NautobotFilterSet):
     """Filter for TXTRecordModel."""
 
     class Meta:
@@ -88,7 +88,8 @@ class TXTRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
         # add any fields from the model that you would like to filter your searches by using those
         fields = ["id", "name", "slug", "description"]
 
-class PTRRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
+
+class PTRRecordModelFilterSet(NautobotFilterSet):
     """Filter for PTRRecordModel."""
 
     class Meta:

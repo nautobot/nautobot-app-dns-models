@@ -1,7 +1,7 @@
 """Tables for nautobot_dns_models."""
 
 import django_tables2 as tables
-from nautobot.utilities.tables import BaseTable, ButtonsColumn, ToggleColumn
+from nautobot.core.tables import BaseTable, ButtonsColumn, ToggleColumn
 
 from nautobot_dns_models import models
 
@@ -28,6 +28,7 @@ class DnsZoneModelTable(BaseTable):
             "pk",
             "name",
             "description",
+            "soa_expire",
         )
 
         # Option for modifying the columns that show up in the list view by default:
@@ -46,6 +47,7 @@ class NSRecordModelTable(BaseTable):
     name = tables.Column(linkify=True)
     actions = ButtonsColumn(
         models.NSRecordModel,
+        buttons=("changelog", "edit", "delete")
         # Option for modifying the default action buttons on each row:
         # buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
@@ -59,6 +61,7 @@ class NSRecordModelTable(BaseTable):
             "pk",
             "name",
             "description",
+            "actions",
         )
 
         # Option for modifying the columns that show up in the list view by default:
@@ -78,7 +81,7 @@ class ARecordModelTable(BaseTable):
     actions = ButtonsColumn(
         models.ARecordModel,
         # Option for modifying the default action buttons on each row:
-        # buttons=("changelog", "edit", "delete"),
+        buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
     )
 
@@ -90,6 +93,7 @@ class ARecordModelTable(BaseTable):
             "pk",
             "name",
             "description",
+            "actions",
         )
 
         # Option for modifying the columns that show up in the list view by default:
@@ -109,7 +113,7 @@ class AAAARecordModelTable(BaseTable):
     actions = ButtonsColumn(
         models.AAAARecordModel,
         # Option for modifying the default action buttons on each row:
-        # buttons=("changelog", "edit", "delete"),
+        buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
     )
 
@@ -121,6 +125,7 @@ class AAAARecordModelTable(BaseTable):
             "pk",
             "name",
             "description",
+            "actions",
         )
 
         # Option for modifying the columns that show up in the list view by default:
@@ -140,7 +145,7 @@ class CNAMERecordModelTable(BaseTable):
     actions = ButtonsColumn(
         models.CNAMERecordModel,
         # Option for modifying the default action buttons on each row:
-        # buttons=("changelog", "edit", "delete"),
+        buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
     )
 
@@ -152,6 +157,7 @@ class CNAMERecordModelTable(BaseTable):
             "pk",
             "name",
             "description",
+            "actions",
         )
 
         # Option for modifying the columns that show up in the list view by default:
@@ -171,7 +177,7 @@ class MXRecordModelTable(BaseTable):
     actions = ButtonsColumn(
         models.MXRecordModel,
         # Option for modifying the default action buttons on each row:
-        # buttons=("changelog", "edit", "delete"),
+        buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
     )
 
@@ -183,6 +189,7 @@ class MXRecordModelTable(BaseTable):
             "pk",
             "name",
             "description",
+            "actions",
         )
 
         # Option for modifying the columns that show up in the list view by default:
@@ -202,7 +209,7 @@ class TXTRecordModelTable(BaseTable):
     actions = ButtonsColumn(
         models.TXTRecordModel,
         # Option for modifying the default action buttons on each row:
-        # buttons=("changelog", "edit", "delete"),
+        buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
     )
 
@@ -214,6 +221,7 @@ class TXTRecordModelTable(BaseTable):
             "pk",
             "name",
             "description",
+            "actions",
         )
 
         # Option for modifying the columns that show up in the list view by default:
@@ -233,9 +241,8 @@ class PTRRecordModelTable(BaseTable):
     actions = ButtonsColumn(
         models.PTRRecordModel,
         # Option for modifying the default action buttons on each row:
-        # buttons=("changelog", "edit", "delete"),
+        buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
-        
     )
 
     class Meta(BaseTable.Meta):
@@ -247,6 +254,7 @@ class PTRRecordModelTable(BaseTable):
             "name",
             "ptrdname",
             "description",
+            "actions",
         )
 
         # Option for modifying the columns that show up in the list view by default:

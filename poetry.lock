@@ -704,13 +704,13 @@ graph = ["objgraph (>=1.7.2)"]
 
 [[package]]
 name = "django"
-version = "3.2.22"
+version = "3.2.23"
 description = "A high-level Python Web framework that encourages rapid development and clean, pragmatic design."
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "Django-3.2.22-py3-none-any.whl", hash = "sha256:c5e7b668025a6e06cad9ba6d4de1fd1a21212acebb51ea34abb400c6e4d33430"},
-    {file = "Django-3.2.22.tar.gz", hash = "sha256:83b6d66b06e484807d778263fdc7f9186d4dc1862fcfa6507830446ac6b060ba"},
+    {file = "Django-3.2.23-py3-none-any.whl", hash = "sha256:d48608d5f62f2c1e260986835db089fa3b79d6f58510881d316b8d88345ae6e1"},
+    {file = "Django-3.2.23.tar.gz", hash = "sha256:82968f3640e29ef4a773af2c28448f5f7a08d001c6ac05b32d02aeee6509508b"},
 ]
 
 [package.dependencies]
@@ -734,36 +734,6 @@ files = [
 ]
 
 [[package]]
-name = "django-appconf"
-version = "1.0.5"
-description = "A helper class for handling configuration defaults of packaged apps gracefully."
-optional = true
-python-versions = ">=3.6"
-files = [
-    {file = "django-appconf-1.0.5.tar.gz", hash = "sha256:be3db0be6c81fa84742000b89a81c016d70ae66a7ccb620cdef592b1f1a6aaa4"},
-    {file = "django_appconf-1.0.5-py3-none-any.whl", hash = "sha256:ae9f864ee1958c815a965ed63b3fba4874eec13de10236ba063a788f9a17389d"},
-]
-
-[package.dependencies]
-django = "*"
-
-[[package]]
-name = "django-cacheops"
-version = "6.2"
-description = "A slick ORM cache with automatic granular event-driven invalidation for Django."
-optional = true
-python-versions = ">=3.5"
-files = [
-    {file = "django-cacheops-6.2.tar.gz", hash = "sha256:cc73fd0a1c14799253ff20a8a45791a3c8d2802217b301e70cfa08ae819e438f"},
-]
-
-[package.dependencies]
-django = ">=2.1"
-funcy = ">=1.8,<2.0"
-redis = ">=3.0.0"
-six = ">=1.4.0"
-
-[[package]]
 name = "django-celery-beat"
 version = "2.5.0"
 description = "Database-backed Periodic Tasks."
@@ -782,6 +752,20 @@ Django = ">=2.2,<5.0"
 django-timezone-field = ">=5.0"
 python-crontab = ">=2.3.4"
 tzdata = "*"
+
+[[package]]
+name = "django-celery-results"
+version = "2.4.0"
+description = "Celery result backends for Django."
+optional = true
+python-versions = "*"
+files = [
+    {file = "django_celery_results-2.4.0-py3-none-any.whl", hash = "sha256:be91307c02fbbf0dda21993c3001c60edb74595444ccd6ad696552fe3689e85b"},
+    {file = "django_celery_results-2.4.0.tar.gz", hash = "sha256:75aa51970db5691cbf242c6a0ff50c8cdf419e265cd0e9b772335d06436c4b99"},
+]
+
+[package.dependencies]
+celery = ">=5.2.3,<6.0"
 
 [[package]]
 name = "django-constance"
@@ -814,21 +798,6 @@ files = [
 
 [package.dependencies]
 Django = ">=3.2"
-
-[[package]]
-name = "django-cryptography"
-version = "1.1"
-description = "Easily encrypt data in Django"
-optional = true
-python-versions = ">=3.6"
-files = [
-    {file = "django_cryptography-1.1-py2.py3-none-any.whl", hash = "sha256:93702fcf0d75865d55362f20ecd95274c4eef60ccdce46cbdade0420acee07cb"},
-]
-
-[package.dependencies]
-cryptography = "*"
-Django = "*"
-django-appconf = "*"
 
 [[package]]
 name = "django-db-file-storage"
@@ -920,40 +889,6 @@ django = ">=2.2"
 jinja2 = ">=3"
 
 [[package]]
-name = "django-js-asset"
-version = "2.1.0"
-description = "script tag with additional attributes for django.forms.Media"
-optional = true
-python-versions = ">=3.8"
-files = [
-    {file = "django_js_asset-2.1.0-py3-none-any.whl", hash = "sha256:36a3a4dd6e9efc895fb127d13126020f6ec1ec9469ad42878d42143f22495d90"},
-    {file = "django_js_asset-2.1.0.tar.gz", hash = "sha256:be6f69ae5c4865617aa7726c48eddb64089a1e7d4ea7d22a35a3beb8282020f6"},
-]
-
-[package.dependencies]
-django = ">=3.2"
-
-[package.extras]
-tests = ["coverage"]
-
-[[package]]
-name = "django-mptt"
-version = "0.14.0"
-description = "Utilities for implementing Modified Preorder Tree Traversal with your Django Models and working with trees of Model instances."
-optional = true
-python-versions = ">=3.6"
-files = [
-    {file = "django-mptt-0.14.0.tar.gz", hash = "sha256:2c92a2b1614c53086278795ccf50580cf1f9b8564f3ff03055dd62bab5987711"},
-    {file = "django_mptt-0.14.0-py3-none-any.whl", hash = "sha256:d9a87433ab0e4f35247c6f6d5a93ace6990860a4ba8796f815d185f773b9acfc"},
-]
-
-[package.dependencies]
-django-js-asset = "*"
-
-[package.extras]
-tests = ["coverage", "mock-django"]
-
-[[package]]
 name = "django-picklefield"
 version = "3.1"
 description = "Pickled object field for Django"
@@ -1001,26 +936,6 @@ redis = ">=3,<4.0.0 || >4.0.0,<4.0.1 || >4.0.1"
 
 [package.extras]
 hiredis = ["redis[hiredis] (>=3,!=4.0.0,!=4.0.1)"]
-
-[[package]]
-name = "django-rq"
-version = "2.8.1"
-description = "An app that provides django integration for RQ (Redis Queue)"
-optional = true
-python-versions = "*"
-files = [
-    {file = "django-rq-2.8.1.tar.gz", hash = "sha256:ff053aa4d1b1e1acc47c99b4a21b514de8745894c00d1e6f4abc8b37d35d66d6"},
-    {file = "django_rq-2.8.1-py2.py3-none-any.whl", hash = "sha256:f5d649dc57b5564011460b2b69c8a60a4f5f10ee8692b51d1dfc17035b1039b8"},
-]
-
-[package.dependencies]
-django = ">=2.0"
-redis = ">=3"
-rq = ">=1.14"
-
-[package.extras]
-sentry = ["raven (>=6.1.0)"]
-testing = ["mock (>=2.0.0)"]
 
 [[package]]
 name = "django-tables2"
@@ -1071,13 +986,13 @@ pytz = "*"
 
 [[package]]
 name = "django-tree-queries"
-version = "0.15.0"
+version = "0.16.1"
 description = "Tree queries with explicit opt-in, without configurability"
 optional = true
-python-versions = ">=3.6"
+python-versions = ">=3.8"
 files = [
-    {file = "django_tree_queries-0.15.0-py3-none-any.whl", hash = "sha256:cf11340de59d3122919fde46e99966bad40ff942df768d683383b111554134a1"},
-    {file = "django_tree_queries-0.15.0.tar.gz", hash = "sha256:0e994c2a4601c021a115a397ec8d0ff7d5e614fae95947f72126e6a419c60f08"},
+    {file = "django_tree_queries-0.16.1-py3-none-any.whl", hash = "sha256:b57cebd85136897dc2d7d1da50f3944b13d4713009af655ae221c8202146c2f5"},
+    {file = "django_tree_queries-0.16.1.tar.gz", hash = "sha256:5a7765bdbc78742ae7b206348aa674a7e39ef38069ac3854a51b330d25081c43"},
 ]
 
 [package.extras]
@@ -1120,14 +1035,28 @@ django = ">=3.0"
 pytz = "*"
 
 [[package]]
+name = "drf-react-template-framework"
+version = "0.0.17"
+description = "Django REST Framework plugin that creates form schemas for react-jsonschema-form"
+optional = true
+python-versions = ">=3.7,<4.0"
+files = [
+    {file = "drf-react-template-framework-0.0.17.tar.gz", hash = "sha256:25b115981528977fa703fb2a9b354f3874fff82830b56fc4c7269b287a0a9580"},
+    {file = "drf_react_template_framework-0.0.17-py3-none-any.whl", hash = "sha256:d8116b0c03459574a3b0f2885ce80702127f49fc66960d50deef1c7a35151593"},
+]
+
+[package.dependencies]
+djangorestframework = ">=3.12.0,<4.0.0"
+
+[[package]]
 name = "drf-spectacular"
-version = "0.26.5"
+version = "0.26.3"
 description = "Sane and flexible OpenAPI 3 schema generation for Django REST framework"
 optional = true
 python-versions = ">=3.6"
 files = [
-    {file = "drf-spectacular-0.26.5.tar.gz", hash = "sha256:aee55330a774ba8a9cbdb125714d1c9ee05a8aafd3ce3be8bfd26527649aeb44"},
-    {file = "drf_spectacular-0.26.5-py3-none-any.whl", hash = "sha256:c0002a820b11771fdbf37853deb371947caf0159d1afeeffe7598e964bc1db94"},
+    {file = "drf-spectacular-0.26.3.tar.gz", hash = "sha256:b907a72a0244e5dcfeca625e9632cd8ebccdbe2cb528b7c1de1191708be6f31e"},
+    {file = "drf_spectacular-0.26.3-py3-none-any.whl", hash = "sha256:1d84ac70522baaadd6d84a25ce5fe5ea50cfcba0387856689f98ac536f14aa32"},
 ]
 
 [package.dependencies]
@@ -1158,29 +1087,18 @@ files = [
 Django = ">=2.2"
 
 [[package]]
-name = "drf-yasg"
-version = "1.21.7"
-description = "Automated generation of real Swagger/OpenAPI 2.0 schemas from Django Rest Framework code."
+name = "emoji"
+version = "2.8.0"
+description = "Emoji for Python"
 optional = true
-python-versions = ">=3.6"
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 files = [
-    {file = "drf-yasg-1.21.7.tar.gz", hash = "sha256:4c3b93068b3dfca6969ab111155e4dd6f7b2d680b98778de8fd460b7837bdb0d"},
-    {file = "drf_yasg-1.21.7-py3-none-any.whl", hash = "sha256:f85642072c35e684356475781b7ecf5d218fff2c6185c040664dd49f0a4be181"},
+    {file = "emoji-2.8.0-py2.py3-none-any.whl", hash = "sha256:a8468fd836b7ecb6d1eac054c9a591701ce0ccd6c6f7779ad71b66f76664df90"},
+    {file = "emoji-2.8.0.tar.gz", hash = "sha256:8d8b5dec3c507444b58890e598fc895fcec022b3f5acb49497c6ccc5208b8b00"},
 ]
 
-[package.dependencies]
-django = ">=2.2.16"
-djangorestframework = ">=3.10.3"
-inflection = ">=0.3.1"
-packaging = ">=21.0"
-pytz = ">=2021.1"
-pyyaml = ">=5.1"
-swagger-spec-validator = {version = ">=2.1.0", optional = true, markers = "extra == \"validation\""}
-uritemplate = ">=3.0.0"
-
 [package.extras]
-coreapi = ["coreapi (>=2.3.3)", "coreschema (>=0.0.4)"]
-validation = ["swagger-spec-validator (>=2.1.0)"]
+dev = ["coverage", "coveralls", "pytest"]
 
 [[package]]
 name = "exceptiongroup"
@@ -1225,17 +1143,6 @@ files = [
 mccabe = ">=0.6.0,<0.7.0"
 pycodestyle = ">=2.7.0,<2.8.0"
 pyflakes = ">=2.3.0,<2.4.0"
-
-[[package]]
-name = "funcy"
-version = "1.18"
-description = "A fancy and practical functional tools"
-optional = true
-python-versions = "*"
-files = [
-    {file = "funcy-1.18-py2.py3-none-any.whl", hash = "sha256:00ce91afc850357a131dc54f0db2ad8a1110d5087f1fa4480d7ea3ba0249f89d"},
-    {file = "funcy-1.18.tar.gz", hash = "sha256:15448d19a8ebcc7a585afe7a384a19186d0bd67cbf56fb42cd1fd0f76313f9b2"},
-]
 
 [[package]]
 name = "ghp-import"
@@ -1944,59 +1851,57 @@ files = [
 
 [[package]]
 name = "nautobot"
-version = "1.6.3"
+version = "2.1.0"
 description = "Source of truth and network automation platform."
 optional = true
 python-versions = ">=3.8,<3.12"
 files = [
-    {file = "nautobot-1.6.3-py3-none-any.whl", hash = "sha256:5ecd0831f72a5a5fade446829f3d5db868ce85498a90c56593083b37f8d32708"},
-    {file = "nautobot-1.6.3.tar.gz", hash = "sha256:437de36fa554fc70ad0283b0b2f61150f7b65a9db01b8527c595e9db34e31a85"},
+    {file = "nautobot-2.1.0-py3-none-any.whl", hash = "sha256:234d6b296dc2a61ab29b16158591e79a3b0e3705e10ab061ea77cbc75c6e603a"},
+    {file = "nautobot-2.1.0.tar.gz", hash = "sha256:a49838351448e3a84af9060d2108fbbf42c337e8e1aefd09f784e121a5115c32"},
 ]
 
 [package.dependencies]
 celery = ">=5.3.1,<5.4.0"
-Django = ">=3.2.20,<3.3.0"
+Django = ">=3.2.23,<3.3.0"
 django-ajax-tables = ">=1.1.1,<1.2.0"
-django-cacheops = ">=6.2,<6.3"
 django-celery-beat = ">=2.5.0,<2.6.0"
+django-celery-results = ">=2.4.0,<2.5.0"
 django-constance = {version = ">=2.9.1,<2.10.0", extras = ["database"]}
 django-cors-headers = ">=4.2.0,<4.3.0"
-django-cryptography = ">=1.1,<1.2"
 django-db-file-storage = ">=0.5.5,<0.6.0"
 django-extensions = ">=3.2.3,<3.3.0"
 django-filter = ">=23.1,<23.2"
 django-health-check = ">=3.17.0,<3.18.0"
 django-jinja = ">=2.10.2,<2.11.0"
-django-mptt = ">=0.14.0,<0.15.0"
 django-prometheus = ">=2.3.1,<2.4.0"
 django-redis = ">=5.3.0,<5.4.0"
-django-rq = ">=2.8.1,<2.9.0"
 django-tables2 = ">=2.6.0,<2.7.0"
 django-taggit = ">=4.0.0,<4.1.0"
 django-timezone-field = ">=5.1,<5.2"
-django-tree-queries = ">=0.15.0,<0.16.0"
+django-tree-queries = ">=0.16.1,<0.17.0"
 django-webserver = ">=1.2.0,<1.3.0"
 djangorestframework = ">=3.14.0,<3.15.0"
-drf-spectacular = {version = ">=0.26.4,<0.27.0", extras = ["sidecar"]}
-drf-yasg = {version = ">=1.20.0,<2.0.0", extras = ["validation"]}
+drf-react-template-framework = ">=0.0.17,<0.0.18"
+drf-spectacular = {version = "0.26.3", extras = ["sidecar"]}
+emoji = ">=2.8.0,<2.9.0"
 GitPython = ">=3.1.36,<3.2.0"
 graphene-django = ">=2.16.0,<2.17.0"
 graphene-django-optimizer = ">=0.8.0,<0.9.0"
 Jinja2 = ">=3.1.2,<3.2.0"
-jsonschema = ">=4.7.0,<4.18.0"
+jsonschema = ">=4.7.0,<4.19.0"
 Markdown = ">=3.3.7,<3.4.0"
 MarkupSafe = ">=2.1.3,<2.2.0"
 netaddr = ">=0.8.0,<0.9.0"
-netutils = ">=1.5.0,<2.0.0"
-packaging = ">=23.0,<23.2"
+netutils = ">=1.6.0,<2.0.0"
+packaging = ">=23.1,<23.2"
 Pillow = ">=10.0.0,<10.1.0"
-prometheus-client = ">=0.14.1,<0.18"
-psycopg2-binary = ">=2.9.6,<2.10.0"
+prometheus-client = ">=0.17.1,<0.18.0"
+psycopg2-binary = ">=2.9.9,<2.10.0"
+python-slugify = ">=8.0.1,<8.1.0"
 pyuwsgi = ">=2.0.21,<2.1.0"
 PyYAML = ">=6.0,<6.1"
 social-auth-app-django = ">=5.2.0,<5.3.0"
 svgwrite = ">=1.4.2,<1.5.0"
-toml = ">=0.10.2,<0.11.0"
 
 [package.extras]
 all = ["django-auth-ldap (>=4.3.0,<4.4.0)", "django-storages (>=1.13.2,<1.14.0)", "mysqlclient (>=2.2.0,<2.3.0)", "napalm (>=4.1.0,<4.2.0)", "social-auth-core[openidconnect,saml] (>=4.4.2,<4.5.0)"]
@@ -2219,13 +2124,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "prometheus-client"
-version = "0.14.1"
+version = "0.17.1"
 description = "Python client for the Prometheus monitoring system."
 optional = true
 python-versions = ">=3.6"
 files = [
-    {file = "prometheus_client-0.14.1-py3-none-any.whl", hash = "sha256:522fded625282822a89e2773452f42df14b5a8e84a86433e3f8a189c1d54dc01"},
-    {file = "prometheus_client-0.14.1.tar.gz", hash = "sha256:5459c427624961076277fdc6dc50540e2bacb98eebde99886e59ec55ed92093a"},
+    {file = "prometheus_client-0.17.1-py3-none-any.whl", hash = "sha256:e537f37160f6807b8202a6fc4764cdd19bac5480ddd3e0d463c3002b34462101"},
+    {file = "prometheus_client-0.17.1.tar.gz", hash = "sha256:21e674f39831ae3f8acde238afd9a27a37d0d2fb5a28ea094f0ce25d2cbf2091"},
 ]
 
 [package.extras]
@@ -2633,6 +2538,23 @@ files = [
 six = ">=1.5"
 
 [[package]]
+name = "python-slugify"
+version = "8.0.1"
+description = "A Python slugify application that also handles Unicode"
+optional = true
+python-versions = ">=3.7"
+files = [
+    {file = "python-slugify-8.0.1.tar.gz", hash = "sha256:ce0d46ddb668b3be82f4ed5e503dbc33dd815d83e2eb6824211310d3fb172a27"},
+    {file = "python_slugify-8.0.1-py2.py3-none-any.whl", hash = "sha256:70ca6ea68fe63ecc8fa4fcf00ae651fc8a5d02d93dcd12ae6d4fc7ca46c4d395"},
+]
+
+[package.dependencies]
+text-unidecode = ">=1.3"
+
+[package.extras]
+unidecode = ["Unidecode (>=1.1.1)"]
+
+[[package]]
 name = "python3-openid"
 version = "3.2.0"
 description = "OpenID support for modern servers and consumers."
@@ -2853,21 +2775,6 @@ typing-extensions = {version = ">=4.0.0,<5.0", markers = "python_version < \"3.9
 jupyter = ["ipywidgets (>=7.5.1,<9)"]
 
 [[package]]
-name = "rq"
-version = "1.15.1"
-description = "RQ is a simple, lightweight, library for creating background jobs, and processing them."
-optional = true
-python-versions = ">=3.6"
-files = [
-    {file = "rq-1.15.1-py2.py3-none-any.whl", hash = "sha256:6e243d8d9c4af4686ded4b01b25ea1ff4bac4fc260b02638fbe9c8c17b004bd1"},
-    {file = "rq-1.15.1.tar.gz", hash = "sha256:1f49f4ac1a084044bb8e95b3f305c0bf17e55618b08c18e0b60c080f12d6f008"},
-]
-
-[package.dependencies]
-click = ">=5.0.0"
-redis = ">=4.0.0"
-
-[[package]]
 name = "rx"
 version = "1.6.3"
 description = "Reactive Extensions (Rx) for Python"
@@ -3026,22 +2933,6 @@ files = [
     {file = "svgwrite-1.4.3-py3-none-any.whl", hash = "sha256:bb6b2b5450f1edbfa597d924f9ac2dd099e625562e492021d7dd614f65f8a22d"},
     {file = "svgwrite-1.4.3.zip", hash = "sha256:a8fbdfd4443302a6619a7f76bc937fc683daf2628d9b737c891ec08b8ce524c3"},
 ]
-
-[[package]]
-name = "swagger-spec-validator"
-version = "3.0.3"
-description = "Validation of Swagger specifications"
-optional = true
-python-versions = ">=3.7"
-files = [
-    {file = "swagger-spec-validator-3.0.3.tar.gz", hash = "sha256:16a5ce08c772824a77b1a4a05efc047d72eef1ed53fb969dfe0a18f437ac30a8"},
-    {file = "swagger_spec_validator-3.0.3-py2.py3-none-any.whl", hash = "sha256:174b5de4ab0899df9a57d35c880aaa515511c4b8b578d9d519b09a9596537055"},
-]
-
-[package.dependencies]
-jsonschema = "*"
-pyyaml = "*"
-typing-extensions = "*"
 
 [[package]]
 name = "text-unidecode"
@@ -3336,4 +3227,4 @@ nautobot = ["nautobot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "c273ad3429a3632630001be4dc2c8019fb1e241cbaf0d21f998eb934cec19ecd"
+content-hash = "bf91693861897bf84dc2cb666e29c7ea25025759b4d118656ab0d23bdf7d4fd9"

@@ -138,6 +138,9 @@
 						{% if perms.dcim.add_txtrecord %}
 							<li><a href="{% url 'plugins:nautobot_dns_models:txtrecordmodel_add' %}?zone={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">TXT</a></li>
 						{% endif %}
+						{% if perms.dcim.add_nsrecordmodel %}
+							<li><a href="{% url 'plugins:nautobot_dns_models:nsrecordmodel_add' %}?zone={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">NS</a></li>
+						{% endif %}
 					</ul>
 				</div>
         		{% endif %}

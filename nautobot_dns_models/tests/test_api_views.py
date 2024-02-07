@@ -1,5 +1,5 @@
 """Unit tests for nautobot_dns_models."""
-from nautobot.utilities.testing import APIViewTestCases
+from nautobot.core.testing import APIViewTestCases
 
 from nautobot_dns_models import models
 from nautobot_dns_models.tests import fixtures

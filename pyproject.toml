@@ -16,7 +16,7 @@ python = ">=3.8,<3.12"
 # Required for Python 3.7 for now. See: https://stackoverflow.com/a/73932581/194311
 importlib-metadata = "4.13.0"
 # Used for local development
-nautobot = {version = "^1.6.0", optional = true}
+nautobot = {version = "^2.1.0", optional = true}
 
 [tool.poetry.dev-dependencies]
 bandit = "*"
@@ -96,7 +96,7 @@ notes = """,
     """
 
 [tool.pylint-nautobot]
-supported_nautobot_versions = ["1"]
+supported_nautobot_versions = ["2"]
 
 [tool.pydocstyle]
 convention = "google"
