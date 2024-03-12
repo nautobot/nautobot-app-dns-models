@@ -88,29 +88,43 @@ class DnsZoneModelViewSet(views.NautobotUIViewSet):
         """Return extra context data for template."""
         # instance will be true if it's not a list view
         child_records = []
+        # TODO change appending the record object
+        #
         if instance is not None:
             # record, name, value, description, url
             # for record in instance.nsrecordmodel.all():
             #     child_records.append(["NS", record.name, record.nameserver, record.description])
             for record in instance.arecordmodel.all():
-                child_records.append(["A", record.name, record.address, record.description, record.get_absolute_url()])
+                child_records.append(record)
             for record in instance.aaaarecordmodel.all():
-                child_records.append(
-                    ["AAAA", record.name, record.address, record.description, record.get_absolute_url()]
-                )
+                child_records.append(record)
             for record in instance.cnamerecordmodel.all():
-                child_records.append(
-                    ["CNAME", record.name, record.alias, record.description, record.get_absolute_url()]
-                )
+                child_records.append(record)
             for record in instance.mxrecordmodel.all():
-                child_records.append(
-                    ["MX", record.name, record.mail_server, record.description, record.get_absolute_url()]
-                )
+                child_records.append(record)
             for record in instance.txtrecordmodel.all():
-                child_records.append(["TXT", record.name, record.text, record.description, record.get_absolute_url()])
-
+                child_records.append(record)
             for record in instance.nsrecordmodel.all():
-                child_records.append(["NS", record.name, record.server, record.description, record.get_absolute_url()])
+                child_records.append(record)
+            # for record in instance.arecordmodel.all():
+            #     child_records.append(["A", record.name, record.address, record.description, record.get_absolute_url()])
+            # for record in instance.aaaarecordmodel.all():
+            #     child_records.append(
+            #         ["AAAA", record.name, record.address, record.description, record.get_absolute_url()]
+            #     )
+            # for record in instance.cnamerecordmodel.all():
+            #     child_records.append(
+            #         ["CNAME", record.name, record.alias, record.description, record.get_absolute_url()]
+            #     )
+            # for record in instance.mxrecordmodel.all():
+            #     child_records.append(
+            #         ["MX", record.name, record.mail_server, record.description, record.get_absolute_url()]
+            #     )
+            # for record in instance.txtrecordmodel.all():
+            #     child_records.append(["TXT", record.name, record.text, record.description, record.get_absolute_url()])
+
+            # for record in instance.nsrecordmodel.all():
+            #     child_records.append(["NS", record.name, record.server, record.description, record.get_absolute_url()])
 
         return {"child_records": child_records}
 
