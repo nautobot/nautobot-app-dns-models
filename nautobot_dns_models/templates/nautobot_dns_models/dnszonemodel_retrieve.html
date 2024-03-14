@@ -161,21 +161,38 @@
 				</thead>
 				{% for record in child_records %}
 				<tr>
-					<!-- TODO: Add User Permissions checks -->
-					<!-- TODO: Render the proper attr of a model -->
+					{% with record_model=record|meta:"model_name" %}
 					<td>{{ record | meta:"verbose_name" | split:" " | first}}</td>
-					<td>{{ record }}</td>
-					<td>{{ record.name }}</td>
-					<td>{{ record|hyperlinked_object }}</td>
+					<td>{{ record |  hyperlinked_object}}</td>
+					{% if record_model in "arecordmodel,aaaarecordmodel" %}
+					<td>{{ record.address }}</td>
+					{% elif record_model in "nsrecordmodel" %}
+					<td>{{ record.server }}</td>
+					{% elif record_model in "cnamerecordmodel" %}
+					<td>{{ record.alias }}</td>
+					{% elif record_model in "mxrecordmodel" %}
+					<td>{{ record.mail_server }}</td>
+					{% elif record_model in "txtrecordmodel" %}
+					<td>{{ record.text }}</td>
+					{% elif record_model in "txtrecordmodel" %}
+					<td>{{ record.text }}</td>
+					{% endif %}
 					<td>{{ record.description }}</td>
 					<td>
-					<a href="{{ record|url_with_action:"edit" }}" class="btn btn-xs btn-warning" title="Edit">
-						<i class="mdi mdi-pencil"></i>
-					</a>
-					<a href="{{ record|url_with_action:'delete'  }}" class="btn btn-xs btn-danger" title="Delete">
-						<i class="mdi mdi-trash-can-outline"></i>
-					</a>
+					{% if perms.nautobot_dns_models.change_dnszonemodel %}
+						{% if perms.dcim.edit_record_model %}
+							<a href="{{ record|url_with_action:"edit" }}" class="btn btn-xs btn-warning" title="Edit">
+								<i class="mdi mdi-pencil"></i>
+							</a>
+						{% endif %}
+						{% if perms.dcim.delete_record_model %}
+							<a href="{{ record|url_with_action:'delete'  }}" class="btn btn-xs btn-danger" title="Delete">
+								<i class="mdi mdi-trash-can-outline"></i>
+							</a>
+						{% endif %}
+					{% endif %}
 					</td>
+					{% endwith %}
 				</tr>
 				{% endfor %}
 				{% else %}

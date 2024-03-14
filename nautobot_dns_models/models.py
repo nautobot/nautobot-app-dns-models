@@ -115,7 +115,6 @@ class DnsRecordModel(DnsModel):  # pylint: disable=too-many-ancestors
         # verbose_name = "NS Record Model"
 
 
-
 class NSRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     """NS Record model."""
 
@@ -123,9 +122,10 @@ class NSRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     slug = AutoSlugField(populate_from="name")
 
     class Meta:
+        """Meta attributes for NSRecordModel."""
+
         verbose_name = "NS Record Model"
         verbose_name_plural = "NS Record Models"
-
 
     def get_absolute_url(self):
         """Return the canonical URL for NSRecordModel."""
@@ -143,6 +143,8 @@ class ARecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     slug = AutoSlugField(populate_from="name")
 
     class Meta:
+        """Meta attributes for ARecordModel."""
+
         verbose_name = "A Record Model"
         verbose_name_plural = "A Record Models"
 
@@ -162,6 +164,8 @@ class AAAARecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     slug = AutoSlugField(populate_from="name")
 
     class Meta:
+        """Meta attributes for AAAARecordModel."""
+
         verbose_name = "AAAA Record Model"
         verbose_name_plural = "AAAA Record Models"
 
@@ -181,6 +185,8 @@ class CNAMERecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     slug = AutoSlugField(populate_from="name")
 
     class Meta:
+        """Meta attributes for CNAMERecordModel."""
+
         verbose_name = "CNAME Record Model"
         verbose_name_plural = "CNAME Record Models"
 
@@ -205,6 +211,8 @@ class MXRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     slug = AutoSlugField(populate_from="name")
 
     class Meta:
+        """Meta attributes for MXRecordModel."""
+
         verbose_name = "MX Record Model"
         verbose_name_plural = "MX Record Models"
 
@@ -224,6 +232,8 @@ class TXTRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     slug = AutoSlugField(populate_from="name")
 
     class Meta:
+        """Meta attributes for TXTRecordModel."""
+
         verbose_name = "TXT Record Model"
         verbose_name_plural = "TXT Record Models"
 
@@ -245,6 +255,8 @@ class PTRRecordModel(DnsRecordModel):
     slug = AutoSlugField(populate_from="name")
 
     class Meta:
+        """Meta attributes for PTRRecordModel."""
+
         verbose_name = "PTR Record Model"
         verbose_name_plural = "PTR Record Models"
 
