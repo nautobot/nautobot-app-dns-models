@@ -111,8 +111,6 @@ class DnsRecordModel(DnsModel):  # pylint: disable=too-many-ancestors
         """Meta attributes for DnsRecordModel."""
 
         abstract = True
-        # TODO, add verbose name to use it in templates
-        # verbose_name = "NS Record Model"
 
 
 class NSRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors

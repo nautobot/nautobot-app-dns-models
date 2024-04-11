@@ -1,4 +1,5 @@
 """DNS template tags."""
+
 from django import template
 from django.urls import NoReverseMatch, reverse
 from django.utils.html import format_html

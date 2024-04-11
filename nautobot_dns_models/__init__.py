@@ -1,4 +1,5 @@
 """Plugin declaration for nautobot_dns_models."""
+
 # Metadata is inherited from Nautobot. If not including Nautobot in the environment, this should be added
 try:
     from importlib import metadata

@@ -1,4 +1,5 @@
 """API serializers for nautobot_dns_models."""
+
 from rest_framework import serializers
 
 from nautobot.core.api.serializers import ValidatedModelSerializer

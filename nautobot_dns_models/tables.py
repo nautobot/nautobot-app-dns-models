@@ -4,6 +4,7 @@ import django_tables2 as tables
 from nautobot.core.tables import BaseTable, ButtonsColumn, ToggleColumn
 
 from nautobot_dns_models import models
+from nautobot_dns_models.template_code import DNS_RECORDS_NAME, DNS_RECORDS_TYPE, DNS_RECORDS_VALUE, DNS_RECORDS_ACTIONS
 
 
 class DnsZoneModelTable(BaseTable):
@@ -39,6 +40,43 @@ class DnsZoneModelTable(BaseTable):
         # )
 
 
+class RecordsTable(tables.Table):
+    """Table for DNS Zone records list view."""
+
+    pk = ToggleColumn()
+
+    type_ = tables.TemplateColumn(template_code=DNS_RECORDS_TYPE, verbose_name="Type", orderable=False)
+    name = tables.TemplateColumn(template_code=DNS_RECORDS_NAME, verbose_name="Name", orderable=False)
+
+    value = tables.TemplateColumn(
+        template_code=DNS_RECORDS_VALUE,
+        verbose_name="Value",
+        orderable=False,
+    )
+    description = tables.TemplateColumn(
+        template_code="""{{ record.description }}""", verbose_name="Description", orderable=False
+    )
+    actions = tables.TemplateColumn(template_code=DNS_RECORDS_ACTIONS, verbose_name="Actions", orderable=False)
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        fields = (
+            "type_",
+            "name",
+            "value",
+            "description",
+            "actions",
+        )
+        default_columns = (
+            "type_",
+            "name",
+            "value",
+            "description",
+            "actions",
+        )
+
+
 class NSRecordModelTable(BaseTable):
     # pylint: disable=R0903
     """Table for list view."""
@@ -47,7 +85,7 @@ class NSRecordModelTable(BaseTable):
     name = tables.Column(linkify=True)
     actions = ButtonsColumn(
         models.NSRecordModel,
-        buttons=("changelog", "edit", "delete")
+        buttons=("changelog", "edit", "delete"),
         # Option for modifying the default action buttons on each row:
         # buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
