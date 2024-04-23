@@ -1,7 +1,9 @@
 """DNS Plugin Views."""
 
 from django.shortcuts import redirect
+from django_tables2 import RequestConfig
 from nautobot.apps import views
+from nautobot.core.views.paginator import EnhancedPaginator, get_paginate_count
 from nautobot_dns_models.api.serializers import (
     AAAARecordModelSerializer,
     ARecordModelSerializer,
@@ -68,6 +70,7 @@ from nautobot_dns_models.tables import (
     NSRecordModelTable,
     TXTRecordModelTable,
     PTRRecordModelTable,
+    RecordsTable,
 )
 
 
@@ -90,29 +93,29 @@ class DnsZoneModelViewSet(views.NautobotUIViewSet):
         child_records = []
         if instance is not None:
             # record, name, value, description, url
-            # for record in instance.nsrecordmodel.all():
-            #     child_records.append(["NS", record.name, record.nameserver, record.description])
             for record in instance.arecordmodel.all():
-                child_records.append(["A", record.name, record.address, record.description, record.get_absolute_url()])
+                child_records.append(record)
             for record in instance.aaaarecordmodel.all():
-                child_records.append(
-                    ["AAAA", record.name, record.address, record.description, record.get_absolute_url()]
-                )
+                child_records.append(record)
             for record in instance.cnamerecordmodel.all():
-                child_records.append(
-                    ["CNAME", record.name, record.alias, record.description, record.get_absolute_url()]
-                )
+                child_records.append(record)
             for record in instance.mxrecordmodel.all():
-                child_records.append(
-                    ["MX", record.name, record.mail_server, record.description, record.get_absolute_url()]
-                )
+                child_records.append(record)
             for record in instance.txtrecordmodel.all():
-                child_records.append(["TXT", record.name, record.text, record.description, record.get_absolute_url()])
-
+                child_records.append(record)
             for record in instance.nsrecordmodel.all():
-                child_records.append(["NS", record.name, record.server, record.description, record.get_absolute_url()])
+                child_records.append(record)
 
-        return {"child_records": child_records}
+        records_table = RecordsTable(
+            child_records,
+        )
+        # add pagination for the records table.
+        paginate = {
+            "paginator_class": EnhancedPaginator,
+            "per_page": get_paginate_count(request),
+        }
+        RequestConfig(request, paginate).configure(records_table)
+        return {"records_table": records_table}
 
 
 class NSRecordModelViewSet(views.NautobotUIViewSet):

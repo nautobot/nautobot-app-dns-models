@@ -1,14 +1,11 @@
-
 {% extends 'generic/object_detail.html' %}
 {% load buttons %}
 {% load static %}
 {% load custom_links %}
 {% load helpers %}
 {% load plugins %}
-
+{% load render_table from django_tables2 %}
 {% block title %}{{ object }}{% endblock %}
-
-
 
 {% block header %}
 <div class="row noprint">
@@ -123,59 +120,31 @@
 						<span class="mdi mdi-plus-thick" aria-hidden="true"></span> Add Records <span class="caret"></span>
 					</button>
 					<ul class="dropdown-menu">
-						{% if perms.dcim.add_arecord %}
+						{% if perms.nautobot_dns_models.add_arecord %}
 							<li><a href="{% url 'plugins:nautobot_dns_models:arecordmodel_add' %}?zone={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">A</a></li>
 						{% endif %}
-						{% if perms.dcim.add_aaaarecord %}
+						{% if perms.nautobot_dns_models.add_aaaarecord %}
 							<li><a href="{% url 'plugins:nautobot_dns_models:aaaarecordmodel_add' %}?zone={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">AAAA</a></li>
 						{% endif %}
-						{% if perms.dcim.add_cnamerecord %}
+						{% if perms.nautobot_dns_models.add_cnamerecord %}
 							<li><a href="{% url 'plugins:nautobot_dns_models:cnamerecordmodel_add' %}?zone={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">CName</a></li>
 						{% endif %}
-						{% if perms.dcim.add_mxrecord %}
+						{% if perms.nautobot_dns_models.add_mxrecord %}
 							<li><a href="{% url 'plugins:nautobot_dns_models:mxrecordmodel_add' %}?zone={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">MX</a></li>
 						{% endif %}
-						{% if perms.dcim.add_txtrecord %}
+						{% if perms.nautobot_dns_models.add_txtrecord %}
 							<li><a href="{% url 'plugins:nautobot_dns_models:txtrecordmodel_add' %}?zone={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">TXT</a></li>
 						{% endif %}
-						{% if perms.dcim.add_nsrecordmodel %}
+						{% if perms.nautobot_dns_models.add_nsrecordmodel %}
 							<li><a href="{% url 'plugins:nautobot_dns_models:nsrecordmodel_add' %}?zone={{ object.pk }}&return_url={% url 'plugins:nautobot_dns_models:dnszonemodel' pk=object.pk %}">NS</a></li>
 						{% endif %}
 					</ul>
 				</div>
-        		{% endif %}
-			</div>
-			<div class="table responsive">
-				<table class="table table-hover table-headings">
-				{% if child_records %}
-				<!-- record, name, value, description -->
-				<thead>
-					<tr>
-						<th>Type</th>
-						<th>Name</th>
-						<th>Value</th>
-						<th>Description</th>
-					</tr>
-				</thead>
-				{% for record in child_records %}
-				<tr>
-					<td>{{ record.0 }}</td>
-					<td>{{ record.1 }}</td>
-					<td><a href="{{ record.4 }}">{{ record.2 }}</a></td>
-					<td>{{ record.3 }}</td>
-				</tr>
-				{% endfor %}
-				{% else %}
-				<tr>
-					<td colspan="4">No records found</td>
-				</tr>
 				{% endif %}
-			</table>
-
 			</div>
-
+			{% render_table records_table 'inc/table.html' %}
 		</div>
-
+		{% include 'inc/paginator.html' with paginator=records_table.paginator page=records_table.page %}
 	</div>
 </div>
 <div class="row">

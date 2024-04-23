@@ -119,6 +119,12 @@ class NSRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     server = models.CharField(max_length=200, help_text="FQDN of an authoritative Name Server.")
     slug = AutoSlugField(populate_from="name")
 
+    class Meta:
+        """Meta attributes for NSRecordModel."""
+
+        verbose_name = "NS Record"
+        verbose_name_plural = "NS Records"
+
     def get_absolute_url(self):
         """Return the canonical URL for NSRecordModel."""
         return reverse("plugins:nautobot_dns_models:nsrecordmodel", args=[self.pk])
@@ -133,6 +139,12 @@ class ARecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
 
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
     slug = AutoSlugField(populate_from="name")
+
+    class Meta:
+        """Meta attributes for ARecordModel."""
+
+        verbose_name = "A Record"
+        verbose_name_plural = "A Records"
 
     def get_absolute_url(self):
         """Return the canonical URL for ARecordModel."""
@@ -149,6 +161,12 @@ class AAAARecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
     slug = AutoSlugField(populate_from="name")
 
+    class Meta:
+        """Meta attributes for AAAARecordModel."""
+
+        verbose_name = "AAAA Record"
+        verbose_name_plural = "AAAA Records"
+
     def get_absolute_url(self):
         """Return the canonical URL for AAAARecordModel."""
         return reverse("plugins:nautobot_dns_models:aaaarecordmodel", args=[self.pk])
@@ -163,6 +181,12 @@ class CNAMERecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
 
     alias = models.CharField(max_length=200, help_text="FQDN of the Alias.")
     slug = AutoSlugField(populate_from="name")
+
+    class Meta:
+        """Meta attributes for CNAMERecordModel."""
+
+        verbose_name = "CNAME Record"
+        verbose_name_plural = "CNAME Records"
 
     def get_absolute_url(self):
         """Return the canonical URL for CNAMERecordModel."""
@@ -184,6 +208,12 @@ class MXRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     mail_server = models.CharField(max_length=200, help_text="FQDN of the Mail Server.")
     slug = AutoSlugField(populate_from="name")
 
+    class Meta:
+        """Meta attributes for MXRecordModel."""
+
+        verbose_name = "MX Record"
+        verbose_name_plural = "MX Records"
+
     def get_absolute_url(self):
         """Return the canonical URL for MXRecordModel."""
         return reverse("plugins:nautobot_dns_models:mxrecordmodel", args=[self.pk])
@@ -198,6 +228,12 @@ class TXTRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
 
     text = models.CharField(max_length=256, help_text="Text for the TXT Record.")
     slug = AutoSlugField(populate_from="name")
+
+    class Meta:
+        """Meta attributes for TXTRecordModel."""
+
+        verbose_name = "TXT Record"
+        verbose_name_plural = "TXT Records"
 
     def get_absolute_url(self):
         """Return the canonical URL for TXTRecordModel."""
@@ -215,6 +251,12 @@ class PTRRecordModel(DnsRecordModel):
         max_length=200, help_text="A domain name that points to some location in the domain name space."
     )
     slug = AutoSlugField(populate_from="name")
+
+    class Meta:
+        """Meta attributes for PTRRecordModel."""
+
+        verbose_name = "PTR Record"
+        verbose_name_plural = "PTR Records"
 
     def get_absolute_url(self):
         """Return the canonical URL for PTRRecordModel."""

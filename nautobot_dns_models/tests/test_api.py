@@ -1,4 +1,5 @@
 """Unit tests for nautobot_dns_models."""
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse

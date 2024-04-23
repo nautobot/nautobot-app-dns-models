@@ -1,4 +1,5 @@
 """Unit tests for nautobot_dns_models."""
+
 from nautobot.core.testing import APIViewTestCases
 
 from nautobot_dns_models import models

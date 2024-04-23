@@ -1,4 +1,5 @@
 """Create fixtures for tests."""
+
 from nautobot_dns_models.models import DnsZoneModel
 
 
