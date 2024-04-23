@@ -122,8 +122,8 @@ class NSRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     class Meta:
         """Meta attributes for NSRecordModel."""
 
-        verbose_name = "NS Record Model"
-        verbose_name_plural = "NS Record Models"
+        verbose_name = "NS Record"
+        verbose_name_plural = "NS Records"
 
     def get_absolute_url(self):
         """Return the canonical URL for NSRecordModel."""
@@ -143,8 +143,8 @@ class ARecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     class Meta:
         """Meta attributes for ARecordModel."""
 
-        verbose_name = "A Record Model"
-        verbose_name_plural = "A Record Models"
+        verbose_name = "A Record"
+        verbose_name_plural = "A Records"
 
     def get_absolute_url(self):
         """Return the canonical URL for ARecordModel."""
@@ -164,8 +164,8 @@ class AAAARecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     class Meta:
         """Meta attributes for AAAARecordModel."""
 
-        verbose_name = "AAAA Record Model"
-        verbose_name_plural = "AAAA Record Models"
+        verbose_name = "AAAA Record"
+        verbose_name_plural = "AAAA Records"
 
     def get_absolute_url(self):
         """Return the canonical URL for AAAARecordModel."""
@@ -185,8 +185,8 @@ class CNAMERecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     class Meta:
         """Meta attributes for CNAMERecordModel."""
 
-        verbose_name = "CNAME Record Model"
-        verbose_name_plural = "CNAME Record Models"
+        verbose_name = "CNAME Record"
+        verbose_name_plural = "CNAME Records"
 
     def get_absolute_url(self):
         """Return the canonical URL for CNAMERecordModel."""
@@ -211,8 +211,8 @@ class MXRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     class Meta:
         """Meta attributes for MXRecordModel."""
 
-        verbose_name = "MX Record Model"
-        verbose_name_plural = "MX Record Models"
+        verbose_name = "MX Record"
+        verbose_name_plural = "MX Records"
 
     def get_absolute_url(self):
         """Return the canonical URL for MXRecordModel."""
@@ -232,8 +232,8 @@ class TXTRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
     class Meta:
         """Meta attributes for TXTRecordModel."""
 
-        verbose_name = "TXT Record Model"
-        verbose_name_plural = "TXT Record Models"
+        verbose_name = "TXT Record"
+        verbose_name_plural = "TXT Records"
 
     def get_absolute_url(self):
         """Return the canonical URL for TXTRecordModel."""
@@ -255,8 +255,8 @@ class PTRRecordModel(DnsRecordModel):
     class Meta:
         """Meta attributes for PTRRecordModel."""
 
-        verbose_name = "PTR Record Model"
-        verbose_name_plural = "PTR Record Models"
+        verbose_name = "PTR Record"
+        verbose_name_plural = "PTR Records"
 
     def get_absolute_url(self):
         """Return the canonical URL for PTRRecordModel."""
