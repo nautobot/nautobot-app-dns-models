@@ -93,6 +93,10 @@ class DnsZoneModel(PrimaryModel):  # pylint: disable=too-many-ancestors
         """Return the canonical URL for DnsZoneModel."""
         return reverse("plugins:nautobot_dns_models:dnszonemodel", args=[self.pk])
 
+    def __str__(self):
+        """String representation of DnsZoneModel."""
+        return self.name
+
 
 class DnsRecordModel(DnsModel):  # pylint: disable=too-many-ancestors
     """Primary Dns Record model for plugin."""
@@ -105,7 +109,7 @@ class DnsRecordModel(DnsModel):  # pylint: disable=too-many-ancestors
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
     description = models.TextField(help_text="Description of the Record.", blank=True)
-    comment = models.CharField(max_length=200, help_text="Comment for the Record.")
+    comment = models.CharField(max_length=200, help_text="Comment for the Record.", blank=True)
 
     class Meta:
         """Meta attributes for DnsRecordModel."""
