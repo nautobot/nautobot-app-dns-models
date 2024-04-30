@@ -125,7 +125,7 @@ ignore = [
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "nautobot_dns_models/migrations/*" = [
     "D",  # pydocstyle
 ]

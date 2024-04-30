@@ -147,4 +147,44 @@ class MXRecordModelTestCase(TestCase):
         mx_record = MXRecordModel.objects.create(name="mail-record", mail_server="mail.example.com", zone=self.dns_zone)
         self.assertEqual(mx_record.get_absolute_url(), f"/plugins/dns/mxrecordmodel/{mx_record.id}/")
 
-# class TXTRecordModelTestCase(TestCase):
+class TXTRecordModelTestCase(TestCase):
+    """Test the TXTRecordModel model."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.dns_zone=  DnsZoneModel.objects.create(name="example.com", slug="example_com")
+
+
+    def test_create_txtrecordmodel(self):
+        txt_record = TXTRecordModel.objects.create(name="txt-record", text="spf-record", zone=self.dns_zone)
+
+        self.assertEqual(txt_record.name, "txt-record")
+        self.assertEqual(txt_record.text, "spf-record")
+        self.assertEqual(str(txt_record), txt_record.name)
+
+    def test_get_absolute_url(self):
+        txt_record = TXTRecordModel.objects.create(name="txt-record", text="spf-record", zone=self.dns_zone)
+        self.assertEqual(txt_record.get_absolute_url(), f"/plugins/dns/txtrecordmodel/{txt_record.id}/")
+
+class PTRRecordModelTestCase(TestCase):
+    """Test the PTRRecordModel model."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.dns_zone=  DnsZoneModel.objects.create(name="example.com", slug="example_com")
+
+
+    def test_create_ptrrecordmodel(self):
+        ptr_record = PTRRecordModel.objects.create(ptrdname="ptr-record", zone=self.dns_zone)
+
+        self.assertEqual(ptr_record.ptrdname, "ptr-record")
+        self.assertEqual(str(ptr_record), ptr_record.ptrdname)
+
+    def test_get_absolute_url(self):
+        ptr_record = PTRRecordModel.objects.create(ptrdname="ptr-record", zone=self.dns_zone)
+        self.assertEqual(ptr_record.get_absolute_url(), f"/plugins/dns/ptrrecordmodel/{ptr_record.id}/")
+
+
+
+
+
