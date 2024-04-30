@@ -1,19 +1,18 @@
 """Test DnsZoneModel."""
 
 from django.test import TestCase
-import unittest
-from unittest.mock import patch
 from nautobot.extras.models.statuses import Status
-from nautobot.ipam.models import IPAddress, Prefix, Namespace
+from nautobot.ipam.models import IPAddress, Namespace, Prefix
+
 from nautobot_dns_models.models import (
-    ARecordModel,
     AAAARecordModel,
+    ARecordModel,
     CNAMERecordModel,
     DnsZoneModel,
     MXRecordModel,
     NSRecordModel,
-    TXTRecordModel,
     PTRRecordModel,
+    TXTRecordModel,
 )
 
 
@@ -40,6 +39,7 @@ class DnsZoneModelTest(TestCase):
     def test_get_absolute_url(self):
         dns_zone_model = DnsZoneModel(name="example.com")
         self.assertEqual(dns_zone_model.get_absolute_url(), f"/plugins/dns/dnszonemodel/{dns_zone_model.id}/")
+
 
 class NSRecordModelTestCase(TestCase):
     """Test the NSRecordModel model."""
@@ -69,7 +69,7 @@ class ARecordModelTestCase(TestCase):
         cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
         status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
-        prefix = Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool",status=status)
+        Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status)
         cls.ip_address = IPAddress.objects.create(address="10.0.0.1/32", namespace=namespace, status=status)
 
     def test_create_arecordmodel(self):
@@ -93,11 +93,13 @@ class AAAARecordModelTestCase(TestCase):
         cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
         status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
-        prefix = Prefix.objects.create(prefix="2001:db8:abcd:12::/64", namespace=namespace, type="Pool",status=status)
+        Prefix.objects.create(prefix="2001:db8:abcd:12::/64", namespace=namespace, type="Pool", status=status)
         cls.ip_address = IPAddress.objects.create(address="2001:db8:abcd:12::1/128", namespace=namespace, status=status)
 
     def test_create_aaaarecordmodel(self):
-        aaaa_record = AAAARecordModel.objects.create(name="site.example.com", address=self.ip_address, zone=self.dns_zone)
+        aaaa_record = AAAARecordModel.objects.create(
+            name="site.example.com", address=self.ip_address, zone=self.dns_zone
+        )
 
         self.assertEqual(aaaa_record.name, "site.example.com")
         self.assertEqual(aaaa_record.address, self.ip_address)
@@ -105,7 +107,9 @@ class AAAARecordModelTestCase(TestCase):
         self.assertEqual(str(aaaa_record), aaaa_record.name)
 
     def test_get_absolute_url(self):
-        aaaa_record = AAAARecordModel.objects.create(name="site.example.com", address=self.ip_address, zone=self.dns_zone)
+        aaaa_record = AAAARecordModel.objects.create(
+            name="site.example.com", address=self.ip_address, zone=self.dns_zone
+        )
         self.assertEqual(aaaa_record.get_absolute_url(), f"/plugins/dns/aaaarecordmodel/{aaaa_record.id}/")
 
 
@@ -114,26 +118,30 @@ class CNAMERecordModelTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone=  DnsZoneModel.objects.create(name="example.com", slug="example_com")
-
+        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
 
     def test_create_cnamerecordmodel(self):
-        cname_record = CNAMERecordModel.objects.create(name="www.example.com", alias="site.example.com", zone=self.dns_zone)
+        cname_record = CNAMERecordModel.objects.create(
+            name="www.example.com", alias="site.example.com", zone=self.dns_zone
+        )
 
         self.assertEqual(cname_record.name, "www.example.com")
         self.assertEqual(cname_record.alias, "site.example.com")
         self.assertEqual(str(cname_record), cname_record.name)
 
     def test_get_absolute_url(self):
-        cname_record = CNAMERecordModel.objects.create(name="www.example.com", alias="site.example.com", zone=self.dns_zone)
+        cname_record = CNAMERecordModel.objects.create(
+            name="www.example.com", alias="site.example.com", zone=self.dns_zone
+        )
         self.assertEqual(cname_record.get_absolute_url(), f"/plugins/dns/cnamerecordmodel/{cname_record.id}/")
+
 
 class MXRecordModelTestCase(TestCase):
     """Test the MXRecordModel model."""
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone=  DnsZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
 
     def test_create_mxrecordmodel(self):
         mx_record = MXRecordModel.objects.create(name="mail-record", mail_server="mail.example.com", zone=self.dns_zone)
@@ -147,13 +155,13 @@ class MXRecordModelTestCase(TestCase):
         mx_record = MXRecordModel.objects.create(name="mail-record", mail_server="mail.example.com", zone=self.dns_zone)
         self.assertEqual(mx_record.get_absolute_url(), f"/plugins/dns/mxrecordmodel/{mx_record.id}/")
 
+
 class TXTRecordModelTestCase(TestCase):
     """Test the TXTRecordModel model."""
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone=  DnsZoneModel.objects.create(name="example.com", slug="example_com")
-
+        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
 
     def test_create_txtrecordmodel(self):
         txt_record = TXTRecordModel.objects.create(name="txt-record", text="spf-record", zone=self.dns_zone)
@@ -166,13 +174,13 @@ class TXTRecordModelTestCase(TestCase):
         txt_record = TXTRecordModel.objects.create(name="txt-record", text="spf-record", zone=self.dns_zone)
         self.assertEqual(txt_record.get_absolute_url(), f"/plugins/dns/txtrecordmodel/{txt_record.id}/")
 
+
 class PTRRecordModelTestCase(TestCase):
     """Test the PTRRecordModel model."""
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone=  DnsZoneModel.objects.create(name="example.com", slug="example_com")
-
+        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
 
     def test_create_ptrrecordmodel(self):
         ptr_record = PTRRecordModel.objects.create(ptrdname="ptr-record", zone=self.dns_zone)
@@ -183,8 +191,3 @@ class PTRRecordModelTestCase(TestCase):
     def test_get_absolute_url(self):
         ptr_record = PTRRecordModel.objects.create(ptrdname="ptr-record", zone=self.dns_zone)
         self.assertEqual(ptr_record.get_absolute_url(), f"/plugins/dns/ptrrecordmodel/{ptr_record.id}/")
-
-
-
-
-
