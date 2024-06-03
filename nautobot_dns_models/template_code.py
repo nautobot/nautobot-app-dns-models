@@ -32,12 +32,12 @@ DNS_RECORDS_ACTIONS = """{% load helpers %}
         {% load dns_tags %}
         {% with record_model=record|meta:"model_name" %}
             {% if perms.nautobot_dns_models.change_dnszonemodel %}
-                {% if perms.nautobot_dns_models.edit_record_model %}
+                {% if request.user|user_has_change_access:record %}
                     <a href="{{ record|url_with_action:"edit" }}" class="btn btn-xs btn-warning" title="Edit">
                         <i class="mdi mdi-pencil"></i>
                     </a>
                 {% endif %}
-                {% if perms.nautobot_dns_models.delete_record_model %}
+                {% if request.user|user_has_delete_access:record %}
                     <a href="{{ record|url_with_action:'delete'  }}" class="btn btn-xs btn-danger" title="Delete">
                         <i class="mdi mdi-trash-can-outline"></i>
                     </a>
@@ -45,3 +45,21 @@ DNS_RECORDS_ACTIONS = """{% load helpers %}
             {% endif %}
         {% endwith %}
 """
+
+# DNS_RECORDS_ACTIONS = """{% load helpers %}
+#         {% load dns_tags %}
+#         {% with record_model=record|meta:"model_name" %}
+#             {% if perms.nautobot_dns_models.change_dnszonemodel %}
+#                 {% if perms.nautobot_dns_models.change_record_model %}
+#                     <a href="{{ record|url_with_action:"edit" }}" class="btn btn-xs btn-warning" title="Edit">
+#                         <i class="mdi mdi-pencil"></i>
+#                     </a>
+#                 {% endif %}
+#                 {% if perms.nautobot_dns_models.delete_record_model %}
+#                     <a href="{{ record|url_with_action:'delete'  }}" class="btn btn-xs btn-danger" title="Delete">
+#                         <i class="mdi mdi-trash-can-outline"></i>
+#                     </a>
+#                 {% endif %}
+#             {% endif %}
+#         {% endwith %}
+# """
