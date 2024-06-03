@@ -435,7 +435,7 @@ def pylint(context):
         "output_format": "see https://docs.astral.sh/ruff/settings/#output-format",
     },
 )
-def ruff(context, action="lint", fix=False, output_format="text"):
+def ruff(context, action="lint", fix=False, output_format="concise"):
     """Run ruff to perform code formatting and/or linting."""
     if action != "lint":
         command = "ruff format"
