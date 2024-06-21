@@ -4,9 +4,6 @@ Here you will find any steps necessary to cleanly remove the App from your Nauto
 
 ## Uninstall Guide
 
-!!! warning "Developer Note - Remove Me!"
-    Detailed instructions on how to remove the app from Nautobot.
-
 Remove the configuration you added in `nautobot_config.py` from `PLUGINS` & `PLUGINS_CONFIG`.
 
 ## Database Cleanup
