@@ -102,7 +102,6 @@ class NSRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """NS Record model."""
 
     server = models.CharField(max_length=200, help_text="FQDN of an authoritative Name Server.")
-    slug = AutoSlugField(populate_from="name")
 
     class Meta:
         """Meta attributes for NSRecordModel."""
@@ -115,7 +114,6 @@ class ARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """A Record model."""
 
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
-    slug = AutoSlugField(populate_from="name")
 
     class Meta:
         """Meta attributes for ARecordModel."""
@@ -128,7 +126,6 @@ class AAAARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """AAAA Record model."""
 
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
-    slug = AutoSlugField(populate_from="name")
 
     class Meta:
         """Meta attributes for AAAARecordModel."""
@@ -141,7 +138,6 @@ class CNAMERecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """CNAME Record model."""
 
     alias = models.CharField(max_length=200, help_text="FQDN of the Alias.")
-    slug = AutoSlugField(populate_from="name")
 
     class Meta:
         """Meta attributes for CNAMERecordModel."""
@@ -159,7 +155,6 @@ class MXRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
         help_text="Preference for the MX Record.",
     )
     mail_server = models.CharField(max_length=200, help_text="FQDN of the Mail Server.")
-    slug = AutoSlugField(populate_from="name")
 
     class Meta:
         """Meta attributes for MXRecordModel."""
@@ -172,7 +167,6 @@ class TXTRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """TXT Record model."""
 
     text = models.CharField(max_length=256, help_text="Text for the TXT Record.")
-    slug = AutoSlugField(populate_from="name")
 
     class Meta:
         """Meta attributes for TXTRecordModel."""
@@ -187,7 +181,6 @@ class PTRRecordModel(DNSRecordModel):
     ptrdname = models.CharField(
         max_length=200, help_text="A domain name that points to some location in the domain name space."
     )
-    slug = AutoSlugField(populate_from="name")
 
     class Meta:
         """Meta attributes for PTRRecordModel."""
