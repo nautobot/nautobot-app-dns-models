@@ -6,10 +6,10 @@ from nautobot_dns_models import models
 from nautobot_dns_models.tests import fixtures
 
 
-class DnsZoneModelFilterTestCase(TestCase):
+class DNSZoneModelFilterTestCase(TestCase):
     """DnsZoneModel Filter Test Case."""
 
-    queryset = models.DnsZoneModel.objects.all()
+    queryset = models.DNSZoneModel.objects.all()
     filterset = filters.DnsZoneModelFilterSet
 
     @classmethod

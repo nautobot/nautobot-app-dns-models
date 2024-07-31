@@ -6,7 +6,7 @@ from nautobot_dns_models.api import views
 
 router = OrderedDefaultRouter()
 # add the name of your api endpoint, usually hyphenated model name in plural, e.g. "my-model-classes"
-router.register("dnszonemodel", views.DnsZoneModelViewSet)
+router.register("dnszonemodel", views.DNSZoneModelViewSet)
 router.register("nsrecordmodel", views.NSRecordModelViewSet)
 router.register("arecordmodel", views.ARecordModelViewSet)
 router.register("aaaarecordmodel", views.AAAARecordModelViewSet)

@@ -5,7 +5,7 @@ from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 
 from nautobot_dns_models import forms
-from nautobot_dns_models.models import DnsZoneModel
+from nautobot_dns_models.models import DNSZoneModel
 
 
 class NSRecordModelFormTestCase(TestCase):
@@ -15,7 +15,7 @@ class NSRecordModelFormTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
 
     def test_specifying_all_fields_success(self):
         data = {
@@ -59,7 +59,7 @@ class ARecordModelFormTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
         status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
         Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status)
@@ -104,6 +104,7 @@ class ARecordModelFormTestCase(TestCase):
         self.assertTrue(form.errors)
         self.assertIn("not a valid UUID.", form.errors["address"][0])
 
+
 class AAAARecordModelFormTestCase(TestCase):
     """Test AAAARecordModel forms."""
 
@@ -111,7 +112,7 @@ class AAAARecordModelFormTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
         status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
         Prefix.objects.create(prefix="2001:db8:abcd:12::/64", namespace=namespace, type="Pool", status=status)
@@ -156,7 +157,6 @@ class AAAARecordModelFormTestCase(TestCase):
         self.assertTrue(form.errors)
 
 
-
 class CNAMERecordModelFormTestCase(TestCase):
     """Test CNAMERecordModel forms."""
 
@@ -164,7 +164,7 @@ class CNAMERecordModelFormTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
 
     def test_specifying_only_required_success(self):
         data = {
@@ -197,7 +197,7 @@ class MXRecordModelFormTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
 
     def test_specifying_only_required_success(self):
         data = {
@@ -232,7 +232,7 @@ class TXTRecordModelFormTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
 
     def test_specifying_only_required_success(self):
         data = {
@@ -256,4 +256,3 @@ class TXTRecordModelFormTestCase(TestCase):
         form = self.form_class(data)
         self.assertTrue(form.is_valid())
         self.assertTrue(form.save())
-

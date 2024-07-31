@@ -5,7 +5,7 @@ from nautobot_dns_models.api.serializers import (
     AAAARecordModelSerializer,
     ARecordModelSerializer,
     CNAMERecordModelSerializer,
-    DnsZoneModelSerializer,
+    DNSZoneModelSerializer,
     MXRecordModelSerializer,
     TXTRecordModelSerializer,
     PTRRecordModelSerializer,
@@ -25,7 +25,7 @@ from nautobot_dns_models.models import (
     AAAARecordModel,
     ARecordModel,
     CNAMERecordModel,
-    DnsZoneModel,
+    DNSZoneModel,
     MXRecordModel,
     TXTRecordModel,
     PTRRecordModel,
@@ -33,11 +33,11 @@ from nautobot_dns_models.models import (
 )
 
 
-class DnsZoneModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
+class DNSZoneModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     """DnsZoneModel API ViewSet."""
 
-    queryset = DnsZoneModel.objects.all()
-    serializer_class = DnsZoneModelSerializer
+    queryset = DNSZoneModel.objects.all()
+    serializer_class = DNSZoneModelSerializer
     filterset_class = DnsZoneModelFilterSet
 
     lookup_field = "pk"

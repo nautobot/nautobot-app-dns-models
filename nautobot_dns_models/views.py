@@ -8,7 +8,7 @@ from nautobot_dns_models.api.serializers import (
     AAAARecordModelSerializer,
     ARecordModelSerializer,
     CNAMERecordModelSerializer,
-    DnsZoneModelSerializer,
+    DNSZoneModelSerializer,
     MXRecordModelSerializer,
     NSRecordModelSerializer,
     TXTRecordModelSerializer,
@@ -34,10 +34,10 @@ from nautobot_dns_models.forms import (
     CNAMERecordModelBulkEditForm,
     CNAMERecordModelFilterForm,
     CNAMERecordModelForm,
-    DnsZoneModelBulkCreateForm,
-    DnsZoneModelBulkEditForm,
-    DnsZoneModelFilterForm,
-    DnsZoneModelForm,
+    DNSZoneModelBulkCreateForm,
+    DNSZoneModelBulkEditForm,
+    DNSZoneModelFilterForm,
+    DNSZoneModelForm,
     MXRecordModelBulkEditForm,
     MXRecordModelFilterForm,
     MXRecordModelForm,
@@ -55,7 +55,7 @@ from nautobot_dns_models.models import (
     AAAARecordModel,
     ARecordModel,
     CNAMERecordModel,
-    DnsZoneModel,
+    DNSZoneModel,
     MXRecordModel,
     NSRecordModel,
     TXTRecordModel,
@@ -65,7 +65,7 @@ from nautobot_dns_models.tables import (
     AAAARecordModelTable,
     ARecordModelTable,
     CNAMERecordModelTable,
-    DnsZoneModelTable,
+    DNSZoneModelTable,
     MXRecordModelTable,
     NSRecordModelTable,
     TXTRecordModelTable,
@@ -74,18 +74,18 @@ from nautobot_dns_models.tables import (
 )
 
 
-class DnsZoneModelViewSet(views.NautobotUIViewSet):
+class DNSZoneModelViewSet(views.NautobotUIViewSet):
     """DnsZoneModel UI ViewSet."""
 
-    form_class = DnsZoneModelForm
-    bulk_create_form_class = DnsZoneModelBulkCreateForm
-    bulk_update_form_class = DnsZoneModelBulkEditForm
+    form_class = DNSZoneModelForm
+    bulk_create_form_class = DNSZoneModelBulkCreateForm
+    bulk_update_form_class = DNSZoneModelBulkEditForm
     filterset_class = DnsZoneModelFilterSet
-    filterset_form_class = DnsZoneModelFilterForm
-    serializer_class = DnsZoneModelSerializer
+    filterset_form_class = DNSZoneModelFilterForm
+    serializer_class = DNSZoneModelSerializer
     lookup_field = "pk"
-    queryset = DnsZoneModel.objects.all()
-    table_class = DnsZoneModelTable
+    queryset = DNSZoneModel.objects.all()
+    table_class = DNSZoneModelTable
 
     def get_extra_context(self, request, instance):
         """Return extra context data for template."""

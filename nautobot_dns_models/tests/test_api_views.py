@@ -6,11 +6,11 @@ from nautobot_dns_models import models
 from nautobot_dns_models.tests import fixtures
 
 
-class DnsZoneModelAPIViewTest(APIViewTestCases.APIViewTestCase):
+class DNSZoneModelAPIViewTest(APIViewTestCases.APIViewTestCase):
     # pylint: disable=too-many-ancestors
     """Test the API viewsets for DnsZoneModel."""
 
-    model = models.DnsZoneModel
+    model = models.DNSZoneModel
     create_data = [
         {
             "name": "Test Model 1",

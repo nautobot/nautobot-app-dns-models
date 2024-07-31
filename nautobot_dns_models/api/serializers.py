@@ -2,14 +2,12 @@
 
 from rest_framework import serializers
 
-from nautobot.core.api.serializers import ValidatedModelSerializer
+from nautobot.apps.api import NautobotModelSerializer
 
 from nautobot_dns_models import models
 
-from . import nested_serializers  # noqa: F401, pylint: disable=unused-import
 
-
-class DnsZoneModelSerializer(ValidatedModelSerializer):  # pylint: disable=too-many-ancestors
+class DNSZoneModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
     """DnsZoneModel Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnszonemodel-detail")
@@ -17,14 +15,14 @@ class DnsZoneModelSerializer(ValidatedModelSerializer):  # pylint: disable=too-m
     class Meta:
         """Meta attributes."""
 
-        model = models.DnsZoneModel
+        model = models.DNSZoneModel
         fields = "__all__"
 
         # Option for disabling write for certain fields:
         # read_only_fields = []
 
 
-class NSRecordModelSerializer(ValidatedModelSerializer):  # pylint: disable=too-many-ancestors
+class NSRecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
     """NSRecordModel Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:nsrecordmodel-detail")
@@ -39,7 +37,7 @@ class NSRecordModelSerializer(ValidatedModelSerializer):  # pylint: disable=too-
         # read_only_fields = []
 
 
-class ARecordModelSerializer(ValidatedModelSerializer):  # pylint: disable=too-many-ancestors
+class ARecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
     """ARecordModel Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:arecordmodel-detail")
@@ -54,7 +52,7 @@ class ARecordModelSerializer(ValidatedModelSerializer):  # pylint: disable=too-m
         # read_only_fields = []
 
 
-class AAAARecordModelSerializer(ValidatedModelSerializer):  # pylint: disable=too-many-ancestors
+class AAAARecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
     """AAAARecordModel Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:aaaarecordmodel-detail")
@@ -69,7 +67,7 @@ class AAAARecordModelSerializer(ValidatedModelSerializer):  # pylint: disable=to
         # read_only_fields = []
 
 
-class CNAMERecordModelSerializer(ValidatedModelSerializer):  # pylint: disable=too-many-ancestors
+class CNAMERecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
     """CNAMERecordModel Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:cnamerecordmodel-detail")
@@ -84,7 +82,7 @@ class CNAMERecordModelSerializer(ValidatedModelSerializer):  # pylint: disable=t
         # read_only_fields = []
 
 
-class MXRecordModelSerializer(ValidatedModelSerializer):  # pylint: disable=too-many-ancestors
+class MXRecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
     """MXRecordModel Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:mxrecordmodel-detail")
@@ -99,7 +97,7 @@ class MXRecordModelSerializer(ValidatedModelSerializer):  # pylint: disable=too-
         # read_only_fields = []
 
 
-class TXTRecordModelSerializer(ValidatedModelSerializer):  # pylint: disable=too-many-ancestors
+class TXTRecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
     """TXTRecordModel Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:txtrecordmodel-detail")
@@ -114,7 +112,7 @@ class TXTRecordModelSerializer(ValidatedModelSerializer):  # pylint: disable=too
         # read_only_fields = []
 
 
-class PTRRecordModelSerializer(ValidatedModelSerializer):  # pylint: disable=too-many-ancestors
+class PTRRecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
     """PTRRecordModel Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:ptrrecordmodel-detail")

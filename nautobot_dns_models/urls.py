@@ -10,7 +10,7 @@ from nautobot_dns_models import views
 
 router = NautobotUIViewSetRouter()
 
-router.register("dnszonemodel", views.DnsZoneModelViewSet)
+router.register("dnszonemodel", views.DNSZoneModelViewSet)
 router.register("nsrecordmodel", views.NSRecordModelViewSet)
 router.register("arecordmodel", views.ARecordModelViewSet)
 router.register("aaaarecordmodel", views.AAAARecordModelViewSet)

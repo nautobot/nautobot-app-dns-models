@@ -8,7 +8,7 @@ from nautobot_dns_models.models import (
     AAAARecordModel,
     ARecordModel,
     CNAMERecordModel,
-    DnsZoneModel,
+    DNSZoneModel,
     MXRecordModel,
     NSRecordModel,
     PTRRecordModel,
@@ -16,12 +16,12 @@ from nautobot_dns_models.models import (
 )
 
 
-class DnsZoneModelTest(TestCase):
+class DNSZoneModelTest(TestCase):
     """Test DnsZoneModel."""
 
     def test_create_dnszonemodel_only_required(self):
         """Create with only required fields, and validate null description and __str__."""
-        dnszonemodel = DnsZoneModel.objects.create(name="Development", slug="development")
+        dnszonemodel = DNSZoneModel.objects.create(name="Development", slug="development")
         self.assertEqual(dnszonemodel.name, "Development")
         self.assertEqual(dnszonemodel.description, "")
         self.assertEqual(str(dnszonemodel), "Development")
@@ -29,7 +29,7 @@ class DnsZoneModelTest(TestCase):
 
     def test_create_dnszonemodel_all_fields_success(self):
         """Create DnsZoneModel with all fields."""
-        dnszonemodel = DnsZoneModel.objects.create(
+        dnszonemodel = DNSZoneModel.objects.create(
             name="Development", slug="development", description="Development Test"
         )
         self.assertEqual(dnszonemodel.name, "Development")
@@ -37,7 +37,7 @@ class DnsZoneModelTest(TestCase):
         self.assertEqual(dnszonemodel.description, "Development Test")
 
     def test_get_absolute_url(self):
-        dns_zone_model = DnsZoneModel(name="example.com")
+        dns_zone_model = DNSZoneModel(name="example.com")
         self.assertEqual(dns_zone_model.get_absolute_url(), f"/plugins/dns/dnszonemodel/{dns_zone_model.id}/")
 
 
@@ -46,7 +46,7 @@ class NSRecordModelTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
 
     def test_create_nsrecordmodel(self):
         ns_record = NSRecordModel.objects.create(name="primary", server="example-server.com.", zone=self.dns_zone)
@@ -66,7 +66,7 @@ class ARecordModelTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
         status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
         Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status)
@@ -90,7 +90,7 @@ class AAAARecordModelTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
         status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
         Prefix.objects.create(prefix="2001:db8:abcd:12::/64", namespace=namespace, type="Pool", status=status)
@@ -118,7 +118,7 @@ class CNAMERecordModelTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
 
     def test_create_cnamerecordmodel(self):
         cname_record = CNAMERecordModel.objects.create(
@@ -141,7 +141,7 @@ class MXRecordModelTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
 
     def test_create_mxrecordmodel(self):
         mx_record = MXRecordModel.objects.create(name="mail-record", mail_server="mail.example.com", zone=self.dns_zone)
@@ -161,7 +161,7 @@ class TXTRecordModelTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
 
     def test_create_txtrecordmodel(self):
         txt_record = TXTRecordModel.objects.create(name="txt-record", text="spf-record", zone=self.dns_zone)
@@ -180,7 +180,7 @@ class PTRRecordModelTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DnsZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
 
     def test_create_ptrrecordmodel(self):
         ptr_record = PTRRecordModel.objects.create(ptrdname="ptr-record", zone=self.dns_zone)

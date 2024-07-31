@@ -10,7 +10,7 @@ from nautobot.core.forms import (
 from nautobot_dns_models import models
 
 
-class DnsZoneModelForm(BootstrapMixin, forms.ModelForm):
+class DNSZoneModelForm(BootstrapMixin, forms.ModelForm):
     """DnsZoneModel creation/edit form."""
 
     slug = SlugField()
@@ -18,7 +18,7 @@ class DnsZoneModelForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         """Meta attributes."""
 
-        model = models.DnsZoneModel
+        model = models.DNSZoneModel
         fields = [
             "name",
             "slug",
@@ -33,7 +33,7 @@ class DnsZoneModelForm(BootstrapMixin, forms.ModelForm):
         ]
 
 
-class DnsZoneModelBulkCreateForm(BootstrapMixin, forms.ModelForm):
+class DNSZoneModelBulkCreateForm(BootstrapMixin, forms.ModelForm):
     """DnsZoneModel bulk create form."""
 
     slug = SlugField()
@@ -41,7 +41,7 @@ class DnsZoneModelBulkCreateForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         """Meta attributes."""
 
-        model = models.DnsZoneModel
+        model = models.DNSZoneModel
         fields = [
             "name",
             "slug",
@@ -49,10 +49,10 @@ class DnsZoneModelBulkCreateForm(BootstrapMixin, forms.ModelForm):
         ]
 
 
-class DnsZoneModelBulkEditForm(BootstrapMixin, BulkEditForm):
+class DNSZoneModelBulkEditForm(BootstrapMixin, BulkEditForm):
     """DnsZoneModel bulk edit form."""
 
-    pk = forms.ModelMultipleChoiceField(queryset=models.DnsZoneModel.objects.all(), widget=forms.MultipleHiddenInput)
+    pk = forms.ModelMultipleChoiceField(queryset=models.DNSZoneModel.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
 
     class Meta:
@@ -63,7 +63,7 @@ class DnsZoneModelBulkEditForm(BootstrapMixin, BulkEditForm):
         ]
 
 
-class DnsZoneModelFilterForm(BootstrapMixin, forms.ModelForm):
+class DNSZoneModelFilterForm(BootstrapMixin, forms.ModelForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -77,7 +77,7 @@ class DnsZoneModelFilterForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         """Meta attributes."""
 
-        model = models.DnsZoneModel
+        model = models.DNSZoneModel
         # Define the fields above for ordering and widget purposes
         fields = [
             "q",
