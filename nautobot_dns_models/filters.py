@@ -5,8 +5,8 @@ from nautobot.extras.filters import BaseFilterSet, NautobotFilterSet
 from nautobot_dns_models import models
 
 
-class DnsZoneModelFilterSet(NautobotFilterSet):
-    """Filter for DnsZoneModel."""
+class DNSZoneModelFilterSet(NautobotFilterSet):
+    """Filter for DNSZoneModel."""
 
     class Meta:
         """Meta attributes for filter."""

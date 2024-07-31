@@ -18,7 +18,7 @@ from nautobot_dns_models.filters import (
     AAAARecordModelFilterSet,
     ARecordModelFilterSet,
     CNAMERecordModelFilterSet,
-    DnsZoneModelFilterSet,
+    DNSZoneModelFilterSet,
     MXRecordModelFilterSet,
     NSRecordModelFilterSet,
     TXTRecordModelFilterSet,
@@ -80,7 +80,7 @@ class DNSZoneModelViewSet(views.NautobotUIViewSet):
     form_class = DNSZoneModelForm
     bulk_create_form_class = DNSZoneModelBulkCreateForm
     bulk_update_form_class = DNSZoneModelBulkEditForm
-    filterset_class = DnsZoneModelFilterSet
+    filterset_class = DNSZoneModelFilterSet
     filterset_form_class = DNSZoneModelFilterForm
     serializer_class = DNSZoneModelSerializer
     lookup_field = "pk"

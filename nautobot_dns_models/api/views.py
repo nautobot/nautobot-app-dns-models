@@ -15,7 +15,7 @@ from nautobot_dns_models.filters import (
     AAAARecordModelFilterSet,
     ARecordModelFilterSet,
     CNAMERecordModelFilterSet,
-    DnsZoneModelFilterSet,
+    DNSZoneModelFilterSet,
     MXRecordModelFilterSet,
     TXTRecordModelFilterSet,
     PTRRecordModelFilterSet,
@@ -38,7 +38,7 @@ class DNSZoneModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
 
     queryset = DNSZoneModel.objects.all()
     serializer_class = DNSZoneModelSerializer
-    filterset_class = DnsZoneModelFilterSet
+    filterset_class = DNSZoneModelFilterSet
 
     lookup_field = "pk"
     # Option for modifying the default HTTP methods:

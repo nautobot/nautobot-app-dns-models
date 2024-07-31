@@ -10,7 +10,7 @@ class DNSZoneModelFilterTestCase(TestCase):
     """DnsZoneModel Filter Test Case."""
 
     queryset = models.DNSZoneModel.objects.all()
-    filterset = filters.DnsZoneModelFilterSet
+    filterset = filters.DNSZoneModelFilterSet
 
     @classmethod
     def setUpTestData(cls):
