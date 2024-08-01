@@ -14,7 +14,6 @@ class DnsZoneModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     bulk_edit_data = {"description": "Bulk edit views"}
     form_data = {
         "name": "Test 1",
-        "slug": "test-1",
         "description": "Initial model",
     }
 

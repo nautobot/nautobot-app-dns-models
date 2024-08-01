@@ -10,14 +10,14 @@ from nautobot_dns_models import views
 
 router = NautobotUIViewSetRouter()
 
-router.register("dnszone", views.DNSZoneModelViewSet)
-router.register("nsrecord", views.NSRecordModelViewSet)
-router.register("arecord", views.ARecordModelViewSet)
-router.register("aaaarecord", views.AAAARecordModelViewSet)
-router.register("cnamerecord", views.CNAMERecordModelViewSet)
-router.register("mxrecord", views.MXRecordModelViewSet)
-router.register("txtrecord", views.TXTRecordModelViewSet)
-router.register("ptrrecord", views.PTRRecordModelViewSet)
+router.register("dns-zones", views.DNSZoneModelViewSet)
+router.register("ns-records", views.NSRecordModelViewSet)
+router.register("a-records", views.ARecordModelViewSet)
+router.register("aaaa-records", views.AAAARecordModelViewSet)
+router.register("cname-records", views.CNAMERecordModelViewSet)
+router.register("mx-records", views.MXRecordModelViewSet)
+router.register("txt-records", views.TXTRecordModelViewSet)
+router.register("ptr-records", views.PTRRecordModelViewSet)
 
 urlpatterns = []
 

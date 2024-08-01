@@ -4,7 +4,6 @@ from django import forms
 from nautobot.core.forms import (
     BootstrapMixin,
     BulkEditForm,
-    SlugField,
 )
 
 from nautobot_dns_models import models
@@ -13,15 +12,12 @@ from nautobot_dns_models import models
 class DNSZoneModelForm(BootstrapMixin, forms.ModelForm):
     """DnsZoneModel creation/edit form."""
 
-    slug = SlugField()
-
     class Meta:
         """Meta attributes."""
 
         model = models.DNSZoneModel
         fields = [
             "name",
-            "slug",
             "description",
             "soa_mname",
             "soa_rname",
@@ -36,15 +32,12 @@ class DNSZoneModelForm(BootstrapMixin, forms.ModelForm):
 class DNSZoneModelBulkCreateForm(BootstrapMixin, forms.ModelForm):
     """DnsZoneModel bulk create form."""
 
-    slug = SlugField()
-
     class Meta:
         """Meta attributes."""
 
         model = models.DNSZoneModel
         fields = [
             "name",
-            "slug",
             "description",
         ]
 
@@ -69,10 +62,9 @@ class DNSZoneModelFilterForm(BootstrapMixin, forms.ModelForm):
     q = forms.CharField(
         required=False,
         label="Search",
-        help_text="Search within Name or Slug.",
+        help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
-    slug = forms.CharField(required=False, label="Slug")
 
     class Meta:
         """Meta attributes."""
@@ -82,14 +74,11 @@ class DNSZoneModelFilterForm(BootstrapMixin, forms.ModelForm):
         fields = [
             "q",
             "name",
-            "slug",
         ]
 
 
 class NSRecordModelForm(BootstrapMixin, forms.ModelForm):
     """NSRecordModel creation/edit form."""
-
-    slug = SlugField()
 
     class Meta:
         """Meta attributes."""
@@ -98,7 +87,6 @@ class NSRecordModelForm(BootstrapMixin, forms.ModelForm):
         fields = [
             "name",
             "server",
-            "slug",
             "zone",
             "description",
         ]
@@ -124,10 +112,9 @@ class NSRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
     q = forms.CharField(
         required=False,
         label="Search",
-        help_text="Search within Name or Slug.",
+        help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
-    slug = forms.CharField(required=False, label="Slug")
 
     class Meta:
         """Meta attributes."""
@@ -137,7 +124,6 @@ class NSRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
         fields = [
             "q",
             "name",
-            "slug",
             "description",
         ]
 
@@ -145,15 +131,12 @@ class NSRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
 class ARecordModelForm(BootstrapMixin, forms.ModelForm):
     """ARecordModel creation/edit form."""
 
-    slug = SlugField()
-
     class Meta:
         """Meta attributes."""
 
         model = models.ARecordModel
         fields = [
             "name",
-            "slug",
             "address",
             "ttl",
             "zone",
@@ -182,10 +165,9 @@ class ARecordModelFilterForm(BootstrapMixin, forms.ModelForm):
     q = forms.CharField(
         required=False,
         label="Search",
-        help_text="Search within Name or Slug.",
+        help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
-    slug = forms.CharField(required=False, label="Slug")
     zone = forms.CharField(required=False, label="Zone")
 
     class Meta:
@@ -196,7 +178,6 @@ class ARecordModelFilterForm(BootstrapMixin, forms.ModelForm):
         fields = [
             "q",
             "name",
-            "slug",
             "description",
         ]
 
@@ -204,15 +185,12 @@ class ARecordModelFilterForm(BootstrapMixin, forms.ModelForm):
 class AAAARecordModelForm(BootstrapMixin, forms.ModelForm):
     """AAAARecordModel creation/edit form."""
 
-    slug = SlugField()
-
     class Meta:
         """Meta attributes."""
 
         model = models.AAAARecordModel
         fields = [
             "name",
-            "slug",
             "address",
             "ttl",
             "zone",
@@ -241,10 +219,9 @@ class AAAARecordModelFilterForm(BootstrapMixin, forms.ModelForm):
     q = forms.CharField(
         required=False,
         label="Search",
-        help_text="Search within Name or Slug.",
+        help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
-    slug = forms.CharField(required=False, label="Slug")
 
     class Meta:
         """Meta attributes."""
@@ -254,7 +231,6 @@ class AAAARecordModelFilterForm(BootstrapMixin, forms.ModelForm):
         fields = [
             "q",
             "name",
-            "slug",
             "description",
         ]
 
@@ -262,15 +238,12 @@ class AAAARecordModelFilterForm(BootstrapMixin, forms.ModelForm):
 class CNAMERecordModelForm(BootstrapMixin, forms.ModelForm):
     """CNAMERecordModel creation/edit form."""
 
-    slug = SlugField()
-
     class Meta:
         """Meta attributes."""
 
         model = models.CNAMERecordModel
         fields = [
             "name",
-            "slug",
             "alias",
             "zone",
             "description",
@@ -299,10 +272,9 @@ class CNAMERecordModelFilterForm(BootstrapMixin, forms.ModelForm):
     q = forms.CharField(
         required=False,
         label="Search",
-        help_text="Search within Name or Slug.",
+        help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
-    slug = forms.CharField(required=False, label="Slug")
 
     class Meta:
         """Meta attributes."""
@@ -312,7 +284,6 @@ class CNAMERecordModelFilterForm(BootstrapMixin, forms.ModelForm):
         fields = [
             "q",
             "name",
-            "slug",
             "description",
         ]
 
@@ -320,15 +291,12 @@ class CNAMERecordModelFilterForm(BootstrapMixin, forms.ModelForm):
 class MXRecordModelForm(BootstrapMixin, forms.ModelForm):
     """MXRecordModel creation/edit form."""
 
-    slug = SlugField()
-
     class Meta:
         """Meta attributes."""
 
         model = models.MXRecordModel
         fields = [
             "name",
-            "slug",
             "preference",
             "mail_server",
             "zone",
@@ -356,10 +324,9 @@ class MXRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
     q = forms.CharField(
         required=False,
         label="Search",
-        help_text="Search within Name or Slug.",
+        help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
-    slug = forms.CharField(required=False, label="Slug")
 
     class Meta:
         """Meta attributes."""
@@ -369,7 +336,6 @@ class MXRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
         fields = [
             "q",
             "name",
-            "slug",
             "preference",
             "description",
         ]
@@ -378,15 +344,12 @@ class MXRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
 class TXTRecordModelForm(BootstrapMixin, forms.ModelForm):
     """TXTRecordModel creation/edit form."""
 
-    slug = SlugField()
-
     class Meta:
         """Meta attributes."""
 
         model = models.TXTRecordModel
         fields = [
             "name",
-            "slug",
             "text",
             "zone",
             "description",
@@ -413,10 +376,9 @@ class TXTRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
     q = forms.CharField(
         required=False,
         label="Search",
-        help_text="Search within Name or Slug.",
+        help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
-    slug = forms.CharField(required=False, label="Slug")
 
     class Meta:
         """Meta attributes."""
@@ -426,7 +388,6 @@ class TXTRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
         fields = [
             "q",
             "name",
-            "slug",
             "description",
         ]
 
@@ -434,15 +395,12 @@ class TXTRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
 class PTRRecordModelForm(BootstrapMixin, forms.ModelForm):
     """PTRRecordModel creation/edit form."""
 
-    slug = SlugField()
-
     class Meta:
         """Meta attributes."""
 
         model = models.PTRRecordModel
         fields = [
             "name",
-            "slug",
             "ptrdname",
             "ttl",
             "zone",
@@ -471,10 +429,9 @@ class PTRRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
     q = forms.CharField(
         required=False,
         label="Search",
-        help_text="Search within Name or Slug.",
+        help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
-    slug = forms.CharField(required=False, label="Slug")
 
     class Meta:
         """Meta attributes."""
@@ -484,6 +441,5 @@ class PTRRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
         fields = [
             "q",
             "name",
-            "slug",
             "description",
         ]

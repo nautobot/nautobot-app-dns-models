@@ -5,6 +5,6 @@ from nautobot_dns_models.models import DNSZoneModel
 
 def create_dnszonemodel():
     """Fixture to create necessary number of DnsZoneModel for tests."""
-    DNSZoneModel.objects.create(name="Test One", slug="test-one")
-    DNSZoneModel.objects.create(name="Test Two", slug="test-two")
-    DNSZoneModel.objects.create(name="Test Three", slug="test-three")
+    DNSZoneModel.objects.create(name="Test One")
+    DNSZoneModel.objects.create(name="Test Two")
+    DNSZoneModel.objects.create(name="Test Three")
