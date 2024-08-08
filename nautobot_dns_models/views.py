@@ -93,17 +93,17 @@ class DNSZoneModelViewSet(views.NautobotUIViewSet):
         child_records = []
         if instance is not None:
             # record, name, value, description, url
-            for record in instance.arecordmodel.all():
+            for record in instance.a_records.all():
                 child_records.append(record)
-            for record in instance.aaaarecordmodel.all():
+            for record in instance.aaaa_records.all():
                 child_records.append(record)
-            for record in instance.cnamerecordmodel.all():
+            for record in instance.cname_records.all():
                 child_records.append(record)
-            for record in instance.mxrecordmodel.all():
+            for record in instance.mx_records.all():
                 child_records.append(record)
-            for record in instance.txtrecordmodel.all():
+            for record in instance.txt_records.all():
                 child_records.append(record)
-            for record in instance.nsrecordmodel.all():
+            for record in instance.ns_records.all():
                 child_records.append(record)
 
         records_table = RecordsTable(

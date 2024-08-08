@@ -15,12 +15,11 @@ class NSRecordModelFormTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com")
 
     def test_specifying_all_fields_success(self):
         data = {
             "name": "ns-record",
-            "slug": "ns-record",
             "server": "ns-record-server",
             "description": "Development Testing",
             "zone": self.dns_zone,
@@ -32,7 +31,6 @@ class NSRecordModelFormTestCase(TestCase):
     def test_specifying_only_required_success(self):
         data = {
             "name": "ns-record",
-            "slug": "ns-record",
             "server": "ns-record-server",
             "zone": self.dns_zone,
         }
@@ -43,7 +41,6 @@ class NSRecordModelFormTestCase(TestCase):
     def test_zone_is_required(self):
         data = {
             "name": "ns-record",
-            "slug": "ns-record",
             "server": "ns-record-server",
         }
         form = self.form_class(data)
@@ -59,7 +56,7 @@ class ARecordModelFormTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com")
         status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
         Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status)
@@ -68,7 +65,6 @@ class ARecordModelFormTestCase(TestCase):
     def test_specifying_only_required_success(self):
         data = {
             "name": "a-record",
-            "slug": "a-record",
             "address": self.ip_address,
             "ttl": 3600,
             "zone": self.dns_zone,
@@ -80,7 +76,6 @@ class ARecordModelFormTestCase(TestCase):
     def test_specifying_all_fields_success(self):
         data = {
             "name": "a-record",
-            "slug": "a-record",
             "address": self.ip_address,
             "ttl": 3600,
             "zone": self.dns_zone,
@@ -94,7 +89,6 @@ class ARecordModelFormTestCase(TestCase):
     def test_ip_address_obj_is_required(self):
         data = {
             "name": "a-record",
-            "slug": "a-record",
             "address": "10.10.10.0/32",
             "ttl": 3600,
             "zone": self.dns_zone,
@@ -112,7 +106,7 @@ class AAAARecordModelFormTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com")
         status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
         Prefix.objects.create(prefix="2001:db8:abcd:12::/64", namespace=namespace, type="Pool", status=status)
@@ -121,7 +115,6 @@ class AAAARecordModelFormTestCase(TestCase):
     def test_specifying_only_required_success(self):
         data = {
             "name": "aaaa-record",
-            "slug": "aaaa-record",
             "address": self.ip_address,
             "ttl": 3600,
             "zone": self.dns_zone,
@@ -133,7 +126,6 @@ class AAAARecordModelFormTestCase(TestCase):
     def test_specifying_all_fields_success(self):
         data = {
             "name": "aaaa-record",
-            "slug": "aaaa-record",
             "address": self.ip_address,
             "ttl": 3600,
             "zone": self.dns_zone,
@@ -147,7 +139,6 @@ class AAAARecordModelFormTestCase(TestCase):
     def test_ip_address_obj_is_required(self):
         data = {
             "name": "aaaa-record",
-            "slug": "aaaa-record",
             "address": "10.10.10.0/32",
             "ttl": 3600,
             "zone": self.dns_zone,
@@ -164,12 +155,11 @@ class CNAMERecordModelFormTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com")
 
     def test_specifying_only_required_success(self):
         data = {
             "name": "cname-record",
-            "slug": "cname-record",
             "alias": "cname-alias",
             "zone": self.dns_zone,
         }
@@ -180,7 +170,6 @@ class CNAMERecordModelFormTestCase(TestCase):
     def test_specifying_all_fields_success(self):
         data = {
             "name": "cname-record",
-            "slug": "cname-record",
             "alias": "cname-alias",
             "zone": self.dns_zone,
             "description": "this is a cname description",
@@ -197,12 +186,11 @@ class MXRecordModelFormTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com")
 
     def test_specifying_only_required_success(self):
         data = {
             "name": "mx-record",
-            "slug": "mx-record",
             "preference": 10,
             "mail_server": "mail-server.com",
             "zone": self.dns_zone,
@@ -214,7 +202,6 @@ class MXRecordModelFormTestCase(TestCase):
     def test_specifying_all_fields_success(self):
         data = {
             "name": "mx-record",
-            "slug": "mx-record",
             "preference": 10,
             "mail_server": "mail-server.com",
             "zone": self.dns_zone,
@@ -232,12 +219,11 @@ class TXTRecordModelFormTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.dns_zone = DNSZoneModel.objects.create(name="example.com", slug="example_com")
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com")
 
     def test_specifying_only_required_success(self):
         data = {
             "name": "txt-record",
-            "slug": "txt-record",
             "text": "spf record",
             "zone": self.dns_zone,
         }
@@ -248,7 +234,6 @@ class TXTRecordModelFormTestCase(TestCase):
     def test_specifying_all_fields_success(self):
         data = {
             "name": "txt-record",
-            "slug": "txt-record",
             "text": "spf record",
             "zone": self.dns_zone,
             "description": "this is a boring description",

@@ -2,11 +2,10 @@
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.urls import reverse
-from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
-from nautobot.core.models.fields import AutoSlugField
-from nautobot.extras.models.change_logging import ChangeLoggedModel
+from nautobot.apps.models import PrimaryModel, extras_features
+from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 
+# TODO: add extras_features
 # from nautobot.extras.utils import extras_features
 # If you want to use the extras_features decorator please reference the following documentation
 # https://nautobot.readthedocs.io/en/latest/plugins/development/#using-the-extras_features-decorator-for-graphql
@@ -39,8 +38,7 @@ class DNSModel(PrimaryModel):  # pylint: disable=too-many-ancestors
 class DNSZoneModel(DNSModel):  # pylint: disable=too-many-ancestors
     """Model for DNS SOA Records. An SOA Record defines a DNS Zone."""
 
-    name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD.")
-    slug = AutoSlugField(populate_from="name")
+    name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD.", unique=True)
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
@@ -83,9 +81,7 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
     """Primary Dns Record model for plugin."""
 
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
-    zone = models.ForeignKey(
-        DNSZoneModel, on_delete=models.PROTECT, related_name="%(class)s", related_query_name="%(class)s"
-    )
+    zone = ForeignKeyWithAutoRelatedName(DNSZoneModel, on_delete=models.PROTECT)
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
@@ -106,6 +102,7 @@ class NSRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     class Meta:
         """Meta attributes for NSRecordModel."""
 
+        unique_together = [["name", "server", "zone"]]
         verbose_name = "NS Record"
         verbose_name_plural = "NS Records"
 
@@ -118,6 +115,7 @@ class ARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     class Meta:
         """Meta attributes for ARecordModel."""
 
+        unique_together = [["name", "address", "zone"]]
         verbose_name = "A Record"
         verbose_name_plural = "A Records"
 
@@ -130,6 +128,7 @@ class AAAARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     class Meta:
         """Meta attributes for AAAARecordModel."""
 
+        unique_together = [["name", "address", "zone"]]
         verbose_name = "AAAA Record"
         verbose_name_plural = "AAAA Records"
 
@@ -142,6 +141,7 @@ class CNAMERecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     class Meta:
         """Meta attributes for CNAMERecordModel."""
 
+        unique_together = [["name", "alias", "zone"]]
         verbose_name = "CNAME Record"
         verbose_name_plural = "CNAME Records"
 
@@ -159,6 +159,7 @@ class MXRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     class Meta:
         """Meta attributes for MXRecordModel."""
 
+        unique_together = [["name", "mail_server", "zone"]]
         verbose_name = "MX Record"
         verbose_name_plural = "MX Records"
 
@@ -171,6 +172,7 @@ class TXTRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     class Meta:
         """Meta attributes for TXTRecordModel."""
 
+        unique_together = [["name", "text", "zone"]]
         verbose_name = "TXT Record"
         verbose_name_plural = "TXT Records"
 
@@ -185,6 +187,7 @@ class PTRRecordModel(DNSRecordModel):
     class Meta:
         """Meta attributes for PTRRecordModel."""
 
+        unique_together = [["name", "ptrdname", "zone"]]
         verbose_name = "PTR Record"
         verbose_name_plural = "PTR Records"
 

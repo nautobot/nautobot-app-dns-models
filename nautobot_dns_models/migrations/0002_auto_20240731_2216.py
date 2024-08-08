@@ -6,71 +6,71 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('nautobot_dns_models', '0001_initial'),
+        ("nautobot_dns_models", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='aaaarecordmodel',
-            name='slug',
+            model_name="aaaarecordmodel",
+            name="slug",
         ),
         migrations.RemoveField(
-            model_name='arecordmodel',
-            name='slug',
+            model_name="arecordmodel",
+            name="slug",
         ),
         migrations.RemoveField(
-            model_name='cnamerecordmodel',
-            name='slug',
+            model_name="cnamerecordmodel",
+            name="slug",
         ),
         migrations.RemoveField(
-            model_name='mxrecordmodel',
-            name='slug',
+            model_name="mxrecordmodel",
+            name="slug",
         ),
         migrations.RemoveField(
-            model_name='nsrecordmodel',
-            name='slug',
+            model_name="nsrecordmodel",
+            name="slug",
         ),
         migrations.RemoveField(
-            model_name='ptrrecordmodel',
-            name='slug',
+            model_name="ptrrecordmodel",
+            name="slug",
         ),
         migrations.RemoveField(
-            model_name='txtrecordmodel',
-            name='slug',
+            model_name="txtrecordmodel",
+            name="slug",
         ),
         migrations.AlterField(
-            model_name='aaaarecordmodel',
-            name='comment',
+            model_name="aaaarecordmodel",
+            name="comment",
             field=models.CharField(blank=True, max_length=200),
         ),
         migrations.AlterField(
-            model_name='arecordmodel',
-            name='comment',
+            model_name="arecordmodel",
+            name="comment",
             field=models.CharField(blank=True, max_length=200),
         ),
         migrations.AlterField(
-            model_name='cnamerecordmodel',
-            name='comment',
+            model_name="cnamerecordmodel",
+            name="comment",
             field=models.CharField(blank=True, max_length=200),
         ),
         migrations.AlterField(
-            model_name='mxrecordmodel',
-            name='comment',
+            model_name="mxrecordmodel",
+            name="comment",
             field=models.CharField(blank=True, max_length=200),
         ),
         migrations.AlterField(
-            model_name='nsrecordmodel',
-            name='comment',
+            model_name="nsrecordmodel",
+            name="comment",
             field=models.CharField(blank=True, max_length=200),
         ),
         migrations.AlterField(
-            model_name='ptrrecordmodel',
-            name='comment',
+            model_name="ptrrecordmodel",
+            name="comment",
             field=models.CharField(blank=True, max_length=200),
         ),
         migrations.AlterField(
-            model_name='txtrecordmodel',
-            name='comment',
+            model_name="txtrecordmodel",
+            name="comment",
             field=models.CharField(blank=True, max_length=200),
         ),
     ]
