@@ -5,16 +5,14 @@ from nautobot.extras.filters import BaseFilterSet, NautobotFilterSet
 from nautobot_dns_models import models
 
 
-class DnsZoneModelFilterSet(NautobotFilterSet):
-    """Filter for DnsZoneModel."""
+class DNSZoneModelFilterSet(NautobotFilterSet):
+    """Filter for DNSZoneModel."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.DnsZoneModel
-
-        # add any fields from the model that you would like to filter your searches by using those
-        fields = ["id", "name", "slug", "description"]
+        model = models.DNSZoneModel
+        fields = "__all__"
 
 
 class NSRecordModelFilterSet(NautobotFilterSet):
@@ -24,9 +22,7 @@ class NSRecordModelFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = models.NSRecordModel
-
-        # add any fields from the model that you would like to filter your searches by using those
-        fields = ["id", "name", "slug", "description"]
+        fields = "__all__"
 
 
 class ARecordModelFilterSet(NautobotFilterSet):
@@ -36,9 +32,7 @@ class ARecordModelFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = models.ARecordModel
-
-        # add any fields from the model that you would like to filter your searches by using those
-        fields = ["id", "name", "slug", "description"]
+        fields = "__all__"
 
 
 class AAAARecordModelFilterSet(NautobotFilterSet):
@@ -48,9 +42,7 @@ class AAAARecordModelFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = models.AAAARecordModel
-
-        # add any fields from the model that you would like to filter your searches by using those
-        fields = ["id", "name", "slug", "description"]
+        fields = "__all__"
 
 
 class CNAMERecordModelFilterSet(NautobotFilterSet):
@@ -60,9 +52,7 @@ class CNAMERecordModelFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = models.CNAMERecordModel
-
-        # add any fields from the model that you would like to filter your searches by using those
-        fields = ["id", "name", "slug", "description"]
+        fields = "__all__"
 
 
 class MXRecordModelFilterSet(NautobotFilterSet):
@@ -72,9 +62,7 @@ class MXRecordModelFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = models.MXRecordModel
-
-        # add any fields from the model that you would like to filter your searches by using those
-        fields = ["id", "name", "slug", "description"]
+        fields = "__all__"
 
 
 class TXTRecordModelFilterSet(NautobotFilterSet):
@@ -84,9 +72,7 @@ class TXTRecordModelFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = models.TXTRecordModel
-
-        # add any fields from the model that you would like to filter your searches by using those
-        fields = ["id", "name", "slug", "description"]
+        fields = "__all__"
 
 
 class PTRRecordModelFilterSet(NautobotFilterSet):
@@ -96,9 +82,7 @@ class PTRRecordModelFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = models.PTRRecordModel
-
-        # add any fields from the model that you would like to filter your searches by using those
-        fields = ["id", "name", "slug", "description"]
+        fields = "__all__"
 
 
 # class SRVRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):

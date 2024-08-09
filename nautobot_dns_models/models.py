@@ -1,17 +1,11 @@
 """Models for Nautobot DNS Models."""
 
-# Django imports
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.urls import reverse
+from nautobot.apps.models import PrimaryModel, extras_features
+from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 
-
-# Nautobot imports
-from nautobot.core.models.fields import AutoSlugField
-from nautobot.apps.models import BaseModel, PrimaryModel
-from nautobot.extras.models.change_logging import ChangeLoggedModel
-
-
+# TODO: add extras_features
 # from nautobot.extras.utils import extras_features
 # If you want to use the extras_features decorator please reference the following documentation
 # https://nautobot.readthedocs.io/en/latest/plugins/development/#using-the-extras_features-decorator-for-graphql
@@ -21,10 +15,8 @@ from nautobot.extras.models.change_logging import ChangeLoggedModel
 # If you want to choose a specific model to overload in your class declaration, please reference the following documentation:
 # how to chose a database model: https://nautobot.readthedocs.io/en/stable/plugins/development/#database-models
 
-# class DnsModel
 
-
-class DnsModel(PrimaryModel):  # pylint: disable=too-many-ancestors
+class DNSModel(PrimaryModel):  # pylint: disable=too-many-ancestors
     """Abstract Model for Nautobot DNS Models."""
 
     class Meta:
@@ -38,20 +30,15 @@ class DnsModel(PrimaryModel):  # pylint: disable=too-many-ancestors
         # Option for fixing plural name (i.e. "Chicken Tenders" vs "Chicken Tendies")
         # verbose_name_plural = "Nautobot DNS Modelss"
 
-    # def get_absolute_url(self):
-    #     """Return detail view for DnsZoneModel."""
-    #     return reverse("plugins:nautobot_dns_models:dnszonemodel", args=[self.pk])
-
     def __str__(self):
         """Stringify instance."""
         return self.name
 
 
-class DnsZoneModel(PrimaryModel):  # pylint: disable=too-many-ancestors
+class DNSZoneModel(DNSModel):  # pylint: disable=too-many-ancestors
     """Model for DNS SOA Records. An SOA Record defines a DNS Zone."""
 
-    name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD.")
-    slug = AutoSlugField(populate_from="name")
+    name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD.", unique=True)
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
@@ -89,22 +76,12 @@ class DnsZoneModel(PrimaryModel):  # pylint: disable=too-many-ancestors
         help_text="Minimum TTL for records in this zone.",
     )
 
-    def get_absolute_url(self):
-        """Return the canonical URL for DnsZoneModel."""
-        return reverse("plugins:nautobot_dns_models:dnszonemodel", args=[self.pk])
 
-    def __str__(self):
-        """String representation of DnsZoneModel."""
-        return self.name
-
-
-class DnsRecordModel(DnsModel):  # pylint: disable=too-many-ancestors
+class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
     """Primary Dns Record model for plugin."""
 
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
-    zone = models.ForeignKey(
-        DnsZoneModel, on_delete=models.PROTECT, related_name="%(class)s", related_query_name="%(class)s"
-    )
+    zone = ForeignKeyWithAutoRelatedName(DNSZoneModel, on_delete=models.PROTECT)
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
@@ -117,91 +94,59 @@ class DnsRecordModel(DnsModel):  # pylint: disable=too-many-ancestors
         abstract = True
 
 
-class NSRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
+class NSRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """NS Record model."""
 
     server = models.CharField(max_length=200, help_text="FQDN of an authoritative Name Server.")
-    slug = AutoSlugField(populate_from="name")
 
     class Meta:
         """Meta attributes for NSRecordModel."""
 
+        unique_together = [["name", "server", "zone"]]
         verbose_name = "NS Record"
         verbose_name_plural = "NS Records"
 
-    def get_absolute_url(self):
-        """Return the canonical URL for NSRecordModel."""
-        return reverse("plugins:nautobot_dns_models:nsrecordmodel", args=[self.pk])
 
-    def __str__(self):
-        """String representation of NSRecordModel."""
-        return self.name
-
-
-class ARecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
+class ARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """A Record model."""
 
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
-    slug = AutoSlugField(populate_from="name")
 
     class Meta:
         """Meta attributes for ARecordModel."""
 
+        unique_together = [["name", "address", "zone"]]
         verbose_name = "A Record"
         verbose_name_plural = "A Records"
 
-    def get_absolute_url(self):
-        """Return the canonical URL for ARecordModel."""
-        return reverse("plugins:nautobot_dns_models:arecordmodel", args=[self.pk])
 
-    def __str__(self):
-        """String representation of ARecordModel."""
-        return self.name
-
-
-class AAAARecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
+class AAAARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """AAAA Record model."""
 
     address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
-    slug = AutoSlugField(populate_from="name")
 
     class Meta:
         """Meta attributes for AAAARecordModel."""
 
+        unique_together = [["name", "address", "zone"]]
         verbose_name = "AAAA Record"
         verbose_name_plural = "AAAA Records"
 
-    def get_absolute_url(self):
-        """Return the canonical URL for AAAARecordModel."""
-        return reverse("plugins:nautobot_dns_models:aaaarecordmodel", args=[self.pk])
 
-    def __str__(self):
-        """String representation of AAAARecordModel."""
-        return self.name
-
-
-class CNAMERecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
+class CNAMERecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """CNAME Record model."""
 
     alias = models.CharField(max_length=200, help_text="FQDN of the Alias.")
-    slug = AutoSlugField(populate_from="name")
 
     class Meta:
         """Meta attributes for CNAMERecordModel."""
 
+        unique_together = [["name", "alias", "zone"]]
         verbose_name = "CNAME Record"
         verbose_name_plural = "CNAME Records"
 
-    def get_absolute_url(self):
-        """Return the canonical URL for CNAMERecordModel."""
-        return reverse("plugins:nautobot_dns_models:cnamerecordmodel", args=[self.pk])
 
-    def __str__(self):
-        """String representation of CNAMERecordModel."""
-        return self.name
-
-
-class MXRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
+class MXRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """MX Record model."""
 
     preference = models.IntegerField(
@@ -210,61 +155,41 @@ class MXRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
         help_text="Preference for the MX Record.",
     )
     mail_server = models.CharField(max_length=200, help_text="FQDN of the Mail Server.")
-    slug = AutoSlugField(populate_from="name")
 
     class Meta:
         """Meta attributes for MXRecordModel."""
 
+        unique_together = [["name", "mail_server", "zone"]]
         verbose_name = "MX Record"
         verbose_name_plural = "MX Records"
 
-    def get_absolute_url(self):
-        """Return the canonical URL for MXRecordModel."""
-        return reverse("plugins:nautobot_dns_models:mxrecordmodel", args=[self.pk])
 
-    def __str__(self):
-        """String representation of MXRecordModel."""
-        return self.name
-
-
-class TXTRecordModel(DnsRecordModel):  # pylint: disable=too-many-ancestors
+class TXTRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """TXT Record model."""
 
     text = models.CharField(max_length=256, help_text="Text for the TXT Record.")
-    slug = AutoSlugField(populate_from="name")
 
     class Meta:
         """Meta attributes for TXTRecordModel."""
 
+        unique_together = [["name", "text", "zone"]]
         verbose_name = "TXT Record"
         verbose_name_plural = "TXT Records"
 
-    def get_absolute_url(self):
-        """Return the canonical URL for TXTRecordModel."""
-        return reverse("plugins:nautobot_dns_models:txtrecordmodel", args=[self.pk])
 
-    def __str__(self):
-        """String representation of TXTRecordModel."""
-        return self.name
-
-
-class PTRRecordModel(DnsRecordModel):
+class PTRRecordModel(DNSRecordModel):
     """PTR Record model."""
 
     ptrdname = models.CharField(
         max_length=200, help_text="A domain name that points to some location in the domain name space."
     )
-    slug = AutoSlugField(populate_from="name")
 
     class Meta:
         """Meta attributes for PTRRecordModel."""
 
+        unique_together = [["name", "ptrdname", "zone"]]
         verbose_name = "PTR Record"
         verbose_name_plural = "PTR Records"
-
-    def get_absolute_url(self):
-        """Return the canonical URL for PTRRecordModel."""
-        return reverse("plugins:nautobot_dns_models:ptrrecordmodel", args=[self.pk])
 
     def __str__(self):
         """String representation of PTRRecordModel."""

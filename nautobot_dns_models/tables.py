@@ -7,14 +7,13 @@ from nautobot_dns_models import models
 from nautobot_dns_models.template_code import DNS_RECORDS_NAME, DNS_RECORDS_TYPE, DNS_RECORDS_VALUE, DNS_RECORDS_ACTIONS
 
 
-class DnsZoneModelTable(BaseTable):
-    # pylint: disable=R0903
+class DNSZoneModelTable(BaseTable):  # pylint: disable=too-few-public-methods
     """Table for list view."""
 
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
     actions = ButtonsColumn(
-        models.DnsZoneModel,
+        models.DNSZoneModel,
         # Option for modifying the default action buttons on each row:
         # buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
@@ -24,7 +23,7 @@ class DnsZoneModelTable(BaseTable):
     class Meta(BaseTable.Meta):
         """Meta attributes."""
 
-        model = models.DnsZoneModel
+        model = models.DNSZoneModel
         fields = (
             "pk",
             "name",
@@ -77,8 +76,7 @@ class RecordsTable(tables.Table):
         )
 
 
-class NSRecordModelTable(BaseTable):
-    # pylint: disable=R0903
+class NSRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -110,8 +108,7 @@ class NSRecordModelTable(BaseTable):
         # )
 
 
-class ARecordModelTable(BaseTable):
-    # pylint: disable=R0903
+class ARecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -142,8 +139,7 @@ class ARecordModelTable(BaseTable):
         # )
 
 
-class AAAARecordModelTable(BaseTable):
-    # pylint: disable=R0903
+class AAAARecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -174,8 +170,7 @@ class AAAARecordModelTable(BaseTable):
         # )
 
 
-class CNAMERecordModelTable(BaseTable):
-    # pylint: disable=R0903
+class CNAMERecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -206,8 +201,7 @@ class CNAMERecordModelTable(BaseTable):
         # )
 
 
-class MXRecordModelTable(BaseTable):
-    # pylint: disable=R0903
+class MXRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -238,8 +232,7 @@ class MXRecordModelTable(BaseTable):
         # )
 
 
-class TXTRecordModelTable(BaseTable):
-    # pylint: disable=R0903
+class TXTRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -270,8 +263,7 @@ class TXTRecordModelTable(BaseTable):
         # )
 
 
-class PTRRecordModelTable(BaseTable):
-    # pylint: disable=R0903
+class PTRRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
     """Table for list view."""
 
     pk = ToggleColumn()
