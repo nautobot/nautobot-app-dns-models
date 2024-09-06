@@ -27,16 +27,25 @@ class DNSZoneModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         fields = (
             "pk",
             "name",
+            "ttl",
+            "filename",
             "description",
             "soa_expire",
+            "soa_rname",
+            "soa_refresh",
+            "soa_retry",
+            "soa_serial",
+            "soa_minimum",
         )
 
-        # Option for modifying the columns that show up in the list view by default:
-        # default_columns = (
-        #     "pk",
-        #     "name",
-        #     "description",
-        # )
+        default_columns = (
+            "pk",
+            "name",
+            "ttl",
+            "filename",
+            "soa_expire",
+            "soa_rname",
+        )
 
 
 class RecordsTable(tables.Table):
@@ -96,16 +105,21 @@ class NSRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         fields = (
             "pk",
             "name",
+            "server",
+            "zone",
             "description",
+            "comment",
+            "ttl",
             "actions",
         )
 
         # Option for modifying the columns that show up in the list view by default:
-        # default_columns = (
-        #     "pk",
-        #     "name",
-        #     "description",
-        # )
+        default_columns = (
+            "name",
+            "server",
+            "zone",
+            "ttl," "actions",
+        )
 
 
 class ARecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
@@ -127,16 +141,24 @@ class ARecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         fields = (
             "pk",
             "name",
+            "address",
+            "zone",
+            "comment",
+            "ttl",
             "description",
             "actions",
         )
 
         # Option for modifying the columns that show up in the list view by default:
-        # default_columns = (
-        #     "pk",
-        #     "name",
-        #     "description",
-        # )
+        default_columns = (
+            "pk",
+            "name",
+            "address",
+            "zone",
+            "comment",
+            "ttl",
+            "actions",
+        )
 
 
 class AAAARecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
@@ -158,16 +180,24 @@ class AAAARecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         fields = (
             "pk",
             "name",
+            "address",
+            "zone",
+            "comment",
+            "ttl",
             "description",
             "actions",
         )
 
         # Option for modifying the columns that show up in the list view by default:
-        # default_columns = (
-        #     "pk",
-        #     "name",
-        #     "description",
-        # )
+        default_columns = (
+            "pk",
+            "name",
+            "address",
+            "zone",
+            "comment",
+            "ttl",
+            "actions",
+        )
 
 
 class CNAMERecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
@@ -189,16 +219,24 @@ class CNAMERecordModelTable(BaseTable):  # pylint: disable=too-few-public-method
         fields = (
             "pk",
             "name",
+            "alias",
+            "zone",
+            "comment",
+            "ttl",
             "description",
             "actions",
         )
 
         # Option for modifying the columns that show up in the list view by default:
-        # default_columns = (
-        #     "pk",
-        #     "name",
-        #     "description",
-        # )
+        default_columns = (
+            "pk",
+            "name",
+            "alias",
+            "zone",
+            "comment",
+            "ttl",
+            "actions",
+        )
 
 
 class MXRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
@@ -220,16 +258,24 @@ class MXRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         fields = (
             "pk",
             "name",
+            "mail_server",
+            "zone",
+            "comment",
+            "ttl",
             "description",
             "actions",
         )
 
         # Option for modifying the columns that show up in the list view by default:
-        # default_columns = (
-        #     "pk",
-        #     "name",
-        #     "description",
-        # )
+        default_columns = (
+            "pk",
+            "name",
+            "mail_server",
+            "zone",
+            "comment",
+            "ttl",
+            "actions",
+        )
 
 
 class TXTRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
@@ -251,16 +297,24 @@ class TXTRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         fields = (
             "pk",
             "name",
+            "text",
+            "zone",
+            "comment",
+            "ttl",
             "description",
             "actions",
         )
 
         # Option for modifying the columns that show up in the list view by default:
-        # default_columns = (
-        #     "pk",
-        #     "name",
-        #     "description",
-        # )
+        default_columns = (
+            "pk",
+            "name",
+            "text",
+            "zone",
+            "comment",
+            "ttl",
+            "actions",
+        )
 
 
 class PTRRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
@@ -283,13 +337,20 @@ class PTRRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
             "pk",
             "name",
             "ptrdname",
+            "zone",
+            "comment",
+            "ttl",
             "description",
             "actions",
         )
 
         # Option for modifying the columns that show up in the list view by default:
-        # default_columns = (
-        #     "pk",
-        #     "name",
-        #     "description",
-        # )
+        default_columns = (
+            "pk",
+            "name",
+            "ptrdname",
+            "zone",
+            "comment",
+            "ttl",
+            "actions",
+        )

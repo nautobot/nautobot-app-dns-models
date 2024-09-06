@@ -115,6 +115,7 @@ class NSRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
         help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
+    server = forms.CharField(required=False, label="Server")
 
     class Meta:
         """Meta attributes."""
