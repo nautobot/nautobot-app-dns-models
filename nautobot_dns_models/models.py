@@ -35,6 +35,15 @@ class DNSModel(PrimaryModel):  # pylint: disable=too-many-ancestors
         return self.name
 
 
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
 class DNSZoneModel(DNSModel):  # pylint: disable=too-many-ancestors
     """Model for DNS SOA Records. An SOA Record defines a DNS Zone."""
 
@@ -76,6 +85,12 @@ class DNSZoneModel(DNSModel):  # pylint: disable=too-many-ancestors
         help_text="Minimum TTL for records in this zone.",
     )
 
+    class Meta:
+        """Meta attributes for DNSZoneModel."""
+
+        verbose_name = "DNS Zone"
+        verbose_name_plural = "DNS Zones"
+
 
 class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
     """Primary Dns Record model for plugin."""
@@ -94,6 +109,15 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
         abstract = True
 
 
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
 class NSRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """NS Record model."""
 
@@ -107,6 +131,15 @@ class NSRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
         verbose_name_plural = "NS Records"
 
 
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
 class ARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """A Record model."""
 
@@ -120,6 +153,15 @@ class ARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
         verbose_name_plural = "A Records"
 
 
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
 class AAAARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """AAAA Record model."""
 
@@ -133,6 +175,15 @@ class AAAARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
         verbose_name_plural = "AAAA Records"
 
 
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
 class CNAMERecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """CNAME Record model."""
 
@@ -146,6 +197,15 @@ class CNAMERecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
         verbose_name_plural = "CNAME Records"
 
 
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
 class MXRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """MX Record model."""
 
@@ -164,6 +224,15 @@ class MXRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
         verbose_name_plural = "MX Records"
 
 
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
 class TXTRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """TXT Record model."""
 
@@ -177,6 +246,15 @@ class TXTRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
         verbose_name_plural = "TXT Records"
 
 
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
 class PTRRecordModel(DNSRecordModel):
     """PTR Record model."""
 
