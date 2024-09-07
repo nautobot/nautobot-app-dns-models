@@ -6,7 +6,7 @@ from nautobot.core.tables import BaseTable, ButtonsColumn, ToggleColumn
 from nautobot_dns_models import models
 from nautobot_dns_models.template_code import DNS_RECORDS_NAME, DNS_RECORDS_TYPE, DNS_RECORDS_VALUE, DNS_RECORDS_ACTIONS
 
-
+# TODO: Create a BaseTable with links in Name & Zone fields and inherit all other tables from it.
 class DNSZoneModelTable(BaseTable):  # pylint: disable=too-few-public-methods
     """Table for list view."""
 
@@ -90,6 +90,7 @@ class NSRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
 
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
+    zone = tables.LinkColumn()
     actions = ButtonsColumn(
         models.NSRecordModel,
         buttons=("changelog", "edit", "delete"),
@@ -127,6 +128,8 @@ class ARecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
 
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
+    address = tables.LinkColumn()
+    zone = tables.LinkColumn()
     actions = ButtonsColumn(
         models.ARecordModel,
         # Option for modifying the default action buttons on each row:
