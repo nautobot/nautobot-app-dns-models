@@ -1,15 +1,5 @@
 # Nautobot DNS Models
 
-<!--
-Developer Note - Remove Me!
-
-The README will have certain links/images broken until the PR is merged into `develop`. Update the GitHub links with whichever branch you're using (main etc.) if different.
-
-The logo of the project is a placeholder (docs/images/icon-nautobot-dns-models.png) - please replace it with your app icon, making sure it's at least 200x200px and has a transparent background!
-
-To avoid extra work and temporary links, make sure that publishing docs (or merging a PR) is done at the same time as setting up the docs site on RTD, then test everything.
--->
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/nautobot/nautobot-plugin-dns-models/develop/docs/images/icon-nautobot-dns-models.png" class="logo" height="200px">
   <br>
@@ -25,6 +15,8 @@ To avoid extra work and temporary links, make sure that publishing docs (or merg
 
 > Developer Note: Add a long (2-3 paragraphs) description of what the App does, what problems it solves, what functionality it adds to Nautobot, what external systems it works with etc.
 
+The DNS models app adds specific DNS related models for managing DNS zones and records to Nautobot. The goal is to be able to manage a DNS configuration for a zone or sub-zone. These models can then be leveraged with 3rd party IPAM or DNS services in line with the rest of your network data. 
+
 ### Screenshots
 
 > Developer Note: Add any representative screenshots of the App in action. These images should also be added to the `docs/user/app_use_cases.md` section.
@@ -34,14 +26,6 @@ To avoid extra work and temporary links, make sure that publishing docs (or merg
 More screenshots can be found in the [Using the App](https://docs.nautobot.com/projects/nautobot-dns-models/en/latest/user/app_use_cases/) page in the documentation. Here's a quick overview of some of the plugin's added functionality:
 
 ![](https://raw.githubusercontent.com/nautobot/nautobot-plugin-dns-models/develop/docs/images/placeholder.png)
-
-## Try it out!
-
-> Developer Note: Only keep this section if appropriate. Update link to correct sandbox.
-
-This App is installed in the Nautobot Community Sandbox found over at [demo.nautobot.com](https://demo.nautobot.com/)!
-
-> For a full list of all the available always-on sandbox environments, head over to the main page on [networktocode.com](https://www.networktocode.com/nautobot/sandbox-environments/).
 
 ## Documentation
 
