@@ -12,7 +12,7 @@
 {% block content_left_page %}
     <div class="panel panel-default">
         <div class="panel-heading">
-            <strong>A Record</strong>
+            <strong>CNAME Record</strong>
         </div>
         <table class="table table-hover panel-body attr-table">
             <tr>
@@ -20,8 +20,8 @@
                 <td>{{ object.name }}</td>
             </tr>
             <tr>
-                <td>Address</td>
-                <td><a href="{%  url 'ipam:ipaddress' pk=object.address.pk %}">{{ object.address }}</a></td>
+                <td>Alias</td>
+                <td>{{ object.alias }}</td>
             </tr>
             <tr>
                 <td>Zone</td>
