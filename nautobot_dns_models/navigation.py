@@ -1,8 +1,6 @@
 """Menu items to the Nautobot navigation menu."""
 
-from nautobot.apps.ui import NavMenuButton, NavMenuItem, NavMenuTab, NavMenuGroup, NavMenuAddButton
-from nautobot.core.choices import ButtonColorChoices
-
+from nautobot.apps.ui import NavMenuAddButton, NavMenuGroup, NavMenuItem, NavMenuTab
 
 items = [
     NavMenuItem(

@@ -1,6 +1,6 @@
 """Filtering for nautobot_dns_models."""
 
-from nautobot.extras.filters import BaseFilterSet, NautobotFilterSet
+from nautobot.extras.filters import NautobotFilterSet
 
 from nautobot_dns_models import models
 
