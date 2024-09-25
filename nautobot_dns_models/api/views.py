@@ -1,15 +1,16 @@
 """API views for nautobot_dns_models."""
 
-from nautobot.core.api.views import ModelViewSet
+from nautobot.apps.api import NautobotModelViewSet
+
 from nautobot_dns_models.api.serializers import (
     AAAARecordModelSerializer,
     ARecordModelSerializer,
     CNAMERecordModelSerializer,
     DNSZoneModelSerializer,
     MXRecordModelSerializer,
-    TXTRecordModelSerializer,
-    PTRRecordModelSerializer,
     NSRecordModelSerializer,
+    PTRRecordModelSerializer,
+    TXTRecordModelSerializer,
 )
 from nautobot_dns_models.filters import (
     AAAARecordModelFilterSet,
@@ -17,9 +18,9 @@ from nautobot_dns_models.filters import (
     CNAMERecordModelFilterSet,
     DNSZoneModelFilterSet,
     MXRecordModelFilterSet,
-    TXTRecordModelFilterSet,
-    PTRRecordModelFilterSet,
     NSRecordModelFilterSet,
+    PTRRecordModelFilterSet,
+    TXTRecordModelFilterSet,
 )
 from nautobot_dns_models.models import (
     AAAARecordModel,
@@ -27,13 +28,13 @@ from nautobot_dns_models.models import (
     CNAMERecordModel,
     DNSZoneModel,
     MXRecordModel,
-    TXTRecordModel,
-    PTRRecordModel,
     NSRecordModel,
+    PTRRecordModel,
+    TXTRecordModel,
 )
 
 
-class DNSZoneModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
+class DNSZoneModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
     """DnsZoneModel API ViewSet."""
 
     queryset = DNSZoneModel.objects.all()
@@ -45,7 +46,7 @@ class DNSZoneModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     # http_method_names = ["get", "post", "put", "patch", "delete", "head", "options", "trace"]
 
 
-class NSRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
+class NSRecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
     """NSRecordModel API ViewSet."""
 
     queryset = NSRecordModel.objects.all()
@@ -55,7 +56,7 @@ class NSRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     lookup_field = "pk"
 
 
-class ARecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
+class ARecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
     """ARecordModel API ViewSet."""
 
     queryset = ARecordModel.objects.all()
@@ -65,7 +66,7 @@ class ARecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     lookup_field = "pk"
 
 
-class AAAARecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
+class AAAARecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
     """AAAARecordModel API ViewSet."""
 
     queryset = AAAARecordModel.objects.all()
@@ -75,7 +76,7 @@ class AAAARecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestor
     lookup_field = "pk"
 
 
-class CNameRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
+class CNameRecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
     """CNameRecordModel API ViewSet."""
 
     queryset = CNAMERecordModel.objects.all()
@@ -85,7 +86,7 @@ class CNameRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancesto
     lookup_field = "pk"
 
 
-class MXRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
+class MXRecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
     """MXRecordModel API ViewSet."""
 
     queryset = MXRecordModel.objects.all()
@@ -95,7 +96,7 @@ class MXRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     lookup_field = "pk"
 
 
-class TXTRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
+class TXTRecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
     """TXTRecordModel API ViewSet."""
 
     queryset = TXTRecordModel.objects.all()
@@ -105,7 +106,7 @@ class TXTRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
     lookup_field = "pk"
 
 
-class PTRRecordModelViewSet(ModelViewSet):  # pylint: disable=too-many-ancestors
+class PTRRecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
     """PTRRecordModel API ViewSet."""
 
     queryset = PTRRecordModel.objects.all()
