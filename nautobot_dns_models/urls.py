@@ -1,10 +1,6 @@
 """Django urlpatterns declaration for nautobot_dns_models plugin."""
 
-from django.urls import path
-from nautobot.extras.views import ObjectChangeLogView, ObjectNotesView
 from nautobot.apps.urls import NautobotUIViewSetRouter
-
-from nautobot_dns_models import models
 
 from nautobot_dns_models import views
 

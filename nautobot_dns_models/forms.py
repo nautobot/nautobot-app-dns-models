@@ -19,6 +19,7 @@ class DNSZoneModelForm(BootstrapMixin, forms.ModelForm):
         fields = [
             "name",
             "description",
+            "filename",
             "soa_mname",
             "soa_rname",
             "soa_refresh",

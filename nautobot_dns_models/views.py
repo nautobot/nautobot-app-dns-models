@@ -1,9 +1,9 @@
 """DNS Plugin Views."""
 
-from django.shortcuts import redirect
 from django_tables2 import RequestConfig
 from nautobot.apps import views
 from nautobot.core.views.paginator import EnhancedPaginator, get_paginate_count
+
 from nautobot_dns_models.api.serializers import (
     AAAARecordModelSerializer,
     ARecordModelSerializer,
@@ -11,8 +11,8 @@ from nautobot_dns_models.api.serializers import (
     DNSZoneModelSerializer,
     MXRecordModelSerializer,
     NSRecordModelSerializer,
-    TXTRecordModelSerializer,
     PTRRecordModelSerializer,
+    TXTRecordModelSerializer,
 )
 from nautobot_dns_models.filters import (
     AAAARecordModelFilterSet,
@@ -21,8 +21,8 @@ from nautobot_dns_models.filters import (
     DNSZoneModelFilterSet,
     MXRecordModelFilterSet,
     NSRecordModelFilterSet,
-    TXTRecordModelFilterSet,
     PTRRecordModelFilterSet,
+    TXTRecordModelFilterSet,
 )
 from nautobot_dns_models.forms import (
     AAAARecordModelBulkEditForm,
@@ -44,12 +44,12 @@ from nautobot_dns_models.forms import (
     NSRecordModelBulkEditForm,
     NSRecordModelFilterForm,
     NSRecordModelForm,
+    PTRRecordModelBulkEditForm,
+    PTRRecordModelFilterForm,
+    PTRRecordModelForm,
     TXTRecordModelBulkEditForm,
     TXTRecordModelFilterForm,
     TXTRecordModelForm,
-    PTRRecordModelForm,
-    PTRRecordModelBulkEditForm,
-    PTRRecordModelFilterForm,
 )
 from nautobot_dns_models.models import (
     AAAARecordModel,
@@ -58,8 +58,8 @@ from nautobot_dns_models.models import (
     DNSZoneModel,
     MXRecordModel,
     NSRecordModel,
-    TXTRecordModel,
     PTRRecordModel,
+    TXTRecordModel,
 )
 from nautobot_dns_models.tables import (
     AAAARecordModelTable,
@@ -68,9 +68,9 @@ from nautobot_dns_models.tables import (
     DNSZoneModelTable,
     MXRecordModelTable,
     NSRecordModelTable,
-    TXTRecordModelTable,
     PTRRecordModelTable,
     RecordsTable,
+    TXTRecordModelTable,
 )
 
 

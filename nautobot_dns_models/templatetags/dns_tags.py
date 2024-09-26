@@ -1,14 +1,14 @@
 """DNS template tags."""
 
 from django import template
-from django.urls import NoReverseMatch, reverse
-from django.utils.html import format_html
-from django.utils.safestring import mark_safe
-from django_jinja import library
+from django.urls import reverse
 
+# from django.utils.safestring import mark_safe
+from django_jinja import library
 from nautobot.core.utils import lookup
 
-HTML_NONE = mark_safe('<span class="text-muted">&mdash;</span>')  # noqa: S308
+# HTML_NONE = mark_safe('<span class="text-muted">&mdash;</span>')  # noqa: S308
+HTML_NONE = '<span class="text-muted">&mdash;</span>'
 
 register = template.Library()
 
