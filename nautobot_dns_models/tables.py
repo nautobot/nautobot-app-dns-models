@@ -1,7 +1,7 @@
 """Tables for nautobot_dns_models."""
 
 import django_tables2 as tables
-from nautobot.core.tables import BaseTable, ButtonsColumn, ToggleColumn
+from nautobot.apps.tables import BaseTable, ButtonsColumn, ToggleColumn
 
 from nautobot_dns_models import models
 from nautobot_dns_models.template_code import DNS_RECORDS_NAME, DNS_RECORDS_TYPE, DNS_RECORDS_VALUE, DNS_RECORDS_ACTIONS

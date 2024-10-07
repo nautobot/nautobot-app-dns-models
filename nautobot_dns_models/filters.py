@@ -83,38 +83,3 @@ class PTRRecordModelFilterSet(NautobotFilterSet):
 
         model = models.PTRRecordModel
         fields = "__all__"
-
-
-# class SRVRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
-#     """Filter for SRVRecordModel."""
-
-#     class Meta:
-#         """Meta attributes for filter."""
-
-#         model = models.SRVRecordModel
-
-#         # add any fields from the model that you would like to filter your searches by using those
-#         fields = ["id", "name", "slug", "description"]
-
-# class PTRRecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
-#     """Filter for PTRRecordModel."""
-
-#     class Meta:
-#         """Meta attributes for filter."""
-
-#         model = models.PTRRecordModel
-
-#         # add any fields from the model that you would like to filter your searches by using those
-#         fields = ["id", "name", "slug", "description"]
-
-
-# class SOARecordModelFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
-#     """Filter for SOARecordModel."""
-
-#     class Meta:
-#         """Meta attributes for filter."""
-
-#         model = models.SOARecordModel
-
-#         # add any fields from the model that you would like to filter your searches by using those
-#         fields = ["id", "name", "slug", "primary_ns", "contact", "refresh", "retry", "expire", "minimum", "description"]
