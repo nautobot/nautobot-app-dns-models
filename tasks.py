@@ -12,9 +12,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from distutils.util import strtobool
-from invoke import Collection, task as invoke_task
 import os
+import re
+from distutils.util import strtobool
+
+import toml
+from invoke import Collection
+from invoke import task as invoke_task
+from invoke.exceptions import Exit
 
 
 def is_truthy(arg):
@@ -32,15 +37,37 @@ def is_truthy(arg):
     return bool(strtobool(arg))
 
 
+def extract_required_versions():
+    """Extracts information from pyproject.toml."""
+    with open("pyproject.toml", "r", encoding="utf8") as pyproject:
+        parsed_toml = toml.load(pyproject)
+
+    NAUTOBOT_VERSION = parsed_toml["tool"]["poetry"]["dependencies"]["nautobot"]["version"].replace("^", "")
+    RAW_PYTHON_VERSION = parsed_toml["tool"]["poetry"]["dependencies"]["python"]
+
+    m = re.search(r"\D+(\d\.\d).*", RAW_PYTHON_VERSION)
+    if not m:
+        raise Exit(
+            f"Could not extract python version correctly. Input: {RAW_PYTHON_VERSION}",
+            1,
+        )
+
+    PYTHON_VERSION = m.group(1)
+
+    return dict(python_ver=PYTHON_VERSION, nautobot_ver=NAUTOBOT_VERSION)
+
+
+pyproject_values = extract_required_versions()
+
 # Use pyinvoke configuration for default values, see http://docs.pyinvoke.org/en/stable/concepts/configuration.html
 # Variables may be overwritten in invoke.yml or by the environment variables INVOKE_NAUTOBOT_DNS_MODELS_xxx
 namespace = Collection("nautobot_dns_models")
 namespace.configure(
     {
         "nautobot_dns_models": {
-            "nautobot_ver": "latest",
             "project_name": "nautobot_dns_models",
-            "python_ver": "3.8",
+            "nautobot_ver": pyproject_values["nautobot_ver"],
+            "python_ver": pyproject_values["python_ver"],
             "local": False,
             "compose_dir": os.path.join(os.path.dirname(__file__), "development"),
             "compose_files": [
@@ -75,22 +102,22 @@ def task(function=None, *args, **kwargs):
 
 
 def docker_compose(context, command, **kwargs):
-    """Helper function for running a specific docker-compose command with all appropriate parameters and environment.
+    """Helper function for running a specific docker compose command with all appropriate parameters and environment.
 
     Args:
         context (obj): Used to run specific commands
-        command (str): Command string to append to the "docker-compose ..." command, such as "build", "up", etc.
+        command (str): Command string to append to the "docker compose ..." command, such as "build", "up", etc.
         **kwargs: Passed through to the context.run() call.
     """
     build_env = {
-        # Note: 'docker-compose logs' will stop following after 60 seconds by default,
+        # Note: 'docker compose logs' will stop following after 60 seconds by default,
         # so we are overriding that by setting this environment variable.
         "COMPOSE_HTTP_TIMEOUT": context.nautobot_dns_models.compose_http_timeout,
         "NAUTOBOT_VER": context.nautobot_dns_models.nautobot_ver,
         "PYTHON_VER": context.nautobot_dns_models.python_ver,
     }
     compose_command_tokens = [
-        "docker-compose",
+        "docker compose",
         f"--project-name {context.nautobot_dns_models.project_name}",
         f'--project-directory "{context.nautobot_dns_models.compose_dir}"',
     ]
@@ -106,7 +133,7 @@ def docker_compose(context, command, **kwargs):
     if service is not None:
         compose_command_tokens.append(service)
 
-    print(f'Running docker-compose command "{command}"')
+    print(f'Running docker compose command "{command}"')
     compose_command = " ".join(compose_command_tokens)
 
     return context.run(compose_command, env=build_env, **kwargs)
@@ -157,6 +184,19 @@ def generate_packages(context):
     run_command(context, command)
 
 
+@task(
+    help={
+        "check": (
+            "If enabled, check for outdated dependencies in the poetry.lock file, "
+            "instead of generating a new one. (default: disabled)"
+        )
+    }
+)
+def lock(context, check=False):
+    """Generate poetry.lock inside the Nautobot container."""
+    run_command(context, f"poetry {'check' if check else 'lock --no-update'}")
+
+
 # ------------------------------------------------------------------------------
 # START / STOP / DEBUG
 # ------------------------------------------------------------------------------
@@ -205,13 +245,13 @@ def vscode(context):
 
 @task(
     help={
-        "service": "Docker-compose service name to view (default: nautobot)",
+        "service": "docker compose service name to view (default: nautobot)",
         "follow": "Follow logs",
         "tail": "Tail N number of lines or 'all'",
     }
 )
 def logs(context, service="nautobot", follow=False, tail=None):
-    """View the logs of a docker-compose service."""
+    """View the logs of a docker compose service."""
     command = "logs "
 
     if follow:
@@ -315,6 +355,38 @@ def docs(context):
         start(context, service="docs")
 
 
+@task
+def build_and_check_docs(context):
+    """Build documentation to be available within Nautobot."""
+    command = "mkdocs build --no-directory-urls --strict"
+    run_command(context, command)
+
+
+@task(name="help")
+def help_task(context):
+    """Print the help of available tasks."""
+    import tasks  # pylint: disable=all
+
+    root = Collection.from_module(tasks)
+    for task_name in sorted(root.task_names):
+        print(50 * "-")
+        print(f"invoke {task_name} --help")
+        context.run(f"invoke {task_name} --help")
+
+
+@task(
+    help={
+        "version": "Version of {{ cookiecutter.verbose_name }} to generate the release notes for.",
+    }
+)
+def generate_release_notes(context, version=""):
+    """Generate Release Notes using Towncrier."""
+    command = "env DJANGO_SETTINGS_MODULE=nautobot.core.settings towncrier build"
+    if version:
+        command += f" --version {version}"
+    run_command(context, command)
+
+
 # ------------------------------------------------------------------------------
 # TESTS
 # ------------------------------------------------------------------------------
@@ -356,12 +428,27 @@ def pylint(context):
     run_command(context, command)
 
 
-@task
-def pydocstyle(context):
-    """Run pydocstyle to validate docstring formatting adheres to NTC defined standards."""
-    # We exclude the /migrations/ directory since it is autogenerated code
-    command = "pydocstyle ."
-    run_command(context, command)
+@task(
+    help={
+        "action": "One of 'lint', 'format', or 'both'",
+        "fix": "Automatically fix selected action. May not be able to fix all.",
+        "output_format": "see https://docs.astral.sh/ruff/settings/#output-format",
+    },
+)
+def ruff(context, action="lint", fix=False, output_format="concise"):
+    """Run ruff to perform code formatting and/or linting."""
+    if action != "lint":
+        command = "ruff format"
+        if not fix:
+            command += " --check"
+        command += " ."
+        run_command(context, command)
+    if action != "format":
+        command = "ruff check"
+        if fix:
+            command += " --fix"
+        command += f" --output-format {output_format} ."
+        run_command(context, command)
 
 
 @task
@@ -433,12 +520,12 @@ def tests(context, failfast=False):
     # Sorted loosely from fastest to slowest
     print("Running black...")
     black(context)
+    print("Running ruff...")
+    ruff(context)
     print("Running flake8...")
     flake8(context)
     print("Running bandit...")
     bandit(context)
-    print("Running pydocstyle...")
-    pydocstyle(context)
     print("Running yamllint...")
     yamllint(context)
     print("Running pylint...")

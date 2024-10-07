@@ -1,21 +1,24 @@
-"""Menu items."""
+"""Menu items to the Nautobot navigation menu."""
 
-from nautobot.extras.plugins import PluginMenuButton, PluginMenuItem
-from nautobot.utilities.choices import ButtonColorChoices
+from nautobot.apps.ui import NavMenuAddButton, NavMenuGroup, NavMenuItem, NavMenuTab
 
-menu_items = (
-    PluginMenuItem(
+items = [
+    NavMenuItem(
         link="plugins:nautobot_dns_models:dnszonemodel_list",
-        link_text="Nautobot DNS Models",
+        name="DNS Zones",
         permissions=["nautobot_dns_models.view_dnszonemodel"],
         buttons=(
-            PluginMenuButton(
+            NavMenuAddButton(
                 link="plugins:nautobot_dns_models:dnszonemodel_add",
-                title="Add",
-                icon_class="mdi mdi-plus-thick",
-                color=ButtonColorChoices.GREEN,
                 permissions=["nautobot_dns_models.add_dnszonemodel"],
             ),
         ),
+    )
+]
+
+menu_items = (
+    NavMenuTab(
+        name="Plugins",
+        groups=(NavMenuGroup(name="Nautobot DNS Models", items=tuple(items)),),
     ),
 )

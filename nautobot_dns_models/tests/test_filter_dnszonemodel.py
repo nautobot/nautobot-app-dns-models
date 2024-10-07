@@ -1,15 +1,16 @@
 """Test DnsZoneModel Filter."""
+
 from django.test import TestCase
 from nautobot_dns_models import filters
 from nautobot_dns_models import models
 from nautobot_dns_models.tests import fixtures
 
 
-class DnsZoneModelFilterTestCase(TestCase):
+class DNSZoneModelFilterTestCase(TestCase):
     """DnsZoneModel Filter Test Case."""
 
-    queryset = models.DnsZoneModel.objects.all()
-    filterset = filters.DnsZoneModelFilterSet
+    queryset = models.DNSZoneModel.objects.all()
+    filterset = filters.DNSZoneModelFilterSet
 
     @classmethod
     def setUpTestData(cls):
@@ -19,11 +20,6 @@ class DnsZoneModelFilterTestCase(TestCase):
     def test_q_search_name(self):
         """Test using Q search with name of DnsZoneModel."""
         params = {"q": "Test One"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
-
-    def test_q_search_slug(self):
-        """Test using Q search with slug of DnsZoneModel."""
-        params = {"q": "test-one"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
     def test_q_invalid(self):

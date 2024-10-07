@@ -1,4 +1,5 @@
 """Plugin declaration for nautobot_dns_models."""
+
 # Metadata is inherited from Nautobot. If not including Nautobot in the environment, this should be added
 try:
     from importlib import metadata
@@ -8,10 +9,10 @@ except ImportError:
 
 __version__ = metadata.version(__name__)
 
-from nautobot.extras.plugins import PluginConfig
+from nautobot.apps import NautobotAppConfig
 
 
-class NautobotDnsModelsConfig(PluginConfig):
+class NautobotDnsModelsConfig(NautobotAppConfig):
     """Plugin configuration for the nautobot_dns_models plugin."""
 
     name = "nautobot_dns_models"
@@ -21,8 +22,8 @@ class NautobotDnsModelsConfig(PluginConfig):
     description = "Nautobot DNS Models."
     base_url = "dns"
     required_settings = []
-    min_version = "1.5.0"
-    max_version = "1.9999"
+    min_version = "2.0.0"
+    max_version = "2.9999"
     default_settings = {}
     caching_config = {}
 

@@ -8,20 +8,13 @@ readme = "README.md"
 homepage = "https://github.com/nautobot/nautobot-plugin-dns-models"
 repository = "https://github.com/nautobot/nautobot-plugin-dns-models"
 keywords = ["nautobot", "nautobot-plugin"]
-include = [
-    "LICENSE",
-    "README.md",
-]
-packages = [
-    { include = "nautobot_dns_models" },
-]
+include = ["LICENSE", "README.md"]
+packages = [{ include = "nautobot_dns_models" }]
 
 [tool.poetry.dependencies]
-python = "^3.7"
-# Required for Python 3.7 for now. See: https://stackoverflow.com/a/73932581/194311
-importlib-metadata = "4.13.0"
+python = ">=3.8,<3.12"
 # Used for local development
-nautobot = { version = "^1.5.0", optional = true }
+nautobot = {version = "^2.1.0", optional = true}
 
 [tool.poetry.dev-dependencies]
 bandit = "*"
@@ -33,29 +26,32 @@ django-debug-toolbar = "*"
 flake8 = "^3.9.2"
 invoke = "*"
 ipython = "*"
-pydocstyle = "*"
 pylint = "*"
 pylint-django = "*"
+pylint-nautobot = "*"
+ruff = "*"
 pytest = "*"
 yamllint = "*"
 Markdown = "*"
 toml = "*"
 # Rendering docs to HTML
-mkdocs = "1.3.1"
+mkdocs = "1.5.2"
 # Material for MkDocs theme
-mkdocs-material = "8.4.2"
+mkdocs-material = "9.1.15"
 # Render custom markdown for version added/changed/remove notes
 mkdocs-version-annotations = "1.0.0"
 # Automatic documentation from sources, for MkDocs
-mkdocstrings = "0.19"
-mkdocstrings-python = "0.7.1"
+mkdocstrings = "0.22.0"
+mkdocstrings-python = "1.5.2"
+gitpython = "^3.1.41"
+snakeviz = "^2.2.0"
 
 [tool.poetry.extras]
 nautobot = ["nautobot"]
 
 [tool.black]
 line-length = 120
-target-version = ['py37']
+target-version = ['py38', 'py39', 'py310', 'py311']
 include = '\.pyi?$'
 exclude = '''
 (
@@ -78,12 +74,12 @@ exclude = '''
 
 [tool.pylint.master]
 # Include the pylint_django plugin to avoid spurious warnings about Django patterns
-load-plugins="pylint_django"
-ignore=".venv"
+load-plugins = ["pylint_django", "pylint_nautobot"]
+ignore = ".venv"
 
 [tool.pylint.basic]
 # No docstrings required for private methods (Pylint default), or for test_ functions, or for inner Meta classes.
-no-docstring-rgx="^(_|test_|Meta$)"
+no-docstring-rgx = "^(_|test_|Meta$)"
 
 [tool.pylint.messages_control]
 # Line length is enforced by Black, so pylint doesn't need to check it.
@@ -99,24 +95,50 @@ notes = """,
     XXX,
     """
 
-[tool.pydocstyle]
+[tool.pylint-nautobot]
+supported_nautobot_versions = ["2"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py38"
+
+[tool.ruff.lint]
+select = [
+    "D",  # pydocstyle
+]
+ignore = [
+    # warning: `one-blank-line-before-class` (D203) and `no-blank-line-before-class` (D211) are incompatible.
+    "D203",  # 1 blank line required before class docstring
+
+    # D212 is enabled by default in google convention, and complains if we have a docstring like:
+    # """
+    # My docstring is on the line after the opening quotes instead of on the same line as them.
+    # """
+    # We've discussed and concluded that we consider this to be a valid style choice.
+    "D212",  # Multi-line docstring summary should start at the first line
+    "D213",  # Multi-line docstring summary should start at the second line
+
+    # Produces a lot of issues in the current codebase.
+    "D401",  # First line of docstring should be in imperative mood
+    "D407",  # Missing dashed underline after section
+    "D416",  # Section name ends in colon
+]
+
+[tool.ruff.lint.pydocstyle]
 convention = "google"
-inherit = false
-match = "(?!__init__).*\\.py"
-match-dir = "(?!tests|migrations|development)[^\\.].*"
-# D212 is enabled by default in google convention, and complains if we have a docstring like:
-# """
-# My docstring is on the line after the opening quotes instead of on the same line as them.
-# """
-# We've discussed and concluded that we consider this to be a valid style choice.
-add_ignore = "D212"
+
+[tool.ruff.lint.per-file-ignores]
+"nautobot_dns_models/migrations/*" = [
+    "D",  # pydocstyle
+]
+"nautobot_dns_models/tests/*" = [
+    "D",  # pydocstyle
+]
 
 [build-system]
 requires = ["poetry_core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
-testpaths = [
-    "tests"
-]
+testpaths = ["tests"]
 addopts = "-vv --doctest-modules"
