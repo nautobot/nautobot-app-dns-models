@@ -255,7 +255,7 @@ class TXTRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class PTRRecordModel(DNSRecordModel):
+class PTRRecordModel(DNSRecordModel): # pylint: disable=too-many-ancestors
     """PTR Record model."""
 
     ptrdname = models.CharField(
