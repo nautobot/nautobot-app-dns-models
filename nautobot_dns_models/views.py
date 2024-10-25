@@ -34,7 +34,6 @@ from nautobot_dns_models.forms import (
     CNAMERecordModelBulkEditForm,
     CNAMERecordModelFilterForm,
     CNAMERecordModelForm,
-    DNSZoneModelBulkCreateForm,
     DNSZoneModelBulkEditForm,
     DNSZoneModelFilterForm,
     DNSZoneModelForm,
@@ -78,7 +77,6 @@ class DNSZoneModelViewSet(views.NautobotUIViewSet):
     """DnsZoneModel UI ViewSet."""
 
     form_class = DNSZoneModelForm
-    bulk_create_form_class = DNSZoneModelBulkCreateForm
     bulk_update_form_class = DNSZoneModelBulkEditForm
     filterset_class = DNSZoneModelFilterSet
     filterset_form_class = DNSZoneModelFilterForm
