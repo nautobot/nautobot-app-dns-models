@@ -1,15 +1,24 @@
 """Forms for nautobot_dns_models."""
 
 from django import forms
+from nautobot.apps.forms import (
+    DynamicModelChoiceField,
+    DynamicModelMultipleChoiceField,
+    NautobotBulkEditForm,
+    NautobotModelForm,
+    TagFilterField,
+    TagsBulkEditFormMixin,
+)
 from nautobot.core.forms import (
     BootstrapMixin,
     BulkEditForm,
 )
+from nautobot.extras.forms import CustomFieldModelBulkEditFormMixin, NautobotFilterForm
 
 from nautobot_dns_models import models
 
 
-class DNSZoneModelForm(BootstrapMixin, forms.ModelForm):
+class DNSZoneModelForm(NautobotModelForm):
     """DnsZoneModel creation/edit form."""
 
     class Meta:
@@ -30,20 +39,7 @@ class DNSZoneModelForm(BootstrapMixin, forms.ModelForm):
         ]
 
 
-class DNSZoneModelBulkCreateForm(BootstrapMixin, forms.ModelForm):
-    """DnsZoneModel bulk create form."""
-
-    class Meta:
-        """Meta attributes."""
-
-        model = models.DNSZoneModel
-        fields = [
-            "name",
-            "description",
-        ]
-
-
-class DNSZoneModelBulkEditForm(BootstrapMixin, BulkEditForm):
+class DNSZoneModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     """DnsZoneModel bulk edit form."""
 
     pk = forms.ModelMultipleChoiceField(queryset=models.DNSZoneModel.objects.all(), widget=forms.MultipleHiddenInput)
@@ -57,7 +53,7 @@ class DNSZoneModelBulkEditForm(BootstrapMixin, BulkEditForm):
         ]
 
 
-class DNSZoneModelFilterForm(BootstrapMixin, forms.ModelForm):
+class DNSZoneModelFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -66,19 +62,15 @@ class DNSZoneModelFilterForm(BootstrapMixin, forms.ModelForm):
         help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
-
-    class Meta:
-        """Meta attributes."""
-
-        model = models.DNSZoneModel
-        # Define the fields above for ordering and widget purposes
-        fields = [
-            "q",
-            "name",
-        ]
+    model = models.DNSZoneModel
+    # Define the fields above for ordering and widget purposes
+    fields = [
+        "q",
+        "name",
+    ]
 
 
-class NSRecordModelForm(BootstrapMixin, forms.ModelForm):
+class NSRecordModelForm(NautobotModelForm):
     """NSRecordModel creation/edit form."""
 
     class Meta:
@@ -93,7 +85,7 @@ class NSRecordModelForm(BootstrapMixin, forms.ModelForm):
         ]
 
 
-class NSRecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
+class NSRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     """NSRecordModel bulk edit form."""
 
     pk = forms.ModelMultipleChoiceField(queryset=models.NSRecordModel.objects.all(), widget=forms.MultipleHiddenInput)
@@ -107,7 +99,7 @@ class NSRecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
         ]
 
 
-class NSRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
+class NSRecordModelFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -117,20 +109,16 @@ class NSRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
     )
     name = forms.CharField(required=False, label="Name")
     server = forms.CharField(required=False, label="Server")
-
-    class Meta:
-        """Meta attributes."""
-
-        model = models.NSRecordModel
-        # Define the fields above for ordering and widget purposes
-        fields = [
-            "q",
-            "name",
-            "description",
-        ]
+    model = models.NSRecordModel
+    # Define the fields above for ordering and widget purposes
+    fields = [
+        "q",
+        "name",
+        "description",
+    ]
 
 
-class ARecordModelForm(BootstrapMixin, forms.ModelForm):
+class ARecordModelForm(NautobotModelForm):
     """ARecordModel creation/edit form."""
 
     class Meta:
@@ -147,7 +135,7 @@ class ARecordModelForm(BootstrapMixin, forms.ModelForm):
         ]
 
 
-class ARecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
+class ARecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     """ARecordModel bulk edit form."""
 
     pk = forms.ModelMultipleChoiceField(queryset=models.ARecordModel.objects.all(), widget=forms.MultipleHiddenInput)
@@ -161,7 +149,7 @@ class ARecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
         ]
 
 
-class ARecordModelFilterForm(BootstrapMixin, forms.ModelForm):
+class ARecordModelFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -171,20 +159,16 @@ class ARecordModelFilterForm(BootstrapMixin, forms.ModelForm):
     )
     name = forms.CharField(required=False, label="Name")
     zone = forms.CharField(required=False, label="Zone")
-
-    class Meta:
-        """Meta attributes."""
-
-        model = models.ARecordModel
-        # Define the fields above for ordering and widget purposes
-        fields = [
-            "q",
-            "name",
-            "description",
-        ]
+    model = models.ARecordModel
+    # Define the fields above for ordering and widget purposes
+    fields = [
+        "q",
+        "name",
+        "description",
+    ]
 
 
-class AAAARecordModelForm(BootstrapMixin, forms.ModelForm):
+class AAAARecordModelForm(NautobotModelForm):
     """AAAARecordModel creation/edit form."""
 
     class Meta:
@@ -201,7 +185,7 @@ class AAAARecordModelForm(BootstrapMixin, forms.ModelForm):
         ]
 
 
-class AAAARecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
+class AAAARecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     """AAAARecordModel bulk edit form."""
 
     pk = forms.ModelMultipleChoiceField(queryset=models.AAAARecordModel.objects.all(), widget=forms.MultipleHiddenInput)
@@ -215,7 +199,7 @@ class AAAARecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
         ]
 
 
-class AAAARecordModelFilterForm(BootstrapMixin, forms.ModelForm):
+class AAAARecordModelFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -224,20 +208,16 @@ class AAAARecordModelFilterForm(BootstrapMixin, forms.ModelForm):
         help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
-
-    class Meta:
-        """Meta attributes."""
-
-        model = models.AAAARecordModel
-        # Define the fields above for ordering and widget purposes
-        fields = [
-            "q",
-            "name",
-            "description",
-        ]
+    model = models.AAAARecordModel
+    # Define the fields above for ordering and widget purposes
+    fields = [
+        "q",
+        "name",
+        "description",
+    ]
 
 
-class CNAMERecordModelForm(BootstrapMixin, forms.ModelForm):
+class CNAMERecordModelForm(NautobotModelForm):
     """CNAMERecordModel creation/edit form."""
 
     class Meta:
@@ -252,7 +232,7 @@ class CNAMERecordModelForm(BootstrapMixin, forms.ModelForm):
         ]
 
 
-class CNAMERecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
+class CNAMERecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     """CNAMERecordModel bulk edit form."""
 
     pk = forms.ModelMultipleChoiceField(
@@ -268,7 +248,7 @@ class CNAMERecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
         ]
 
 
-class CNAMERecordModelFilterForm(BootstrapMixin, forms.ModelForm):
+class CNAMERecordModelFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -277,20 +257,16 @@ class CNAMERecordModelFilterForm(BootstrapMixin, forms.ModelForm):
         help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
-
-    class Meta:
-        """Meta attributes."""
-
-        model = models.CNAMERecordModel
-        # Define the fields above for ordering and widget purposes
-        fields = [
-            "q",
-            "name",
-            "description",
-        ]
+    model = models.CNAMERecordModel
+    # Define the fields above for ordering and widget purposes
+    fields = [
+        "q",
+        "name",
+        "description",
+    ]
 
 
-class MXRecordModelForm(BootstrapMixin, forms.ModelForm):
+class MXRecordModelForm(NautobotModelForm):
     """MXRecordModel creation/edit form."""
 
     class Meta:
@@ -306,7 +282,7 @@ class MXRecordModelForm(BootstrapMixin, forms.ModelForm):
         ]
 
 
-class MXRecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
+class MXRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     """MXRecordModel bulk edit form."""
 
     pk = forms.ModelMultipleChoiceField(queryset=models.MXRecordModel.objects.all(), widget=forms.MultipleHiddenInput)
@@ -320,7 +296,7 @@ class MXRecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
         ]
 
 
-class MXRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
+class MXRecordModelFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -329,21 +305,17 @@ class MXRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
         help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
-
-    class Meta:
-        """Meta attributes."""
-
-        model = models.MXRecordModel
-        # Define the fields above for ordering and widget purposes
-        fields = [
-            "q",
-            "name",
-            "preference",
-            "description",
-        ]
+    model = models.MXRecordModel
+    # Define the fields above for ordering and widget purposes
+    fields = [
+        "q",
+        "name",
+        "preference",
+        "description",
+    ]
 
 
-class TXTRecordModelForm(BootstrapMixin, forms.ModelForm):
+class TXTRecordModelForm(NautobotModelForm):
     """TXTRecordModel creation/edit form."""
 
     class Meta:
@@ -358,7 +330,7 @@ class TXTRecordModelForm(BootstrapMixin, forms.ModelForm):
         ]
 
 
-class TXTRecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
+class TXTRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     """TXTRecordModel bulk edit form."""
 
     pk = forms.ModelMultipleChoiceField(queryset=models.TXTRecordModel.objects.all(), widget=forms.MultipleHiddenInput)
@@ -372,7 +344,7 @@ class TXTRecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
         ]
 
 
-class TXTRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
+class TXTRecordModelFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -381,20 +353,16 @@ class TXTRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
         help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
-
-    class Meta:
-        """Meta attributes."""
-
-        model = models.TXTRecordModel
-        # Define the fields above for ordering and widget purposes
-        fields = [
-            "q",
-            "name",
-            "description",
-        ]
+    model = models.TXTRecordModel
+    # Define the fields above for ordering and widget purposes
+    fields = [
+        "q",
+        "name",
+        "description",
+    ]
 
 
-class PTRRecordModelForm(BootstrapMixin, forms.ModelForm):
+class PTRRecordModelForm(NautobotModelForm):
     """PTRRecordModel creation/edit form."""
 
     class Meta:
@@ -411,7 +379,7 @@ class PTRRecordModelForm(BootstrapMixin, forms.ModelForm):
         ]
 
 
-class PTRRecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
+class PTRRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     """PTRRecordModel bulk edit form."""
 
     pk = forms.ModelMultipleChoiceField(queryset=models.PTRRecordModel.objects.all(), widget=forms.MultipleHiddenInput)
@@ -425,7 +393,7 @@ class PTRRecordModelBulkEditForm(BootstrapMixin, BulkEditForm):
         ]
 
 
-class PTRRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
+class PTRRecordModelFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -434,14 +402,10 @@ class PTRRecordModelFilterForm(BootstrapMixin, forms.ModelForm):
         help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
-
-    class Meta:
-        """Meta attributes."""
-
-        model = models.PTRRecordModel
-        # Define the fields above for ordering and widget purposes
-        fields = [
-            "q",
-            "name",
-            "description",
-        ]
+    model = models.PTRRecordModel
+    # Define the fields above for ordering and widget purposes
+    fields = [
+        "q",
+        "name",
+        "description",
+    ]
