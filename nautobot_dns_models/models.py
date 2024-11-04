@@ -61,7 +61,7 @@ class DNSZoneModel(DNSModel):  # pylint: disable=too-many-ancestors
     soa_rname = models.EmailField(help_text="Admin Email for the Zone in the form")
     soa_refresh = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
-        default="86400",
+        default=86400,
         help_text="Number of seconds after which secondary name servers should query the master for the SOA record, to detect zone changes.",
     )
     soa_retry = models.IntegerField(
