@@ -157,9 +157,6 @@ class ARecordModelFilterTestCase(TestCase):
     #     self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
 
-# TODO: add more filters test cases
-
-
 class AAAARecordModelFilterTestCase(TestCase):
     """AAAARecordModel Filter Test Case."""
 

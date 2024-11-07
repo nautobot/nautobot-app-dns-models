@@ -198,7 +198,7 @@ class PTRRecordModelViewSet(views.NautobotUIViewSet):
     """PTRRecordModel UI ViewSet."""
 
     form_class = PTRRecordModelForm
-    bulk_edit_form_class = PTRRecordModelBulkEditForm
+    bulk_update_form_class = PTRRecordModelBulkEditForm
     filterset_class = PTRRecordModelFilterSet
     filterset_form_class = PTRRecordModelFilterForm
     serializer_class = PTRRecordModelSerializer

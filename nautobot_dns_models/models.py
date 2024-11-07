@@ -5,7 +5,6 @@ from django.db import models
 from nautobot.apps.models import PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 
-# TODO: add extras_features
 # from nautobot.extras.utils import extras_features
 # If you want to use the extras_features decorator please reference the following documentation
 # https://nautobot.readthedocs.io/en/latest/plugins/development/#using-the-extras_features-decorator-for-graphql
