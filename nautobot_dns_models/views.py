@@ -90,7 +90,6 @@ class DNSZoneModelViewSet(views.NautobotUIViewSet):
         # instance will be true if it's not a list view
         child_records = []
         if instance is not None:
-            # record, name, value, description, url
             for record in instance.a_records.all():
                 child_records.append(record)
             for record in instance.aaaa_records.all():
@@ -102,6 +101,8 @@ class DNSZoneModelViewSet(views.NautobotUIViewSet):
             for record in instance.txt_records.all():
                 child_records.append(record)
             for record in instance.ns_records.all():
+                child_records.append(record)
+            for record in instance.ptr_records.all():
                 child_records.append(record)
 
         records_table = RecordsTable(
