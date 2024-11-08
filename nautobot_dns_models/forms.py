@@ -362,6 +362,7 @@ class TXTRecordModelFilterForm(NautobotFilterForm):
     ]
 
 
+# TODO: check if we need all those fields as necessary
 class PTRRecordModelForm(NautobotModelForm):
     """PTRRecordModel creation/edit form."""
 
@@ -407,5 +408,7 @@ class PTRRecordModelFilterForm(NautobotFilterForm):
     fields = [
         "q",
         "name",
+        "ttl",
+        "comment",
         "description",
     ]

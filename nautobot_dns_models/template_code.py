@@ -22,8 +22,8 @@ DNS_RECORDS_VALUE = """{% load helpers %}
                 {{ record.mail_server }}
             {% elif record_model in "txtrecordmodel" %}
                 {{ record.text }}
-            {% elif record_model in "txtrecordmodel" %}
-                {{ record.text }}
+            {% elif record_model in "ptrrecordmodel" %}
+                {{ record.ptrdname }}
             {% endif %}
         {% endwith %}
 """

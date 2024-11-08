@@ -289,4 +289,35 @@ class TXTRecordModelFormTestCase(TestCase):
         self.assertTrue(form.save())
 
 
-# TODO: add PTRRecordModelFormTestCase unittests, similar to the above.
+class PTRRecordModelFormTestCase(TestCase):
+    """Test PTRRecordModel forms."""
+
+    form_class = forms.PTRRecordModelForm
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com")
+
+    def test_specifying_only_required_success(self):
+        data = {
+            "name": "ptr-record",
+            "ptrdname": "ptr-record",
+            "ttl": 3600,
+            "zone": self.dns_zone,
+        }
+        form = self.form_class(data)
+        self.assertTrue(form.is_valid())
+        self.assertTrue(form.save())
+
+    def test_specifying_all_fields_success(self):
+        data = {
+            "name": "ptr-record",
+            "ptrdname": "ptr-record",
+            "ttl": 3600,
+            "comment": "example-comment",
+            "zone": self.dns_zone,
+            "description": "this is a boring description",
+        }
+        form = self.form_class(data)
+        self.assertTrue(form.is_valid())
+        self.assertTrue(form.save())

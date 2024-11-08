@@ -5,7 +5,6 @@ from django.db import models
 from nautobot.apps.models import PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 
-# TODO: add extras_features
 # from nautobot.extras.utils import extras_features
 # If you want to use the extras_features decorator please reference the following documentation
 # https://nautobot.readthedocs.io/en/latest/plugins/development/#using-the-extras_features-decorator-for-graphql
@@ -61,7 +60,7 @@ class DNSZoneModel(DNSModel):  # pylint: disable=too-many-ancestors
     soa_rname = models.EmailField(help_text="Admin Email for the Zone in the form")
     soa_refresh = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
-        default="86400",
+        default=86400,
         help_text="Number of seconds after which secondary name servers should query the master for the SOA record, to detect zone changes.",
     )
     soa_retry = models.IntegerField(
