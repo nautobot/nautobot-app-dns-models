@@ -2010,13 +2010,13 @@ files = [
 
 [[package]]
 name = "nautobot"
-version = "2.3.8"
+version = "2.3.10"
 description = "Source of truth and network automation platform."
 optional = true
 python-versions = "<3.13,>=3.8"
 files = [
-    {file = "nautobot-2.3.8-py3-none-any.whl", hash = "sha256:1624480705158ba29fb3c9e0dc3d80e4809115b9a8584a90a787f3e7b37b484c"},
-    {file = "nautobot-2.3.8.tar.gz", hash = "sha256:25319ccec7f99478b506d899159e02f02c8dcf61cd14c68401787a6e1e301dd1"},
+    {file = "nautobot-2.3.10-py3-none-any.whl", hash = "sha256:229e49b6cd21e4b6e7be451d589652ec0c0c88a7de94d48f150c31ac907065f1"},
+    {file = "nautobot-2.3.10.tar.gz", hash = "sha256:2df912402d15e7dda32ed09fe17daeff1fc353423588d3761abb1e82cee4038f"},
 ]
 
 [package.dependencies]
@@ -2059,7 +2059,7 @@ nh3 = ">=0.2.15,<0.3.0"
 packaging = ">=23.1"
 Pillow = ">=10.3.0,<10.4.0"
 prometheus-client = ">=0.20.0,<0.21.0"
-psycopg2-binary = ">=2.9.9,<2.10.0"
+psycopg2-binary = ">=2.9.10,<2.10.0"
 python-slugify = ">=8.0.3,<8.1.0"
 pyuwsgi = ">=2.0.26,<2.1.0"
 PyYAML = ">=6.0.2,<6.1.0"
@@ -2067,9 +2067,9 @@ social-auth-app-django = ">=5.4.2,<5.5.0"
 svgwrite = ">=1.4.2,<1.5.0"
 
 [package.extras]
-all = ["django-auth-ldap (>=4.8.0,<4.9.0)", "django-storages (==1.14.3)", "mysqlclient (>=2.2.3,<2.3.0)", "napalm (>=4.1.0,<6.0.0)", "social-auth-core[saml] (>=4.5.3,<4.6.0)"]
+all = ["django-auth-ldap (>=4.8.0,<4.9.0)", "django-storages (==1.14.3)", "mysqlclient (>=2.2.5,<2.3.0)", "napalm (>=4.1.0,<6.0.0)", "social-auth-core[saml] (>=4.5.3,<4.6.0)"]
 ldap = ["django-auth-ldap (>=4.8.0,<4.9.0)"]
-mysql = ["mysqlclient (>=2.2.3,<2.3.0)"]
+mysql = ["mysqlclient (>=2.2.5,<2.3.0)"]
 napalm = ["napalm (>=4.1.0,<6.0.0)"]
 remote-storage = ["django-storages (==1.14.3)"]
 sso = ["social-auth-core[saml] (>=4.5.3,<4.6.0)"]
@@ -3658,4 +3658,4 @@ nautobot = ["nautobot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "a260a6bf10890501ef0c01b83771bae461186c35b2a87187e903c5333107e3f2"
+content-hash = "43c41539db036b22ad2eca7d1acaf4f03404896f45c84fe9e912f97578d5b6d0"

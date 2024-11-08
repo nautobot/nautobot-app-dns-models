@@ -14,7 +14,7 @@ packages = [{ include = "nautobot_dns_models" }]
 [tool.poetry.dependencies]
 python = ">=3.8,<3.12"
 # Used for local development
-nautobot = {version = "^2.1.0", optional = true}
+nautobot = {version = "^2.3.0", optional = true}
 
 [tool.poetry.dev-dependencies]
 bandit = "*"
