@@ -5,7 +5,7 @@ from django.urls import path
 from django.views.generic import RedirectView
 from nautobot.apps.urls import NautobotUIViewSetRouter
 
-from dns_models import views
+from nautobot_dns_models import views
 
 router = NautobotUIViewSetRouter()
 router.register("dnszonemodel", views.DnsZoneModelUIViewSet)

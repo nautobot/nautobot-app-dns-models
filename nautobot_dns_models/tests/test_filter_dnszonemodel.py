@@ -2,8 +2,8 @@
 
 from django.test import TestCase
 
-from dns_models import filters, models
-from dns_models.tests import fixtures
+from nautobot_dns_models import filters, models
+from nautobot_dns_models.tests import fixtures
 
 
 class DnsZoneModelFilterTestCase(TestCase):

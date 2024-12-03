@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "dns-models"
+name = "nautobot-dns-models"
 version = "0.1.0"
 description = "Nautobot DNS Models"
 authors = ["Network to Code, LLC <info@networktocode.com>"]
@@ -20,11 +20,11 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 packages = [
-    { include = "dns_models" },
+    { include = "nautobot_dns_models" },
 ]
 include = [
     # Poetry by default will exclude files that are in .gitignore
-    "dns_models/static/dns_models/docs/**/*",
+    "nautobot_dns_models/static/nautobot_dns_models/docs/**/*",
 ]
 
 [tool.poetry.dependencies]
@@ -122,10 +122,10 @@ ignore = [
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"dns_models/migrations/*" = [
+"nautobot_dns_models/migrations/*" = [
     "D",
 ]
-"dns_models/tests/*" = [
+"nautobot_dns_models/tests/*" = [
     "D",
     "S"
 ]
@@ -135,7 +135,7 @@ requires = ["poetry_core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.towncrier]
-package = "dns_models"
+package = "nautobot_dns_models"
 directory = "changes"
 filename = "docs/admin/release_notes/version_X.Y.md"
 template = "development/towncrier_template.j2"

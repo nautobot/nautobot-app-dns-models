@@ -2,8 +2,8 @@
 
 from nautobot.apps.views import NautobotUIViewSet
 
-from dns_models import filters, forms, models, tables
-from dns_models.api import serializers
+from nautobot_dns_models import filters, forms, models, tables
+from nautobot_dns_models.api import serializers
 
 
 class DnsZoneModelUIViewSet(NautobotUIViewSet):

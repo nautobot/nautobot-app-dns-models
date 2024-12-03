@@ -2,7 +2,7 @@
 
 from django.test import TestCase
 
-from dns_models import models
+from nautobot_dns_models import models
 
 
 class TestDnsZoneModel(TestCase):

@@ -3,7 +3,7 @@
 from django import forms
 from nautobot.apps.forms import NautobotBulkEditForm, NautobotFilterForm, NautobotModelForm, TagsBulkEditFormMixin
 
-from dns_models import models
+from nautobot_dns_models import models
 
 
 class DnsZoneModelForm(NautobotModelForm):  # pylint: disable=too-many-ancestors

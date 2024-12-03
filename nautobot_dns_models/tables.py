@@ -3,7 +3,7 @@
 import django_tables2 as tables
 from nautobot.apps.tables import BaseTable, ButtonsColumn, ToggleColumn
 
-from dns_models import models
+from nautobot_dns_models import models
 
 
 class DnsZoneModelTable(BaseTable):

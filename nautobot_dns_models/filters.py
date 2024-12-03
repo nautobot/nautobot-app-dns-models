@@ -2,7 +2,7 @@
 
 from nautobot.apps.filters import NameSearchFilterSet, NautobotFilterSet
 
-from dns_models import models
+from nautobot_dns_models import models
 
 
 class DnsZoneModelFilterSet(NautobotFilterSet, NameSearchFilterSet):  # pylint: disable=too-many-ancestors

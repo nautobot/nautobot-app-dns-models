@@ -2,8 +2,8 @@
 
 from nautobot.apps.testing import APIViewTestCases
 
-from dns_models import models
-from dns_models.tests import fixtures
+from nautobot_dns_models import models
+from nautobot_dns_models.tests import fixtures
 
 
 class DnsZoneModelAPIViewTest(APIViewTestCases.APIViewTestCase):

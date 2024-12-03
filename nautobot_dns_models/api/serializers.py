@@ -2,7 +2,7 @@
 
 from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixin
 
-from dns_models import models
+from nautobot_dns_models import models
 
 
 class DnsZoneModelSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):  # pylint: disable=too-many-ancestors
