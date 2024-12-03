@@ -4,7 +4,7 @@ edit_uri: "edit/develop/docs"
 site_dir: "nautobot_dns_models/static/nautobot_dns_models/docs"
 site_name: "Nautobot DNS Models Documentation"
 site_url: "https://docs.nautobot.com/projects/nautobot-dns-models/en/latest/"
-repo_url: "https://github.com/nautobot/nautobot-plugin-dns-models"
+repo_url: "https://github.com/nautobot/nautobot-app-dns-models"
 copyright: "Copyright &copy; The Authors"
 theme:
   name: "material"
@@ -68,6 +68,8 @@ extra:
       link: "https://twitter.com/networktocode"
       name: "Network to Code Twitter"
 markdown_extensions:
+  - "markdown_version_annotations":
+      admonition_tag: "???"
   - "admonition"
   - "toc":
       permalink: true
@@ -81,7 +83,6 @@ markdown_extensions:
   - "footnotes"
 plugins:
   - "search"
-  - "mkdocs-version-annotations"
   - "mkdocstrings":
       default_handler: "python"
       handlers:

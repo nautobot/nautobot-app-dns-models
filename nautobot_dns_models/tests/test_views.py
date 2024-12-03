@@ -15,7 +15,6 @@ from nautobot_dns_models.models import (
     PTRRecordModel,
     TXTRecordModel,
 )
-from nautobot_dns_models.tests import fixtures
 
 User = get_user_model()
 

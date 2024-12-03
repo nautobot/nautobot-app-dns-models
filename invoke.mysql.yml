@@ -1,9 +1,9 @@
 ---
-nautobot_dns_models:
-  project_name: "nautobot-dns-models"
-  nautobot_ver: "latest"
+dns_models:
+  project_name: "dns-models"
+  nautobot_ver: "2.4.0"
   local: false
-  python_ver: "3.8"
+  python_ver: "3.11"
   compose_dir: "development"
   compose_files:
     - "docker-compose.base.yml"
