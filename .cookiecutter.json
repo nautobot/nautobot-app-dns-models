@@ -1,0 +1,33 @@
+{
+    "cookiecutter": {
+        "codeowner_github_usernames": "@scetron @gertzakis",
+        "full_name": "Network to Code, LLC",
+        "email": "info@networktocode.com",
+        "github_org": "nautobot",
+        "app_name": "dns_models",
+        "verbose_name": "Nautobot DNS Models",
+        "app_slug": "dns-models",
+        "project_slug": "nautobot-app-dns-models",
+        "repo_url": "https://github.com/nautobot/nautobot-app-dns-models",
+        "base_url": "dns",
+        "min_nautobot_version": "2.4.0",
+        "max_nautobot_version": "2.9999",
+        "camel_name": "NautobotDnsModels",
+        "project_short_description": "Nautobot DNS Models",
+        "model_class_name": "DnsZoneModel",
+        "open_source_license": "Apache-2.0",
+        "docs_base_url": "https://docs.nautobot.com",
+        "docs_app_url": "https://docs.nautobot.com/projects/nautobot-dns-models/en/latest",
+        "_drift_manager": {
+            "template": "https://github.com/nautobot/cookiecutter-nautobot-app.git",
+            "template_dir": "nautobot-app",
+            "template_ref": "refs/tags/nautobot-app-v2.4.0",
+            "cookie_dir": "",
+            "branch_prefix": "drift-manager",
+            "pull_request_strategy": "create",
+            "post_actions": [],
+            "draft": false,
+            "baked_commit_ref": ""
+        }
+    }
+}
