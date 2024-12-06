@@ -26,26 +26,26 @@ Here you will find detailed instructions on how to **install** and **configure**
 The app is available as a Python package via PyPI and can be installed with `pip`:
 
 ```shell
-pip install dns-models
+pip install nautobot-dns-models
 ```
 
 To ensure Nautobot DNS Models is automatically re-installed during future upgrades, create a file named `local_requirements.txt` (if not already existing) in the Nautobot root directory (alongside `requirements.txt`) and list the `dns-models` package:
 
 ```shell
-echo dns-models >> local_requirements.txt
+echo nautobot-dns-models >> local_requirements.txt
 ```
 
 Once installed, the app needs to be enabled in your Nautobot configuration. The following block of code below shows the additional configuration required to be added to your `nautobot_config.py` file:
 
-- Append `"dns_models"` to the `PLUGINS` list.
-- Append the `"dns_models"` dictionary to the `PLUGINS_CONFIG` dictionary and override any defaults.
+- Append `"nautobot_dns_models"` to the `PLUGINS` list.
+- Append the `"nautobot_dns_models"` dictionary to the `PLUGINS_CONFIG` dictionary and override any defaults.
 
 ```python
 # In your nautobot_config.py
-PLUGINS = ["dns_models"]
+PLUGINS = ["nautobot_dns_models"]
 
 # PLUGINS_CONFIG = {
-#   "dns_models": {
+#   "nautobot_dns_models": {
 #     ADD YOUR SETTINGS HERE
 #   }
 # }

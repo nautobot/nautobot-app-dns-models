@@ -1,1 +1,1 @@
-::: dns_models
+::: nautobot_dns_models

@@ -1,4 +1,4 @@
-"""Django urlpatterns declaration for dns_models app."""
+"""Django urlpatterns declaration for nautobot_dns_models app."""
 
 from django.templatetags.static import static
 from django.urls import path
@@ -11,7 +11,7 @@ router = NautobotUIViewSetRouter()
 router.register("dnszonemodel", views.DnsZoneModelUIViewSet)
 
 urlpatterns = [
-    path("docs/", RedirectView.as_view(url=static("dns_models/docs/index.html")), name="docs"),
+    path("docs/", RedirectView.as_view(url=static("nautobot_dns_models/docs/index.html")), name="docs"),
 ]
 
 urlpatterns += router.urls

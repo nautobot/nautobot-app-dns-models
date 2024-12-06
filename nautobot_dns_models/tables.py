@@ -1,4 +1,4 @@
-"""Tables for dns_models."""
+"""Tables for nautobot_dns_models."""
 
 import django_tables2 as tables
 from nautobot.apps.tables import BaseTable, ButtonsColumn, ToggleColumn

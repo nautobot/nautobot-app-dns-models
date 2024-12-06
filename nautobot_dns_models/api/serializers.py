@@ -1,4 +1,4 @@
-"""API serializers for dns_models."""
+"""API serializers for nautobot_dns_models."""
 
 from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixin
 

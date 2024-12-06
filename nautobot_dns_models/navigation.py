@@ -6,11 +6,11 @@ items = (
     NavMenuItem(
         link="plugins:dns_models:dnszonemodel_list",
         name="Nautobot DNS Models",
-        permissions=["dns_models.view_dnszonemodel"],
+        permissions=["nautobot_dns_models.view_dnszonemodel"],
         buttons=(
             NavMenuAddButton(
                 link="plugins:dns_models:dnszonemodel_add",
-                permissions=["dns_models.add_dnszonemodel"],
+                permissions=["nautobot_dns_models.add_dnszonemodel"],
             ),
         ),
     ),

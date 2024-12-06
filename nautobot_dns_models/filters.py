@@ -1,4 +1,4 @@
-"""Filtering for dns_models."""
+"""Filtering for nautobot_dns_models."""
 
 from nautobot.apps.filters import NameSearchFilterSet, NautobotFilterSet
 

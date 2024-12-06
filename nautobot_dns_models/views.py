@@ -1,4 +1,4 @@
-"""Views for dns_models."""
+"""Views for nautobot_dns_models."""
 
 from nautobot.apps.views import NautobotUIViewSet
 

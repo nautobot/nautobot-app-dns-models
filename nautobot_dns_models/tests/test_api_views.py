@@ -1,4 +1,4 @@
-"""Unit tests for dns_models."""
+"""Unit tests for nautobot_dns_models."""
 
 from nautobot.apps.testing import APIViewTestCases
 

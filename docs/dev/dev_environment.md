@@ -56,7 +56,7 @@ To either stop or destroy the development environment use the following options.
 
 ```yaml
 ---
-dns_models:
+ nautobot_dns_models:
   local: true
 ```
 
@@ -188,18 +188,18 @@ Next, you need to start up your Docker containers.
 ➜ invoke start
 Starting Nautobot in detached mode...
 Running docker-compose command "up --detach"
-Creating network "dns_models_default" with the default driver
-Creating volume "dns_models_postgres_data" with default driver
-Creating dns_models_redis_1 ...
-Creating dns_models_docs_1  ...
-Creating dns_models_postgres_1 ...
-Creating dns_models_postgres_1 ... done
-Creating dns_models_redis_1    ... done
-Creating dns_models_nautobot_1 ...
-Creating dns_models_docs_1     ... done
-Creating dns_models_nautobot_1 ... done
-Creating dns_models_worker_1   ...
-Creating dns_models_worker_1   ... done
+Creating network "nautobot_dns_models_default" with the default driver
+Creating volume "nautobot_dns_models_postgres_data" with default driver
+Creating nautobot_dns_models_redis_1 ...
+Creating nautobot_dns_models_docs_1  ...
+Creating nautobot_dns_models_postgres_1 ...
+Creating nautobot_dns_models_postgres_1 ... done
+Creating nautobot_dns_models_redis_1    ... done
+Creating nautobot_dns_models_nautobot_1 ...
+Creating nautobot_dns_models_docs_1     ... done
+Creating nautobot_dns_models_nautobot_1 ... done
+Creating nautobot_dns_models_worker_1   ...
+Creating nautobot_dns_models_worker_1   ... done
 Docker Compose is now in the Docker CLI, try `docker compose up`
 ```
 
@@ -208,11 +208,11 @@ This will start all of the Docker containers used for hosting Nautobot. You shou
 ```bash
 ➜ docker ps
 ****CONTAINER ID   IMAGE                            COMMAND                  CREATED          STATUS          PORTS                                       NAMES
-ee90fbfabd77   dns-models/nautobot:2.4.0-py3.11  "nautobot-server rqw…"   16 seconds ago   Up 13 seconds                                               dns_models_worker_1
-b8adb781d013   dns-models/nautobot:2.4.0-py3.11  "/docker-entrypoint.…"   20 seconds ago   Up 15 seconds   0.0.0.0:8080->8080/tcp, :::8080->8080/tcp   dns_models_nautobot_1
-d64ebd60675d   dns-models/nautobot:2.4.0-py3.11  "mkdocs serve -v -a …"   25 seconds ago   Up 18 seconds   0.0.0.0:8001->8080/tcp, :::8001->8080/tcp   dns_models_docs_1
-e72d63129b36   postgres:13-alpine               "docker-entrypoint.s…"   25 seconds ago   Up 19 seconds   0.0.0.0:5432->5432/tcp, :::5432->5432/tcp   dns_models_postgres_1
-96c6ff66997c   redis:6-alpine                   "docker-entrypoint.s…"   25 seconds ago   Up 21 seconds   0.0.0.0:6379->6379/tcp, :::6379->6379/tcp   dns_models_redis_1
+ee90fbfabd77   nautobot-dns-models/nautobot:2.4.0-py3.11  "nautobot-server rqw…"   16 seconds ago   Up 13 seconds                                               nautobot_dns_models_worker_1
+b8adb781d013   nautobot-dns-models/nautobot:2.4.0-py3.11  "/docker-entrypoint.…"   20 seconds ago   Up 15 seconds   0.0.0.0:8080->8080/tcp, :::8080->8080/tcp   nautobot_dns_models_nautobot_1
+d64ebd60675d   nautobot-dns-models/nautobot:2.4.0-py3.11  "mkdocs serve -v -a …"   25 seconds ago   Up 18 seconds   0.0.0.0:8001->8080/tcp, :::8001->8080/tcp   nautobot_dns_models_docs_1
+e72d63129b36   postgres:13-alpine               "docker-entrypoint.s…"   25 seconds ago   Up 19 seconds   0.0.0.0:5432->5432/tcp, :::5432->5432/tcp   nautobot_dns_models_postgres_1
+96c6ff66997c   redis:6-alpine                   "docker-entrypoint.s…"   25 seconds ago   Up 21 seconds   0.0.0.0:6379->6379/tcp, :::6379->6379/tcp   nautobot_dns_models_redis_1
 ```
 
 Once the containers are fully up, you should be able to open up a web browser, and view:
@@ -256,27 +256,27 @@ The last command to know for now is `invoke stop`.
 ➜ invoke stop
 Stopping Nautobot...
 Running docker-compose command "down"
-Stopping dns_models_worker_1   ...
-Stopping dns_models_nautobot_1 ...
-Stopping dns_models_docs_1     ...
-Stopping dns_models_redis_1    ...
-Stopping dns_models_postgres_1 ...
-Stopping dns_models_worker_1   ... done
-Stopping dns_models_nautobot_1 ... done
-Stopping dns_models_postgres_1 ... done
-Stopping dns_models_redis_1    ... done
-Stopping dns_models_docs_1     ... done
-Removing dns_models_worker_1   ...
-Removing dns_models_nautobot_1 ...
-Removing dns_models_docs_1     ...
-Removing dns_models_redis_1    ...
-Removing dns_models_postgres_1 ...
-Removing dns_models_postgres_1 ... done
-Removing dns_models_docs_1     ... done
-Removing dns_models_worker_1   ... done
-Removing dns_models_redis_1    ... done
-Removing dns_models_nautobot_1 ... done
-Removing network dns_models_default
+Stopping nautobot_dns_models_worker_1   ...
+Stopping nautobot_dns_models_nautobot_1 ...
+Stopping nautobot_dns_models_docs_1     ...
+Stopping nautobot_dns_models_redis_1    ...
+Stopping nautobot_dns_models_postgres_1 ...
+Stopping nautobot_dns_models_worker_1   ... done
+Stopping nautobot_dns_models_nautobot_1 ... done
+Stopping nautobot_dns_models_postgres_1 ... done
+Stopping nautobot_dns_models_redis_1    ... done
+Stopping nautobot_dns_models_docs_1     ... done
+Removing nautobot_dns_models_worker_1   ...
+Removing nautobot_dns_models_nautobot_1 ...
+Removing nautobot_dns_models_docs_1     ...
+Removing nautobot_dns_models_redis_1    ...
+Removing nautobot_dns_models_postgres_1 ...
+Removing nautobot_dns_models_postgres_1 ... done
+Removing nautobot_dns_models_docs_1     ... done
+Removing nautobot_dns_models_worker_1   ... done
+Removing nautobot_dns_models_redis_1    ... done
+Removing nautobot_dns_models_nautobot_1 ... done
+Removing network nautobot_dns_models_default
 ```
 
 This will safely shut down all of your running Docker containers for this project. When you are ready to spin containers back up, it is as simple as running `invoke start` again [as seen previously](#invoke-starting-the-development-environment).
@@ -314,7 +314,7 @@ When trying to debug an issue, one helpful thing you can look at are the logs wi
 !!! info
     Want to limit the log output even further? Use the `--tail <#>` command line argument in conjunction with `-f`.
 
-So for example, our app is named `dns-models`, the command would most likely be `docker logs dns_models_nautobot_1 -f`. You can find the name of all running containers via `docker ps`.
+So for example, our app is named `dns-models`, the command would most likely be `docker logs nautobot_dns_models_nautobot_1 -f`. You can find the name of all running containers via `docker ps`.
 
 If you want to view the logs specific to the worker container, simply use the name of that container instead.
 
@@ -384,10 +384,10 @@ Once the containers are up and running, you should now see the new app installed
 To update the Python version, you can update it within `tasks.py`.
 
 ```python
-namespace = Collection("dns_models")
+namespace = Collection("nautobot_dns_models")
 namespace.configure(
     {
-        "dns_models": {
+        "nautobot_dns_models": {
             ...
             "python_ver": "3.11",
 	    ...
@@ -403,10 +403,10 @@ Or set the `INVOKE_DNS_MODELS_PYTHON_VER` variable.
 To update the Nautobot version, you can update it within `tasks.py`.
 
 ```python
-namespace = Collection("dns_models")
+namespace = Collection("nautobot_dns_models")
 namespace.configure(
     {
-        "dns_models": {
+        "nautobot_dns_models": {
             ...
             "nautobot_ver": "2.4.0",
 	    ...

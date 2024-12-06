@@ -1,5 +1,5 @@
 ---
-dns_models:
+ nautobot_dns_models:
   nautobot_ver: "2.4.0"
   python_ver: "3.11"
   # local: false
@@ -7,7 +7,7 @@ dns_models:
 
 # The following is an example of using MySQL as the database backend
 # ---
-# dns_models:
+# nautobot_dns_models:
 #   compose_files:
 #     - "docker-compose.base.yml"
 #     - "docker-compose.redis.yml"

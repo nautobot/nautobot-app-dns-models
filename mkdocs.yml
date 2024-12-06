@@ -1,7 +1,7 @@
 ---
 dev_addr: "127.0.0.1:8001"
 edit_uri: "edit/main/docs"
-site_dir: "dns_models/static/dns_models/docs"
+site_dir: "nautobot_dns_models/static/dns_models/docs"
 site_name: "Nautobot DNS Models Documentation"
 site_url: "https://docs.nautobot.com/projects/nautobot-dns-models/en/latest/"
 repo_url: "https://github.com/nautobot/nautobot-app-dns-models"

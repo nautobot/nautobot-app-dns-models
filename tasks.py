@@ -47,12 +47,12 @@ def is_truthy(arg):
 
 # Use pyinvoke configuration for default values, see http://docs.pyinvoke.org/en/stable/concepts/configuration.html
 # Variables may be overwritten in invoke.yml or by the environment variables INVOKE_DNS_MODELS_xxx
-namespace = Collection("dns_models")
+namespace = Collection("nautobot_dns_models")
 namespace.configure(
     {
-        "dns_models": {
+        "nautobot_dns_models": {
             "nautobot_ver": "2.3.1",
-            "project_name": "dns-models",
+            "project_name": "nautobot-dns-models",
             "python_ver": "3.11",
             "local": False,
             "compose_dir": os.path.join(os.path.dirname(__file__), "development"),
@@ -437,7 +437,7 @@ def createsuperuser(context, user="admin"):
 )
 def makemigrations(context, name=""):
     """Perform makemigrations operation in Django."""
-    command = "nautobot-server makemigrations dns_models"
+    command = "nautobot-server makemigrations nautobot_dns_models"
 
     if name:
         command += f" --name {name}"
@@ -715,17 +715,17 @@ def pylint(context):
     exit_code = 0
 
     base_pylint_command = 'pylint --verbose --init-hook "import nautobot; nautobot.setup()" --rcfile pyproject.toml'
-    command = f"{base_pylint_command} dns_models"
+    command = f"{base_pylint_command} nautobot_dns_models"
     if not run_command(context, command, warn=True):
         exit_code = 1
 
     # run the pylint_django migrations checkers on the migrations directory, if one exists
-    migrations_dir = Path(__file__).absolute().parent / Path("dns_models") / Path("migrations")
+    migrations_dir = Path(__file__).absolute().parent / Path("nautobot_dns_models") / Path("migrations")
     if migrations_dir.is_dir():
         migrations_pylint_command = (
             f"{base_pylint_command} --load-plugins=pylint_django.checkers.migrations"
             " --disable=all --enable=fatal,new-db-field-with-default,missing-backwards-migration-callable"
-            " dns_models.migrations"
+            " nautobot_dns_models.migrations"
         )
         if not run_command(context, migrations_pylint_command, warn=True):
             exit_code = 1
@@ -811,7 +811,7 @@ def check_migrations(context):
 def unittest(  # noqa: PLR0913
     context,
     keepdb=False,
-    label="dns_models",
+    label="nautobot_dns_models",
     failfast=False,
     buffer=True,
     pattern="",

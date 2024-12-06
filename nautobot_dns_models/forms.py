@@ -1,4 +1,4 @@
-"""Forms for dns_models."""
+"""Forms for nautobot_dns_models."""
 
 from django import forms
 from nautobot.apps.forms import NautobotBulkEditForm, NautobotFilterForm, NautobotModelForm, TagsBulkEditFormMixin

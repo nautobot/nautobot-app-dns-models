@@ -7,7 +7,7 @@ Here you will find any steps necessary to cleanly remove the App from your Nauto
 Prior to removing the app from the `nautobot_config.py`, run the following command to roll back any migration specific to this app.
 
 ```shell
-nautobot-server migrate dns_models zero
+nautobot-server migrate nautobot_dns_models zero
 ```
 
 !!! warning "Developer Note - Remove Me!"
@@ -20,5 +20,5 @@ Remove the configuration you added in `nautobot_config.py` from `PLUGINS` & `PLU
 ## Uninstall the package
 
 ```bash
-$ pip3 uninstall dns-models
+$ pip3 uninstall nautobot-dns-models
 ```
