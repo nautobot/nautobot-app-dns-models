@@ -19,7 +19,7 @@ router.register("txt-records", views.TXTRecordModelViewSet)
 router.register("ptr-records", views.PTRRecordModelViewSet)
 
 urlpatterns = [
-    path("docs/", RedirectView.as_view(url=static("dns_models/docs/index.html")), name="docs"),
+    path("docs/", RedirectView.as_view(url=static( "nautobot_dns_models/docs/index.html")), name="docs"),
 ]
 
 urlpatterns += router.urls

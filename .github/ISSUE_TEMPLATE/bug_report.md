@@ -1,12 +1,12 @@
 ---
 name: 🐛 Bug Report
-about: Report a reproducible bug in the current release of dns-models
+about: Report a reproducible bug in the current release of nautobot-dns-models
 ---
 
 ### Environment
 * Python version:  <!-- Example: 3.11.4 -->
 * Nautobot version:  <!-- Example: 2.4.0 -->
-* dns-models version:  <!-- Example: 1.0.0 -->
+* nautobot-dns-models version:  <!-- Example: 1.0.0 -->
 
 <!-- What did you expect to happen? -->
 ### Expected Behavior
