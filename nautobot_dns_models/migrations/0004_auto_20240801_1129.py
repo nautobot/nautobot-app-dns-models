@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("ipam", "0039_alter_ipaddresstointerface_ip_address"),
         ("nautobot_dns_models", "0003_remove_dnszonemodel_slug"),

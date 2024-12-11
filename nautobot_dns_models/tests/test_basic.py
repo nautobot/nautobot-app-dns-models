@@ -1,7 +1,8 @@
 """Basic tests that do not require Django."""
 
-import unittest
 import os
+import unittest
+
 import toml
 
 from nautobot_dns_models import __version__ as project_version
