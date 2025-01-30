@@ -8,10 +8,13 @@ To install the App, please follow the instructions detailed in the [Installation
 
 ## First steps with the App
 
-!!! warning "Developer Note - Remove Me!"
-    Update with screen shots when UX is finalized.
+Navigate to the DNS Models under Apps in the navigation bar.
 
-The first step with the App is to create a DNS Zone. The Zone is the organizational container for DNS records. In our implementation, we have added the SoA record fields and details to the Zone, because a Zone requires a single SoA record. The SoA fields are optional in case you are not recreating DNS server objects 1:1.
+[](docs/images/icon-nautobot-dns-models.png)
+
+The first step with the App is to create a DNS Zone. The Zone is the organizational container for DNS records. In our implementation, we have added the SoA record fields and details to the Zone, because a DNS Zone requires a single SoA record. The SoA fields are optional in case you are not recreating DNS server objects 1:1.
+
+Create a DNS Zone by clicking the `+` button next to DNS Zones, or by clicking DNS Zones and clicking the Add Zone button at the top right.
 
 Once the Zone is created, create the other records as necessary. Initially supported records include A, AAAA, CNAME, 
 
