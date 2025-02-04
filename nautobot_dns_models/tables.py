@@ -120,7 +120,8 @@ class NSRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
             "name",
             "server",
             "zone",
-            "ttl," "actions",
+            "ttl",
+            "actions",
         )
 
 

@@ -2,7 +2,20 @@
 
 from django_tables2 import RequestConfig
 from nautobot.apps import views
-from nautobot.apps.ui import ObjectDetailContent, ObjectFieldsPanel, SectionChoices
+from nautobot.apps.ui import (
+    BaseTextPanel,
+    Button,
+    ButtonColorChoices,
+    DropdownButton,
+    ObjectDetailContent,
+    ObjectFieldsPanel,
+    ObjectsTablePanel,
+    SectionChoices,
+    StatsPanel,
+)
+from nautobot.core.ui import object_detail
+
+# object_detail,
 from nautobot.core.views.paginator import EnhancedPaginator, get_paginate_count
 
 from nautobot_dns_models.api.serializers import (
@@ -86,36 +99,121 @@ class DNSZoneModelViewSet(views.NautobotUIViewSet):
     queryset = DNSZoneModel.objects.all()
     table_class = DNSZoneModelTable
 
-    def get_extra_context(self, request, instance):
-        """Return extra context data for template."""
-        # instance will be true if it's not a list view
-        child_records = []
-        if instance is not None:
-            for record in instance.a_records.all():
-                child_records.append(record)
-            for record in instance.aaaa_records.all():
-                child_records.append(record)
-            for record in instance.cname_records.all():
-                child_records.append(record)
-            for record in instance.mx_records.all():
-                child_records.append(record)
-            for record in instance.txt_records.all():
-                child_records.append(record)
-            for record in instance.ns_records.all():
-                child_records.append(record)
-            for record in instance.ptr_records.all():
-                child_records.append(record)
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            ),
+            # StatsPanel(
+            #     weight=800,
+            #     section=SectionChoices.LEFT_HALF,
+            #     label="Record Statistics",
+            #     filter_name="zone",
+            #     related_models=[ CNAMERecordModel, MXRecordModel, TXTRecordModel],
+            # ),
+            ObjectsTablePanel(
+                weight=100,
+                section=SectionChoices.RIGHT_HALF,
+                table_filter="zone",
+                table_class=ARecordModelTable,
+                table_title="A Records",
+            ),
+            ObjectsTablePanel(
+                weight=200,
+                section=SectionChoices.RIGHT_HALF,
+                table_filter="zone",
+                table_class=AAAARecordModelTable,
+                table_title="AAAA Records",
+            ),
+            ObjectsTablePanel(
+                weight=300,
+                section=SectionChoices.RIGHT_HALF,
+                table_filter="zone",
+                table_class=CNAMERecordModelTable,
+                table_title="CName Records",
+            ),
+            ObjectsTablePanel(
+                weight=400,
+                section=SectionChoices.RIGHT_HALF,
+                table_filter="zone",
+                table_class=MXRecordModelTable,
+                table_title="MX Records",
+            ),
+            ObjectsTablePanel(
+                weight=500,
+                section=SectionChoices.RIGHT_HALF,
+                table_filter="zone",
+                table_class=TXTRecordModelTable,
+                table_title="TXT Records",
+            ),
+            ObjectsTablePanel(
+                weight=600,
+                section=SectionChoices.RIGHT_HALF,
+                table_filter="zone",
+                table_class=NSRecordModelTable,
+                table_title="NS Records",
+                max_display_count=5,
+            ),
+            ObjectsTablePanel(
+                weight=700,
+                section=SectionChoices.RIGHT_HALF,
+                table_filter="zone",
+                table_class=PTRRecordModelTable,
+                table_title="PTR Records",
+            ),
+        ],
+        extra_buttons=[
+            DropdownButton(
+                weight=100,
+                color=ButtonColorChoices.BLUE,
+                label="Add Components",
+                # icon="mdi-plus-thick",
+                # required_permissions=["nautobot_dns_models.change_dnszonemodel"],
+                children=(
+                    Button(
+                        weight=100,
+                        link_name="plugins:nautobot_dns_models:arecordmodel_add",
+                        label="A Record",
+                        # icon="mdi-console",
+                        # required_permissions=["nautobot_dns_models.add_arecordmodel"],
+                    ),
+                ),
+            ),
+        ],
+    )
 
-        records_table = RecordsTable(
-            child_records,
-        )
-        # add pagination for the records table.
-        paginate = {
-            "paginator_class": EnhancedPaginator,
-            "per_page": get_paginate_count(request),
-        }
-        RequestConfig(request, paginate).configure(records_table)
-        return {"records_table": records_table}
+    # def get_extra_context(self, request, instance):
+    #     """Return extra context data for template."""
+    #     # instance will be true if it's not a list view
+    #     child_records = []
+    #     if instance is not None:
+    #         for record in instance.a_records.all():
+    #             child_records.append(record)
+    #         for record in instance.aaaa_records.all():
+    #             child_records.append(record)
+    #         for record in instance.cname_records.all():
+    #             child_records.append(record)
+    #         for record in instance.mx_records.all():
+    #             child_records.append(record)
+    #         for record in instance.txt_records.all():
+    #             child_records.append(record)
+    #         for record in instance.ns_records.all():
+    #             child_records.append(record)
+    #         for record in instance.ptr_records.all():
+    #             child_records.append(record)
+
+    #     records_table = RecordsTable(
+    #         child_records,
+    #     )
+    #     # add pagination for the records table.
+    #     paginate = {
+    #         "paginator_class": EnhancedPaginator,
+    #         "per_page": get_paginate_count(request),
+    #     }
+    #     RequestConfig(request, paginate).configure(records_table)
+    #     return {"records_table": records_table}
 
 
 class NSRecordModelViewSet(views.NautobotUIViewSet):
