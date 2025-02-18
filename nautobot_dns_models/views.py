@@ -2,6 +2,7 @@
 
 from django_tables2 import RequestConfig
 from nautobot.apps import views
+from nautobot.apps.ui import ObjectDetailContent, ObjectFieldsPanel, SectionChoices
 from nautobot.core.views.paginator import EnhancedPaginator, get_paginate_count
 
 from nautobot_dns_models.api.serializers import (
@@ -128,6 +129,15 @@ class NSRecordModelViewSet(views.NautobotUIViewSet):
     lookup_field = "pk"
     queryset = NSRecordModel.objects.all()
     table_class = NSRecordModelTable
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            )
+        ]
+    )
 
 
 class ARecordModelViewSet(views.NautobotUIViewSet):
@@ -141,6 +151,15 @@ class ARecordModelViewSet(views.NautobotUIViewSet):
     lookup_field = "pk"
     queryset = ARecordModel.objects.all()
     table_class = ARecordModelTable
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            )
+        ]
+    )
 
 
 class AAAARecordModelViewSet(views.NautobotUIViewSet):
@@ -154,6 +173,15 @@ class AAAARecordModelViewSet(views.NautobotUIViewSet):
     lookup_field = "pk"
     queryset = AAAARecordModel.objects.all()
     table_class = AAAARecordModelTable
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            )
+        ]
+    )
 
 
 class CNAMERecordModelViewSet(views.NautobotUIViewSet):
@@ -167,6 +195,15 @@ class CNAMERecordModelViewSet(views.NautobotUIViewSet):
     lookup_field = "pk"
     queryset = CNAMERecordModel.objects.all()
     table_class = CNAMERecordModelTable
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            )
+        ]
+    )
 
 
 class MXRecordModelViewSet(views.NautobotUIViewSet):
@@ -180,6 +217,15 @@ class MXRecordModelViewSet(views.NautobotUIViewSet):
     lookup_field = "pk"
     queryset = MXRecordModel.objects.all()
     table_class = MXRecordModelTable
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            )
+        ]
+    )
 
 
 class TXTRecordModelViewSet(views.NautobotUIViewSet):
@@ -193,6 +239,15 @@ class TXTRecordModelViewSet(views.NautobotUIViewSet):
     lookup_field = "pk"
     queryset = TXTRecordModel.objects.all()
     table_class = TXTRecordModelTable
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            )
+        ]
+    )
 
 
 class PTRRecordModelViewSet(views.NautobotUIViewSet):
@@ -206,3 +261,12 @@ class PTRRecordModelViewSet(views.NautobotUIViewSet):
     lookup_field = "pk"
     queryset = PTRRecordModel.objects.all()
     table_class = PTRRecordModelTable
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            )
+        ]
+    )
