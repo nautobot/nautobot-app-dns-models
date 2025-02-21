@@ -50,9 +50,9 @@ def is_truthy(arg):
 namespace = Collection("nautobot_dns_models")
 namespace.configure(
     {
-         "nautobot_dns_models": {
+        "nautobot_dns_models": {
             "nautobot_ver": "2.4.2",
-            "project_name":  "nautobot-dns-models",
+            "project_name": "nautobot-dns-models",
             "python_ver": "3.11",
             "local": False,
             "compose_dir": os.path.join(os.path.dirname(__file__), "development"),
@@ -257,9 +257,7 @@ def lock(context, check=False, constrain_nautobot_ver=False, constrain_python_ve
             print(output.stderr, file=sys.stderr, end="")
         except UnexpectedExit:
             print("Unable to add Nautobot dependency with version constraint, falling back to git branch.")
-            command = (
-                f"poetry add --lock git+https://github.com/nautobot/nautobot.git#{context.nautobot_dns_models.nautobot_ver}"
-            )
+            command = f"poetry add --lock git+https://github.com/nautobot/nautobot.git#{context.nautobot_dns_models.nautobot_ver}"
             if constrain_python_ver:
                 command += f" --python {context.nautobot_dns_models.python_ver}"
             run_command(context, command)
