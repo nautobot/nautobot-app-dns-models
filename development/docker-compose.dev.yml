@@ -23,7 +23,7 @@ services:
       - "8001:8080"
     volumes:
       - "../:/source"
-    image:  "nautobot-dns-models/nautobot:${NAUTOBOT_VER}-py${PYTHON_VER}"
+    image: "nautobot-dns-models/nautobot:${NAUTOBOT_VER}-py${PYTHON_VER}"
     healthcheck:
       disable: true
     tty: true
