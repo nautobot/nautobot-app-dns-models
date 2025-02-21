@@ -13,19 +13,21 @@
 
 ## Overview
 
-> Developer Note: Add a long (2-3 paragraphs) description of what the App does, what problems it solves, what functionality it adds to Nautobot, what external systems it works with etc.
-
 The DNS models app adds specific DNS related models for managing DNS zones and records to Nautobot. The goal is to be able to manage a DNS configuration for a zone or sub-zone. These models can then be leveraged with 3rd party IPAM or DNS services in line with the rest of your network data. 
 
 ### Screenshots
 
-> Developer Note: Add any representative screenshots of the App in action. These images should also be added to the `docs/user/app_use_cases.md` section.
+![Zone List View](https://raw.githubusercontent.com/nautobot/nautobot-app-dns-models/develop/docs/images/readme-1.png)
 
-> Developer Note: Place the files in the `docs/images/` folder and link them using only full URLs from GitHub, for example: `![Overview](https://raw.githubusercontent.com/nautobot/nautobot-app-dns-models/develop/docs/images/plugin-overview.png)`. This absolute static linking is required to ensure the README renders properly in GitHub, the docs site, and any other external sites like PyPI.
+![Adding a DNS Zone](https://raw.githubusercontent.com/nautobot/nautobot-app-dns-models/develop/docs/images/getting_started-add-zone-3.png)
+Adding a DNS Zone
+
+![DNS Zone View](https://raw.githubusercontent.com/nautobot/nautobot-app-dns-models/develop/docs/images/getting_started-add-record-3.png)
+The DNS Zone View
+
+
 
 More screenshots can be found in the [Using the App](https://docs.nautobot.com/projects/nautobot-dns-models/en/latest/user/app_use_cases/) page in the documentation. Here's a quick overview of some of the plugin's added functionality:
-
-![](https://raw.githubusercontent.com/nautobot/nautobot-app-dns-models/develop/docs/images/placeholder.png)
 
 ## Documentation
 
