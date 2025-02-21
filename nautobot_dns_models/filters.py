@@ -16,7 +16,7 @@ class DNSZoneModelFilterSet(NautobotFilterSet):
         fields = "__all__"
 
 
-# TODO: Remove this filterset when 2.4.4 is reelased and the fix is incorporated
+# TODO: Remove this filterset when 2.4.4 is released and the fix is incorporated
 # https://github.com/nautobot/nautobot/issues/6920
 # https://github.com/nautobot/nautobot/pull/6921
 class RecordModelFilterSet(NautobotFilterSet):

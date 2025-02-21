@@ -112,7 +112,7 @@ class DNSZoneModelUIViewSet(views.NautobotUIViewSet):
             StatsPanel(
                 weight=10,
                 section=SectionChoices.RIGHT_HALF,
-                label="Record Statistics",
+                label="Records Statistics",
                 filter_name="zone",
                 related_models=[
                     ARecordModel,

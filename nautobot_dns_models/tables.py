@@ -4,7 +4,6 @@ import django_tables2 as tables
 from nautobot.apps.tables import BaseTable, ButtonsColumn, ToggleColumn
 
 from nautobot_dns_models import models
-from nautobot_dns_models.template_code import DNS_RECORDS_ACTIONS, DNS_RECORDS_NAME, DNS_RECORDS_TYPE, DNS_RECORDS_VALUE
 
 
 # TODO: Create a BaseTable with links in Name & Zone fields and inherit all other tables from it.
@@ -46,43 +45,6 @@ class DNSZoneModelTable(BaseTable):  # pylint: disable=too-few-public-methods
             "filename",
             "soa_expire",
             "soa_rname",
-        )
-
-
-class RecordsTable(tables.Table):
-    """Table for DNS Zone records list view."""
-
-    pk = ToggleColumn()
-
-    type_ = tables.TemplateColumn(template_code=DNS_RECORDS_TYPE, verbose_name="Type", orderable=False)
-    name = tables.TemplateColumn(template_code=DNS_RECORDS_NAME, verbose_name="Name", orderable=False)
-
-    value = tables.TemplateColumn(
-        template_code=DNS_RECORDS_VALUE,
-        verbose_name="Value",
-        orderable=False,
-    )
-    description = tables.TemplateColumn(
-        template_code="""{{ record.description }}""", verbose_name="Description", orderable=False
-    )
-    actions = tables.TemplateColumn(template_code=DNS_RECORDS_ACTIONS, verbose_name="Actions", orderable=False)
-
-    class Meta(BaseTable.Meta):
-        """Meta attributes."""
-
-        fields = (
-            "type_",
-            "name",
-            "value",
-            "description",
-            "actions",
-        )
-        default_columns = (
-            "type_",
-            "name",
-            "value",
-            "description",
-            "actions",
         )
 
 
