@@ -1,12 +1,8 @@
 """DNS Plugin Views."""
 
-from django_tables2 import RequestConfig
 from nautobot.apps import views
 from nautobot.apps.ui import (
-    BaseTextPanel,
-    Button,
     ButtonColorChoices,
-    DropdownButton,
     ObjectDetailContent,
     ObjectFieldsPanel,
     ObjectsTablePanel,
@@ -14,9 +10,6 @@ from nautobot.apps.ui import (
     StatsPanel,
 )
 from nautobot.core.ui import object_detail
-
-# object_detail,
-from nautobot.core.views.paginator import EnhancedPaginator, get_paginate_count
 
 from nautobot_dns_models.api.serializers import (
     AAAARecordModelSerializer,
@@ -82,12 +75,11 @@ from nautobot_dns_models.tables import (
     MXRecordModelTable,
     NSRecordModelTable,
     PTRRecordModelTable,
-    RecordsTable,
     TXTRecordModelTable,
 )
 
 
-class DNSZoneModelViewSet(views.NautobotUIViewSet):
+class DNSZoneModelUIViewSet(views.NautobotUIViewSet):
     """DnsZoneModel UI ViewSet."""
 
     form_class = DNSZoneModelForm
@@ -101,18 +93,36 @@ class DNSZoneModelViewSet(views.NautobotUIViewSet):
 
     object_detail_content = ObjectDetailContent(
         panels=[
+            # Left pane
             ObjectFieldsPanel(
                 weight=100,
                 section=SectionChoices.LEFT_HALF,
                 fields="__all__",
             ),
-            # StatsPanel(
-            #     weight=800,
-            #     section=SectionChoices.LEFT_HALF,
-            #     label="Record Statistics",
-            #     filter_name="zone",
-            #     related_models=[ NSRecordModel],
-            # ),
+            ObjectsTablePanel(
+                weight=200,
+                section=SectionChoices.LEFT_HALF,
+                table_filter="zone",
+                table_class=NSRecordModelTable,
+                table_title="NS Records",
+                exclude_columns=["zone"],
+                max_display_count=5,
+            ),
+            # Right pane
+            StatsPanel(
+                weight=10,
+                section=SectionChoices.RIGHT_HALF,
+                label="Record Statistics",
+                filter_name="zone",
+                related_models=[
+                    ARecordModel,
+                    AAAARecordModel,
+                    CNAMERecordModel,
+                    MXRecordModel,
+                    TXTRecordModel,
+                    PTRRecordModel,
+                ],
+            ),
             ObjectsTablePanel(
                 weight=100,
                 section=SectionChoices.RIGHT_HALF,
@@ -162,15 +172,6 @@ class DNSZoneModelViewSet(views.NautobotUIViewSet):
                 weight=600,
                 section=SectionChoices.RIGHT_HALF,
                 table_filter="zone",
-                table_class=NSRecordModelTable,
-                table_title="NS Records",
-                exclude_columns=["zone"],
-                max_display_count=5,
-            ),
-            ObjectsTablePanel(
-                weight=700,
-                section=SectionChoices.RIGHT_HALF,
-                table_filter="zone",
                 table_class=PTRRecordModelTable,
                 table_title="PTR Records",
                 exclude_columns=["zone"],
@@ -178,23 +179,55 @@ class DNSZoneModelViewSet(views.NautobotUIViewSet):
             ),
         ],
         extra_buttons=[
-            # Button(
-            #     weight=100,
-            #     label="Add A Record",
-            # ),
-            DropdownButton(
+            object_detail.DropdownButton(
                 weight=100,
                 color=ButtonColorChoices.BLUE,
-                label="Add Components",
-                # icon="mdi-plus-thick",
+                label="Add Records",
+                icon="mdi-plus-thick",
                 required_permissions=["nautobot_dns_models.change_dnszonemodel"],
                 children=(
-                    Button(
+                    object_detail.Button(
                         weight=100,
-                        link_name="plugins:nautobot_dns_models:arecordmodel_add",
+                        link_name="plugins:nautobot_dns_models:zone_a_records_add",
                         label="A Record",
-                        icon="mdi-console",
+                        # icon="mdi-invoice-list-outline",
                         required_permissions=["nautobot_dns_models.add_arecordmodel"],
+                    ),
+                    object_detail.Button(
+                        weight=200,
+                        link_name="plugins:nautobot_dns_models:zone_aaaa_records_add",
+                        label="AAAA Record",
+                        required_permissions=["nautobot_dns_models.add_aaaarecordmodel"],
+                    ),
+                    object_detail.Button(
+                        weight=300,
+                        link_name="plugins:nautobot_dns_models:zone_ns_records_add",
+                        label="NS Record",
+                        required_permissions=["nautobot_dns_models.add_nsrecordmodel"],
+                    ),
+                    object_detail.Button(
+                        weight=400,
+                        link_name="plugins:nautobot_dns_models:zone_cname_records_add",
+                        label="CNAME Record",
+                        required_permissions=["nautobot_dns_models.add_cnamerecordmodel"],
+                    ),
+                    object_detail.Button(
+                        weight=500,
+                        link_name="plugins:nautobot_dns_models:zone_mx_records_add",
+                        label="MX Record",
+                        required_permissions=["nautobot_dns_models.add_mxrecordmodel"],
+                    ),
+                    object_detail.Button(
+                        weight=600,
+                        link_name="plugins:nautobot_dns_models:zone_txt_records_add",
+                        label="TXT Record",
+                        required_permissions=["nautobot_dns_models.add_txtrecordmodel"],
+                    ),
+                    object_detail.Button(
+                        weight=700,
+                        link_name="plugins:nautobot_dns_models:zone_ptr_records_add",
+                        label="PTR Record",
+                        required_permissions=["nautobot_dns_models.add_ptrrecordmodel"],
                     ),
                 ),
             ),
@@ -202,7 +235,7 @@ class DNSZoneModelViewSet(views.NautobotUIViewSet):
     )
 
 
-class NSRecordModelViewSet(views.NautobotUIViewSet):
+class NSRecordModelUIViewSet(views.NautobotUIViewSet):
     """NSRecordModel UI ViewSet."""
 
     form_class = NSRecordModelForm
@@ -224,7 +257,7 @@ class NSRecordModelViewSet(views.NautobotUIViewSet):
     )
 
 
-class ARecordModelViewSet(views.NautobotUIViewSet):
+class ARecordModelUIViewSet(views.NautobotUIViewSet):
     """ARecordModel UI ViewSet."""
 
     form_class = ARecordModelForm
@@ -246,7 +279,7 @@ class ARecordModelViewSet(views.NautobotUIViewSet):
     )
 
 
-class AAAARecordModelViewSet(views.NautobotUIViewSet):
+class AAAARecordModelUIViewSet(views.NautobotUIViewSet):
     """AAAARecordModel UI ViewSet."""
 
     form_class = AAAARecordModelForm
@@ -268,7 +301,7 @@ class AAAARecordModelViewSet(views.NautobotUIViewSet):
     )
 
 
-class CNAMERecordModelViewSet(views.NautobotUIViewSet):
+class CNAMERecordModelUIViewSet(views.NautobotUIViewSet):
     """CNAMERecordModel UI ViewSet."""
 
     form_class = CNAMERecordModelForm
@@ -290,7 +323,7 @@ class CNAMERecordModelViewSet(views.NautobotUIViewSet):
     )
 
 
-class MXRecordModelViewSet(views.NautobotUIViewSet):
+class MXRecordModelUIViewSet(views.NautobotUIViewSet):
     """MXRecordModel UI ViewSet."""
 
     form_class = MXRecordModelForm
@@ -312,7 +345,7 @@ class MXRecordModelViewSet(views.NautobotUIViewSet):
     )
 
 
-class TXTRecordModelViewSet(views.NautobotUIViewSet):
+class TXTRecordModelUIViewSet(views.NautobotUIViewSet):
     """TXTRecordModel UI ViewSet."""
 
     form_class = TXTRecordModelForm
@@ -334,7 +367,7 @@ class TXTRecordModelViewSet(views.NautobotUIViewSet):
     )
 
 
-class PTRRecordModelViewSet(views.NautobotUIViewSet):
+class PTRRecordModelUIViewSet(views.NautobotUIViewSet):
     """PTRRecordModel UI ViewSet."""
 
     form_class = PTRRecordModelForm
