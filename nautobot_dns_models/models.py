@@ -46,7 +46,7 @@ class DNSModel(PrimaryModel):  # pylint: disable=too-many-ancestors
 class DNSZoneModel(DNSModel):  # pylint: disable=too-many-ancestors
     """Model for DNS SOA Records. An SOA Record defines a DNS Zone."""
 
-    name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD.", unique=True)
+    name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD. e.g example.com", unique=True)
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )

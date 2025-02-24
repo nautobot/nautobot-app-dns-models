@@ -7,6 +7,7 @@ This document provides an overview of the App including critical information and
 
 ## Description
 
+An app that contains DNS specific models. The goal of the App is to eventually completely model DNS related models within Nautobot to complement and complete those already present in the core data models.
 
 ## Audience (User Personas) - Who should use this App?
 
@@ -19,7 +20,14 @@ Network or Systems Admins who need to keep track of DNS records.
 
 ## Nautobot Features Used
 
+Custom Fields
+Custom Links
+Custom Validators
+Export Templates
 GraphQL
+Relationships
+Webhooks
+Notes
 
 ### Extras
 
