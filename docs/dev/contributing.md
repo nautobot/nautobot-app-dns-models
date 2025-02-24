@@ -57,6 +57,6 @@ We will create a `release-X.Y` branch for you to open your PR against and cut a 
 
 ## Release Policy
 
-{{ cookiecutter.verbose_name }} has currently no intended scheduled release schedule, and will release new features in minor versions.
+Nautobot DNS Models has currently no intended scheduled release schedule, and will release new features in minor versions.
 
 The steps taken by maintainers when creating a new release are documented in the [release checklist](./release_checklist.md).
