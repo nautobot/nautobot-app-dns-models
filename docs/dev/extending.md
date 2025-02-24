@@ -10,7 +10,6 @@ Extending the application is welcome, however it is best to open an issue first,
 Title: DNS Models Entity Relation Diagram
 ---
 erDiagram
-erDiagram
     DNSModel {
     }
 
