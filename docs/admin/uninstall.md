@@ -17,5 +17,5 @@ Remove the configuration you added in `nautobot_config.py` from `PLUGINS` & `PLU
 ## Uninstall the package
 
 ```bash
-$ pip3 uninstall {{ cookiecutter.app_slug }}
+$ pip3 uninstall nautobot_dns_models
 ```
