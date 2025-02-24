@@ -47,7 +47,7 @@ The branching policy includes the following tenets:
 - PRs intended to add new features should be sourced from the `develop` branch.
 - PRs intended to fix issues in the Nautobot LTM compatible release should be sourced from the latest `ltm-<major.minor>` branch instead of `develop`.
 
-{{ cookiecutter.verbose_name }} will observe semantic versioning, as of 1.0. This may result in a quick turnaround in minor versions to keep pace with an ever-growing feature set.
+Nautobot DNS Models will observe semantic versioning, as of 1.0. This may result in a quick turnaround in minor versions to keep pace with an ever-growing feature set.
 
 ### Backporting to Older Releases
 
