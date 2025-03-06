@@ -1,6 +1,6 @@
 ---
 nautobot_dns_models:
-  project_name:  "nautobot-dns-models"
+  project_name: "nautobot-dns-models"
   nautobot_ver: "2.4.0"
   local: false
   python_ver: "3.11"

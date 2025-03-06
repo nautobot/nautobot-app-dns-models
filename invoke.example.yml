@@ -7,7 +7,7 @@ nautobot_dns_models:
 
 # The following is an example of using MySQL as the database backend
 # ---
-#nautobot_dns_models:
+# nautobot_dns_models:
 #   compose_files:
 #     - "docker-compose.base.yml"
 #     - "docker-compose.redis.yml"
