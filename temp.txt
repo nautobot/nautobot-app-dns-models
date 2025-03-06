@@ -1,0 +1,7 @@
+A
+AAAA
+CName
+MX
+TXT
+PTR
+NS

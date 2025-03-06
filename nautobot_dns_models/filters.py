@@ -16,23 +16,7 @@ class DNSZoneModelFilterSet(NautobotFilterSet):
         fields = "__all__"
 
 
-# TODO: Remove this filterset when 2.4.4 is released and the fix is incorporated
-# https://github.com/nautobot/nautobot/issues/6920
-# https://github.com/nautobot/nautobot/pull/6921
-class RecordModelFilterSet(NautobotFilterSet):
-    """Filter for every record to specify zone.
-
-    Needed it to workaround the https://github.com/nautobot/nautobot/issues/6920.
-    """
-
-    zone = NaturalKeyOrPKMultipleChoiceFilter(
-        queryset=models.DNSZoneModel.objects.all(),
-        to_field_name="name",
-        label="DNS Zone for the record",
-    )
-
-
-class NSRecordModelFilterSet(RecordModelFilterSet):
+class NSRecordModelFilterSet(NautobotFilterSet):
     """Filter for NSRecordModel."""
 
     class Meta:
@@ -42,7 +26,7 @@ class NSRecordModelFilterSet(RecordModelFilterSet):
         fields = "__all__"
 
 
-class ARecordModelFilterSet(RecordModelFilterSet):
+class ARecordModelFilterSet(NautobotFilterSet):
     """Filter for ARecordModel."""
 
     class Meta:
@@ -52,7 +36,7 @@ class ARecordModelFilterSet(RecordModelFilterSet):
         fields = "__all__"
 
 
-class AAAARecordModelFilterSet(RecordModelFilterSet):
+class AAAARecordModelFilterSet(NautobotFilterSet):
     """Filter for AAAARecordModel."""
 
     class Meta:
@@ -62,7 +46,7 @@ class AAAARecordModelFilterSet(RecordModelFilterSet):
         fields = "__all__"
 
 
-class CNAMERecordModelFilterSet(RecordModelFilterSet):
+class CNAMERecordModelFilterSet(NautobotFilterSet):
     """Filter for CNAMERecordModel."""
 
     class Meta:
@@ -72,7 +56,7 @@ class CNAMERecordModelFilterSet(RecordModelFilterSet):
         fields = "__all__"
 
 
-class MXRecordModelFilterSet(RecordModelFilterSet):
+class MXRecordModelFilterSet(NautobotFilterSet):
     """Filter for MXRecordModel."""
 
     class Meta:
@@ -82,7 +66,7 @@ class MXRecordModelFilterSet(RecordModelFilterSet):
         fields = "__all__"
 
 
-class TXTRecordModelFilterSet(RecordModelFilterSet):
+class TXTRecordModelFilterSet(NautobotFilterSet):
     """Filter for TXTRecordModel."""
 
     class Meta:
@@ -92,7 +76,7 @@ class TXTRecordModelFilterSet(RecordModelFilterSet):
         fields = "__all__"
 
 
-class PTRRecordModelFilterSet(RecordModelFilterSet):
+class PTRRecordModelFilterSet(NautobotFilterSet):
     """Filter for PTRRecordModel."""
 
     class Meta:

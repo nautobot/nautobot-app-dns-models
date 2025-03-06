@@ -20,7 +20,6 @@ router.register("ptr-records", views.PTRRecordModelUIViewSet)
 
 urlpatterns = [
     path("docs/", RedirectView.as_view(url=static("nautobot_dns_models/docs/index.html")), name="docs"),
-    # TODO add URL patterns for the dropdown button of DNZ Zone viewset
     # Paths for buttons used in DNS zone viewset
     path(
         "dns-zones/<uuid:pk>/a-records/add/",
@@ -31,11 +30,6 @@ urlpatterns = [
         "dns-zones/<uuid:pk>/aaaa-records/add/",
         RedirectView.as_view(url="/plugins/dns/aaaa-records/add/?zone=%(pk)s&return_url=/plugins/dns/dns-zones/%(pk)s"),
         name="zone_aaaa_records_add",
-    ),
-    path(
-        "dns-zones/<uuid:pk>/ns-records/add/",
-        RedirectView.as_view(url="/plugins/dns/ns-records/add/?zone=%(pk)s&return_url=/plugins/dns/dns-zones/%(pk)s"),
-        name="zone_ns_records_add",
     ),
     path(
         "dns-zones/<uuid:pk>/cname-records/add/",
@@ -50,14 +44,19 @@ urlpatterns = [
         name="zone_mx_records_add",
     ),
     path(
-        "dns-zones/<uuid:pk>/txt-records/add/",
-        RedirectView.as_view(url="/plugins/dns/txt-records/add/?zone=%(pk)s&return_url=/plugins/dns/dns-zones/%(pk)s"),
-        name="zone_txt_records_add",
+        "dns-zones/<uuid:pk>/ns-records/add/",
+        RedirectView.as_view(url="/plugins/dns/ns-records/add/?zone=%(pk)s&return_url=/plugins/dns/dns-zones/%(pk)s"),
+        name="zone_ns_records_add",
     ),
     path(
         "dns-zones/<uuid:pk>/ptr-records/add/",
         RedirectView.as_view(url="/plugins/dns/ptr-records/add/?zone=%(pk)s&return_url=/plugins/dns/dns-zones/%(pk)s"),
         name="zone_ptr_records_add",
+    ),
+    path(
+        "dns-zones/<uuid:pk>/txt-records/add/",
+        RedirectView.as_view(url="/plugins/dns/txt-records/add/?zone=%(pk)s&return_url=/plugins/dns/dns-zones/%(pk)s"),
+        name="zone_txt_records_add",
     ),
 ]
 
