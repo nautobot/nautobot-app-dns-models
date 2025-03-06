@@ -35,7 +35,7 @@ Both A and AAAA records are related to actual IP address objects within Nautobot
 
 Because A and/or AAAA records are some of the most common we will add one.
 
-Within the Zone we created above,  click the 'Add Records' drop down in the DNS Zone Records on top of the DNS Records of the table. 
+Within the Zone we created above,  click the 'Add Records' drop down in the DNS Zone Records on top of the DNS Records of the table.
 
 ![Click the Add Record button in the top right](../images/getting_started-add-record-1.png)
 
@@ -45,8 +45,9 @@ Click the desired record type to create a record of that type under the zone. We
 
 Fill out the form with the desired fields. Click done on the bottom right to add
 
-The A record will be displayed under the record's DNS Zone Detail view, along with any other records that belong to that zone. 
+The A record will be displayed under the record's DNS Zone Detail view, along with any other records that belong to that zone.
 
+![DNS Zone with records](../images/getting_started-add-record-3.png)
 
 ## What are the next steps?
 
