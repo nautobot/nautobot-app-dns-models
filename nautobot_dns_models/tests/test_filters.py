@@ -108,7 +108,7 @@ class ARecordModelFilterTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         """Setup test data for ARecordModel Model."""
-        zone = DNSZoneModel.objects.create(name="example.com")
+        cls.zone = DNSZoneModel.objects.create(name="example.com")
         status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
         Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status)
@@ -118,9 +118,9 @@ class ARecordModelFilterTestCase(TestCase):
             IPAddress.objects.create(address="10.0.0.3/32", namespace=namespace, status=status),
         )
 
-        ARecordModel.objects.create(name="a-record-01", address=cls.ip_addresses[0], zone=zone)
-        ARecordModel.objects.create(name="a-record-02", address=cls.ip_addresses[1], zone=zone)
-        ARecordModel.objects.create(name="a-record-03", address=cls.ip_addresses[2], zone=zone)
+        ARecordModel.objects.create(name="a-record-01", address=cls.ip_addresses[0], zone=cls.zone)
+        ARecordModel.objects.create(name="a-record-02", address=cls.ip_addresses[1], zone=cls.zone)
+        ARecordModel.objects.create(name="a-record-03", address=cls.ip_addresses[2], zone=cls.zone)
 
     def test_single_name(self):
         """Test filter with name of ARecordModel."""
@@ -147,14 +147,9 @@ class ARecordModelFilterTestCase(TestCase):
         params = {"address__in": "10.0.0."}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
-    # TODO: fix below test cases for Arecord
-    # def test_address_invalid(self):
-    #     params = {"address__in": "20.20.0."}
-    #     self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
-
-    # def test_zone(self):
-    #     params = {"zone": self.zone}
-    #     self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+    def test_zone(self):
+        params = {"zone": self.zone}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
 
 class AAAARecordModelFilterTestCase(TestCase):

@@ -18,15 +18,12 @@ from nautobot_dns_models.models import (
 
 User = get_user_model()
 
-# TODO check how to remove the disable of list_objects_with_constrained_permission in the test cases
-
 
 class DnsZoneModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     # pylint: disable=too-many-ancestors
     """Test the DnsZoneModel views."""
 
     model = DNSZoneModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):
@@ -90,7 +87,6 @@ class NSRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the NSRecordModel views."""
 
     model = NSRecordModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):
@@ -133,7 +129,6 @@ class ARecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the ARecordModel views."""
 
     model = ARecordModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):
@@ -185,7 +180,6 @@ class AAAARecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the AAAARecordModel views."""
 
     model = AAAARecordModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):
@@ -237,7 +231,6 @@ class CNAMERecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the CNAMERecordModel views."""
 
     model = CNAMERecordModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):
@@ -280,7 +273,6 @@ class MXRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the MXRecordModel views."""
 
     model = MXRecordModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):
@@ -324,7 +316,6 @@ class TXTRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the TXTRecordModel views."""
 
     model = TXTRecordModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):
@@ -368,7 +359,6 @@ class PTRRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the PTRRecordModel views."""
 
     model = PTRRecordModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):
