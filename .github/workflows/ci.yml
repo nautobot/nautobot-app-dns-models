@@ -19,7 +19,7 @@ jobs:
   ruff-format:
     runs-on: "ubuntu-22.04"
     env:
-      INVOKE_DNS_MODELS_LOCAL: "True"
+      INVOKE_NAUTOBOT_DNS_MODELS_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -32,7 +32,7 @@ jobs:
   ruff-lint:
     runs-on: "ubuntu-22.04"
     env:
-      INVOKE_DNS_MODELS_LOCAL: "True"
+      INVOKE_NAUTOBOT_DNS_MODELS_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -45,7 +45,7 @@ jobs:
   check-docs-build:
     runs-on: "ubuntu-22.04"
     env:
-      INVOKE_DNS_MODELS_LOCAL: "True"
+      INVOKE_NAUTOBOT_DNS_MODELS_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -58,7 +58,7 @@ jobs:
   poetry:
     runs-on: "ubuntu-22.04"
     env:
-      INVOKE_DNS_MODELS_LOCAL: "True"
+      INVOKE_NAUTOBOT_DNS_MODELS_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -71,7 +71,7 @@ jobs:
   yamllint:
     runs-on: "ubuntu-22.04"
     env:
-      INVOKE_DNS_MODELS_LOCAL: "True"
+      INVOKE_NAUTOBOT_DNS_MODELS_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -94,8 +94,8 @@ jobs:
         python-version: ["3.11"]
         nautobot-version: ["2.4.0"]
     env:
-      INVOKE_DNS_MODELS_PYTHON_VER: "${{ matrix.python-version }}"
-      INVOKE_DNS_MODELS_NAUTOBOT_VER: "${{ matrix.nautobot-version }}"
+      INVOKE_NAUTOBOT_DNS_MODELS_PYTHON_VER: "${{ matrix.python-version }}"
+      INVOKE_NAUTOBOT_DNS_MODELS_NAUTOBOT_VER: "${{ matrix.nautobot-version }}"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -105,7 +105,7 @@ jobs:
           poetry-version: "1.8.5"
       - name: "Constrain Nautobot version and regenerate lock file"
         env:
-          INVOKE_DNS_MODELS_LOCAL: "true"
+          INVOKE_NAUTOBOT_DNS_MODELS_LOCAL: "true"
         run: "poetry run invoke lock --constrain-nautobot-ver --constrain-python-ver"
       - name: "Set up Docker Buildx"
         id: "buildx"
@@ -151,8 +151,8 @@ jobs:
             nautobot-version: "stable"
     runs-on: "ubuntu-22.04"
     env:
-      INVOKE_DNS_MODELS_PYTHON_VER: "${{ matrix.python-version }}"
-      INVOKE_DNS_MODELS_NAUTOBOT_VER: "${{ matrix.nautobot-version }}"
+      INVOKE_NAUTOBOT_DNS_MODELS_PYTHON_VER: "${{ matrix.python-version }}"
+      INVOKE_NAUTOBOT_DNS_MODELS_NAUTOBOT_VER: "${{ matrix.nautobot-version }}"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -162,7 +162,7 @@ jobs:
           poetry-version: "1.8.5"
       - name: "Constrain Nautobot version and regenerate lock file"
         env:
-          INVOKE_DNS_MODELS_LOCAL: "true"
+          INVOKE_NAUTOBOT_DNS_MODELS_LOCAL: "true"
         run: "poetry run invoke lock --constrain-nautobot-ver --constrain-python-ver"
       - name: "Set up Docker Buildx"
         id: "buildx"
@@ -214,7 +214,7 @@ jobs:
     runs-on: "ubuntu-22.04"
     if: "startsWith(github.ref, 'refs/tags/v')"
     env:
-      INVOKE_DNS_MODELS_LOCAL: "True"
+      INVOKE_NAUTOBOT_DNS_MODELS_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -249,7 +249,7 @@ jobs:
     runs-on: "ubuntu-22.04"
     if: "startsWith(github.ref, 'refs/tags/v')"
     env:
-      INVOKE_DNS_MODELS_LOCAL: "True"
+      INVOKE_NAUTOBOT_DNS_MODELS_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"

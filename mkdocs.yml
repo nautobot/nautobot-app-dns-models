@@ -1,6 +1,6 @@
 ---
 dev_addr: "127.0.0.1:8001"
-edit_uri: "edit/develop/docs"
+edit_uri: "edit/main/docs"
 site_dir: "nautobot_dns_models/static/nautobot_dns_models/docs"
 site_name: "Nautobot DNS Models Documentation"
 site_url: "https://docs.nautobot.com/projects/nautobot-dns-models/en/latest/"
@@ -14,13 +14,17 @@ theme:
     - "django"
     - "yaml"
   features:
-    - "navigation.tracking"
+    - "content.action.edit"
+    - "content.action.view"
+    - "content.code.copy"
+    - "navigation.footer"
+    - "navigation.indexes"
     - "navigation.tabs"
     - "navigation.tabs.sticky"
-    - "search.suggest"
+    - "navigation.tracking"
     - "search.highlight"
     - "search.share"
-    - "navigation.indexes"
+    - "search.suggest"
   favicon: "assets/favicon.ico"
   logo: "assets/nautobot_logo.svg"
   palette:
