@@ -17,9 +17,11 @@ The first step with the App is to create a DNS Zone. The Zone is the organizatio
 Create a DNS Zone by clicking the `+` button next to DNS Zones, or by clicking DNS Zones and clicking the Add Zone button at the top right.
 
 ![Create a DNS Zone from Navigation Bar](../images/getting_started-add-zone-1.png)
+
 ![Create a DNS Zone from DNS Zone list page](../images/getting_started-add-zone-2.png)
 
 In the New Zone form, enter:
+
 - Zone Name: The Zone name including the TLD (.com, .net, etc.)
 - A filename for the zone
 - Authoratative nameserver
@@ -35,7 +37,7 @@ Both A and AAAA records are related to actual IP address objects within Nautobot
 
 Because A and/or AAAA records are some of the most common we will add one.
 
-Within the Zone we created above,  click the 'Add Records' drop down in the DNS Zone Records on top of the DNS Records of the table.
+Within the Zone we created above, click the `Add Records` drop down in the DNS Zone Records on top of the DNS Records of the table.
 
 ![Click the Add Record button in the top right](../images/getting_started-add-record-1.png)
 
