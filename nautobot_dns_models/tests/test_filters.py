@@ -147,7 +147,7 @@ class ARecordModelFilterTestCase(TestCase):
         params = {"address__in": "10.0.0."}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
-    # FIXME: fix below test cases for Arecord
+    # TODO: fix below test cases for Arecord
     # def test_address_invalid(self):
     #     params = {"address__in": "20.20.0."}
     #     self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)

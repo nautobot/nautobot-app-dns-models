@@ -18,18 +18,7 @@ class DNSZoneModelForm(NautobotModelForm):
         """Meta attributes."""
 
         model = models.DNSZoneModel
-        fields = [
-            "name",
-            "description",
-            "filename",
-            "soa_mname",
-            "soa_rname",
-            "soa_refresh",
-            "soa_retry",
-            "soa_expire",
-            "soa_serial",
-            "soa_minimum",
-        ]
+        fields = "__all__"
 
 
 class DNSZoneModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -70,12 +59,7 @@ class NSRecordModelForm(NautobotModelForm):
         """Meta attributes."""
 
         model = models.NSRecordModel
-        fields = [
-            "name",
-            "server",
-            "zone",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class NSRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -118,14 +102,7 @@ class ARecordModelForm(NautobotModelForm):
         """Meta attributes."""
 
         model = models.ARecordModel
-        fields = [
-            "name",
-            "address",
-            "ttl",
-            "zone",
-            "comment",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class ARecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -168,14 +145,7 @@ class AAAARecordModelForm(NautobotModelForm):
         """Meta attributes."""
 
         model = models.AAAARecordModel
-        fields = [
-            "name",
-            "address",
-            "ttl",
-            "zone",
-            "comment",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class AAAARecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -217,12 +187,7 @@ class CNAMERecordModelForm(NautobotModelForm):
         """Meta attributes."""
 
         model = models.CNAMERecordModel
-        fields = [
-            "name",
-            "alias",
-            "zone",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class CNAMERecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -266,13 +231,7 @@ class MXRecordModelForm(NautobotModelForm):
         """Meta attributes."""
 
         model = models.MXRecordModel
-        fields = [
-            "name",
-            "preference",
-            "mail_server",
-            "zone",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class MXRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -315,12 +274,7 @@ class TXTRecordModelForm(NautobotModelForm):
         """Meta attributes."""
 
         model = models.TXTRecordModel
-        fields = [
-            "name",
-            "text",
-            "zone",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class TXTRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -363,14 +317,7 @@ class PTRRecordModelForm(NautobotModelForm):
         """Meta attributes."""
 
         model = models.PTRRecordModel
-        fields = [
-            "name",
-            "ptrdname",
-            "ttl",
-            "zone",
-            "comment",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class PTRRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
