@@ -306,4 +306,4 @@ invoke.yml
 public
 /compose.yaml
 /dump.sql
-/dns_models/static/dns_models/docs
+/nautobot_dns_models/static/nautobot_dns_models/docs
