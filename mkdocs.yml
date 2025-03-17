@@ -1,6 +1,6 @@
 ---
 dev_addr: "127.0.0.1:8001"
-edit_uri: "edit/develop/docs"
+edit_uri: "edit/main/docs"
 site_dir: "nautobot_dns_models/static/nautobot_dns_models/docs"
 site_name: "Nautobot DNS Models Documentation"
 site_url: "https://docs.nautobot.com/projects/nautobot-dns-models/en/latest/"
@@ -14,13 +14,17 @@ theme:
     - "django"
     - "yaml"
   features:
-    - "navigation.tracking"
+    - "content.action.edit"
+    - "content.action.view"
+    - "content.code.copy"
+    - "navigation.footer"
+    - "navigation.indexes"
     - "navigation.tabs"
     - "navigation.tabs.sticky"
-    - "search.suggest"
+    - "navigation.tracking"
     - "search.highlight"
     - "search.share"
-    - "navigation.indexes"
+    - "search.suggest"
   favicon: "assets/favicon.ico"
   logo: "assets/nautobot_logo.svg"
   palette:
@@ -79,7 +83,12 @@ markdown_extensions:
       anchor_linenums: true
   - "pymdownx.inlinehilite"
   - "pymdownx.snippets"
-  - "pymdownx.superfences"
+  - "pymdownx.superfences":
+      custom_fences:
+        - name: "mermaid"
+          class: "mermaid"
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - "pymdownx.blocks.caption"
   - "footnotes"
 plugins:
   - "search"
@@ -113,7 +122,7 @@ nav:
       - Extending the App: "dev/extending.md"
       - Contributing to the App: "dev/contributing.md"
       - Development Environment: "dev/dev_environment.md"
-      - Architecture Decision Records: "dev/arch_decision.md"
+      - Release Checklist: "dev/release_checklist.md"
       - Code Reference:
           - "dev/code_reference/index.md"
           - Package: "dev/code_reference/package.md"

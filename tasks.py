@@ -46,7 +46,7 @@ def is_truthy(arg):
 
 
 # Use pyinvoke configuration for default values, see http://docs.pyinvoke.org/en/stable/concepts/configuration.html
-# Variables may be overwritten in invoke.yml or by the environment variables INVOKE_DNS_MODELS_xxx
+# Variables may be overwritten in invoke.yml or by the environment variables INVOKE_NAUTOBOT_DNS_MODELS_xxx
 namespace = Collection("nautobot_dns_models")
 namespace.configure(
     {
@@ -715,7 +715,7 @@ def pylint(context):
     exit_code = 0
 
     base_pylint_command = 'pylint --verbose --init-hook "import nautobot; nautobot.setup()" --rcfile pyproject.toml'
-    command = f"{base_pylint_command}nautobot_dns_models"
+    command = f"{base_pylint_command} nautobot_dns_models"
     if not run_command(context, command, warn=True):
         exit_code = 1
 
@@ -725,7 +725,7 @@ def pylint(context):
         migrations_pylint_command = (
             f"{base_pylint_command} --load-plugins=pylint_django.checkers.migrations"
             " --disable=all --enable=fatal,new-db-field-with-default,missing-backwards-migration-callable"
-            "nautobot_dns_models.migrations"
+            " nautobot_dns_models.migrations"
         )
         if not run_command(context, migrations_pylint_command, warn=True):
             exit_code = 1
@@ -837,7 +837,7 @@ def unittest(  # noqa: PLR0913
 @task
 def unittest_coverage(context):
     """Report on code test coverage as measured by 'invoke unittest'."""
-    command = "coverage report --skip-covered --include 'dns_models/*' --omit *migrations*"
+    command = "coverage report --skip-covered --include 'nautobot_dns_models/*' --omit *migrations*"
 
     run_command(context, command)
 

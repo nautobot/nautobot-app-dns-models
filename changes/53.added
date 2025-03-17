@@ -1,0 +1,3 @@
+Added mermaid diagram rendering to docs.
+Added Release Checklist to docs nav.
+Added docs view entry so static docs hosted in Nautobot can be opened from the Install Apps table.

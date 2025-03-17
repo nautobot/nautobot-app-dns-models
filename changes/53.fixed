@@ -1,0 +1,4 @@
+Fixed gitignore for the static docs folder.
+Fixed documentation URLs in README.
+Miscellaneous docs edits.
+Pin poetry in CI to 1.8.5.

@@ -11,24 +11,24 @@ An app that contains DNS specific models. The goal of the App is to eventually c
 
 ## Audience (User Personas) - Who should use this App?
 
-Network or Systems Admins who need to keep track of DNS records. 
+Network or Systems Admins who need to keep track of DNS records.
 
 ## Authors and Maintainers
 
-@gertzakis
-@scetron
+- [Gerasimos Tzakis - @gertzakis](https://github.com/gertzakis)
+- [Stephen Corry - @scetron](https://github.com/scetron)
 
 ## Nautobot Features Used
 
-Custom Fields
-Custom Links
-Custom Validators
-Export Templates
-GraphQL
-Relationships
-Webhooks
-Notes
+- Custom Fields
+- Custom Links
+- Custom Validators
+- Export Templates
+- GraphQL
+- Relationships
+- Webhooks
+- Notes
 
 ### Extras
 
-No jobs, custom fields, or custom relationships are created by this plugin. This may change in the future.
+No jobs, custom fields, or custom relationships are created by this app. This may change in the future.

@@ -1,1 +1,1 @@
-"""REST API module for nautobot_dns_models plugin."""
+"""REST API module for nautobot_dns_models app."""

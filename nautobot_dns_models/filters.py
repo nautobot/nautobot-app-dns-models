@@ -1,6 +1,5 @@
 """Filtering for nautobot_dns_models."""
 
-from nautobot.apps.filters import NaturalKeyOrPKMultipleChoiceFilter
 from nautobot.extras.filters import NautobotFilterSet
 
 from nautobot_dns_models import models
