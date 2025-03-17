@@ -15,7 +15,7 @@ from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 # how to chose a database model: https://nautobot.readthedocs.io/en/stable/plugins/development/#database-models
 
 
-class DNSModel(PrimaryModel):  # pylint: disable=too-many-ancestors
+class DNSModel(PrimaryModel):
     """Abstract Model for Nautobot DNS Models."""
 
     class Meta:
@@ -31,7 +31,7 @@ class DNSModel(PrimaryModel):  # pylint: disable=too-many-ancestors
 
     def __str__(self):
         """Stringify instance."""
-        return self.name
+        return self.name  # pylint: disable=no-member
 
 
 @extras_features(
@@ -43,7 +43,7 @@ class DNSModel(PrimaryModel):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class DNSZoneModel(DNSModel):  # pylint: disable=too-many-ancestors
+class DNSZoneModel(DNSModel):
     """Model for DNS SOA Records. An SOA Record defines a DNS Zone."""
 
     name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD. e.g example.com", unique=True)

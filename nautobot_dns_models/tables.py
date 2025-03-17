@@ -7,7 +7,7 @@ from nautobot_dns_models import models
 
 
 # TODO: Create a BaseTable with links in Name & Zone fields and inherit all other tables from it.
-class DNSZoneModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class DNSZoneModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -48,7 +48,7 @@ class DNSZoneModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         )
 
 
-class NSRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class NSRecordModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -87,7 +87,7 @@ class NSRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         )
 
 
-class ARecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class ARecordModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -128,7 +128,7 @@ class ARecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         )
 
 
-class AAAARecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class AAAARecordModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -167,7 +167,7 @@ class AAAARecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         )
 
 
-class CNAMERecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class CNAMERecordModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -206,7 +206,7 @@ class CNAMERecordModelTable(BaseTable):  # pylint: disable=too-few-public-method
         )
 
 
-class MXRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class MXRecordModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -245,7 +245,7 @@ class MXRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         )
 
 
-class TXTRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class TXTRecordModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -284,7 +284,7 @@ class TXTRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         )
 
 
-class PTRRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class PTRRecordModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()
