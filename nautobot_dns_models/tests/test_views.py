@@ -63,6 +63,7 @@ class DnsZoneModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
         cls.form_data = {
             "name": "Test 1",
+            "ttl": 3600,
             "description": "Initial model",
             "filename": "test three",
             "soa_mname": "auth-server",
@@ -75,8 +76,8 @@ class DnsZoneModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         }
 
         cls.csv_data = (
-            "name, description, filename, soa_mname, soa_rname, soa_refresh, soa_retry, soa_expire, soa_serial, soa_minimum",
-            "Test 3, Description 3, filename 3, auth-server, admin@example_three.com, 86400, 7200, 3600000, 0, 172800",
+            "name, ttl, description, filename, soa_mname, soa_rname, soa_refresh, soa_retry, soa_expire, soa_serial, soa_minimum",
+            "Test 3, 3600, Description 3, filename 3, auth-server, admin@example_three.com, 86400, 7200, 3600000, 0, 172800",
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}
@@ -114,11 +115,12 @@ class NSRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             "name": "test record",
             "server": "test server",
             "zone": zone.pk,
+            "ttl": 3600,
         }
 
         cls.csv_data = (
-            "name,server,zone",
-            f"Test 3,server 3,{zone.name}",
+            "name,server,zone, ttl",
+            f"Test 3,server 3,{zone.name}, 3600",
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}
