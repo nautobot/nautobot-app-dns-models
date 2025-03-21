@@ -10,9 +10,6 @@ from nautobot.extras.forms import NautobotFilterForm
 
 from nautobot_dns_models import models
 
-# TODO: use `fields = "__all__"` instead of listing all fields
-# We need to specify the `ttl` field in the test form data of views testcase.
-
 
 class DNSZoneModelForm(NautobotModelForm):
     """DnsZoneModel creation/edit form."""
@@ -105,14 +102,7 @@ class ARecordModelForm(NautobotModelForm):
         """Meta attributes."""
 
         model = models.ARecordModel
-        fields = [
-            "name",
-            "address",
-            "ttl",
-            "zone",
-            "comment",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class ARecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -155,14 +145,7 @@ class AAAARecordModelForm(NautobotModelForm):
         """Meta attributes."""
 
         model = models.AAAARecordModel
-        fields = [
-            "name",
-            "address",
-            "ttl",
-            "zone",
-            "comment",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class AAAARecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -204,12 +187,7 @@ class CNAMERecordModelForm(NautobotModelForm):
         """Meta attributes."""
 
         model = models.CNAMERecordModel
-        fields = [
-            "name",
-            "alias",
-            "zone",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class CNAMERecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -253,13 +231,7 @@ class MXRecordModelForm(NautobotModelForm):
         """Meta attributes."""
 
         model = models.MXRecordModel
-        fields = [
-            "name",
-            "preference",
-            "mail_server",
-            "zone",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class MXRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -302,12 +274,7 @@ class TXTRecordModelForm(NautobotModelForm):
         """Meta attributes."""
 
         model = models.TXTRecordModel
-        fields = [
-            "name",
-            "text",
-            "zone",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class TXTRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -349,14 +316,7 @@ class PTRRecordModelForm(NautobotModelForm):
         """Meta attributes."""
 
         model = models.PTRRecordModel
-        fields = [
-            "name",
-            "ptrdname",
-            "ttl",
-            "zone",
-            "comment",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class PTRRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):

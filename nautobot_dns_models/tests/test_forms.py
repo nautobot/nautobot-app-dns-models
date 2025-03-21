@@ -68,6 +68,7 @@ class NSRecordModelFormTestCase(TestCase):
             "name": "ns-record",
             "server": "ns-record-server",
             "description": "Development Testing",
+            "ttl": 3600,
             "zone": self.dns_zone,
         }
         form = self.form_class(data)
@@ -78,6 +79,7 @@ class NSRecordModelFormTestCase(TestCase):
         data = {
             "name": "ns-record",
             "server": "ns-record-server",
+            "ttl": 3600,
             "zone": self.dns_zone,
         }
         form = self.form_class(data)
@@ -207,6 +209,7 @@ class CNAMERecordModelFormTestCase(TestCase):
         data = {
             "name": "cname-record",
             "alias": "cname-alias",
+            "ttl": 3600,
             "zone": self.dns_zone,
         }
         form = self.form_class(data)
@@ -217,6 +220,7 @@ class CNAMERecordModelFormTestCase(TestCase):
         data = {
             "name": "cname-record",
             "alias": "cname-alias",
+            "ttl": 3600,
             "zone": self.dns_zone,
             "description": "this is a cname description",
         }
@@ -239,6 +243,7 @@ class MXRecordModelFormTestCase(TestCase):
             "name": "mx-record",
             "preference": 10,
             "mail_server": "mail-server.com",
+            "ttl": 3600,
             "zone": self.dns_zone,
         }
         form = self.form_class(data)
@@ -250,6 +255,7 @@ class MXRecordModelFormTestCase(TestCase):
             "name": "mx-record",
             "preference": 10,
             "mail_server": "mail-server.com",
+            "ttl": 3600,
             "zone": self.dns_zone,
             "description": "this is a boring description",
         }
@@ -271,6 +277,7 @@ class TXTRecordModelFormTestCase(TestCase):
         data = {
             "name": "txt-record",
             "text": "spf record",
+            "ttl": 3600,
             "zone": self.dns_zone,
         }
         form = self.form_class(data)
@@ -281,6 +288,7 @@ class TXTRecordModelFormTestCase(TestCase):
         data = {
             "name": "txt-record",
             "text": "spf record",
+            "ttl": 3600,
             "zone": self.dns_zone,
             "description": "this is a boring description",
         }

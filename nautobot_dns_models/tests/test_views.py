@@ -259,6 +259,7 @@ class CNAMERecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.form_data = {
             "name": "test record",
             "alias": "test.example.com",
+            "ttl": 3600,
             "zone": zone.pk,
         }
 
@@ -302,6 +303,7 @@ class MXRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             "name": "test record",
             "mail_server": "test_mail.example.com",
             "preference": 10,
+            "ttl": 3600,
             "zone": zone.pk,
         }
 
@@ -345,6 +347,7 @@ class TXTRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.form_data = {
             "name": "test record",
             "text": "test-text",
+            "ttl": 3600,
             "zone": zone.pk,
         }
 
