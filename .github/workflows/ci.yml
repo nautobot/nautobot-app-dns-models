@@ -249,6 +249,7 @@ jobs:
     runs-on: "ubuntu-22.04"
     environment: pypi # PyPI Trusted Publishing
     permissions:
+      contents: read # Allow cloning the repo
       id-token: write # PyPI Trusted Publishing
     if: "startsWith(github.ref, 'refs/tags/v')"
     env:
