@@ -7,20 +7,28 @@ This document provides an overview of the App including critical information and
 
 ## Description
 
+An app that contains DNS specific models. The goal of the App is to eventually completely model DNS related models within Nautobot to complement and complete those already present in the core data models.
 
 ## Audience (User Personas) - Who should use this App?
 
-Network or Systems Admins who need to keep track of DNS records. 
+Network or Systems Admins who need to keep track of DNS records.
 
 ## Authors and Maintainers
 
-@gertzakis
-@scetron
+- [Gerasimos Tzakis - @gertzakis](https://github.com/gertzakis)
+- [Stephen Corry - @scetron](https://github.com/scetron)
 
 ## Nautobot Features Used
 
-GraphQL
+- Custom Fields
+- Custom Links
+- Custom Validators
+- Export Templates
+- GraphQL
+- Relationships
+- Webhooks
+- Notes
 
 ### Extras
 
-No jobs, custom fields, or custom relationships are created by this plugin. This may change in the future.
+No jobs, custom fields, or custom relationships are created by this app. This may change in the future.

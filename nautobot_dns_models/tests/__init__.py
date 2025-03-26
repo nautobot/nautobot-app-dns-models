@@ -1,1 +1,1 @@
-"""Unit tests for nautobot_dns_models plugin."""
+"""Unit tests for nautobot_dns_models app."""

@@ -1,14 +1,13 @@
 """Tables for nautobot_dns_models."""
 
 import django_tables2 as tables
-from nautobot.core.tables import BaseTable, ButtonsColumn, ToggleColumn
+from nautobot.apps.tables import BaseTable, ButtonsColumn, ToggleColumn
 
 from nautobot_dns_models import models
-from nautobot_dns_models.template_code import DNS_RECORDS_NAME, DNS_RECORDS_TYPE, DNS_RECORDS_VALUE, DNS_RECORDS_ACTIONS
 
 
 # TODO: Create a BaseTable with links in Name & Zone fields and inherit all other tables from it.
-class DNSZoneModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class DNSZoneModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -49,44 +48,7 @@ class DNSZoneModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         )
 
 
-class RecordsTable(tables.Table):
-    """Table for DNS Zone records list view."""
-
-    pk = ToggleColumn()
-
-    type_ = tables.TemplateColumn(template_code=DNS_RECORDS_TYPE, verbose_name="Type", orderable=False)
-    name = tables.TemplateColumn(template_code=DNS_RECORDS_NAME, verbose_name="Name", orderable=False)
-
-    value = tables.TemplateColumn(
-        template_code=DNS_RECORDS_VALUE,
-        verbose_name="Value",
-        orderable=False,
-    )
-    description = tables.TemplateColumn(
-        template_code="""{{ record.description }}""", verbose_name="Description", orderable=False
-    )
-    actions = tables.TemplateColumn(template_code=DNS_RECORDS_ACTIONS, verbose_name="Actions", orderable=False)
-
-    class Meta(BaseTable.Meta):
-        """Meta attributes."""
-
-        fields = (
-            "type_",
-            "name",
-            "value",
-            "description",
-            "actions",
-        )
-        default_columns = (
-            "type_",
-            "name",
-            "value",
-            "description",
-            "actions",
-        )
-
-
-class NSRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class NSRecordModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -120,11 +82,12 @@ class NSRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
             "name",
             "server",
             "zone",
-            "ttl," "actions",
+            "ttl",
+            "actions",
         )
 
 
-class ARecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class ARecordModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -165,7 +128,7 @@ class ARecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         )
 
 
-class AAAARecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class AAAARecordModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -204,7 +167,7 @@ class AAAARecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         )
 
 
-class CNAMERecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class CNAMERecordModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -243,7 +206,7 @@ class CNAMERecordModelTable(BaseTable):  # pylint: disable=too-few-public-method
         )
 
 
-class MXRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class MXRecordModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -282,7 +245,7 @@ class MXRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         )
 
 
-class TXTRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class TXTRecordModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()
@@ -321,7 +284,7 @@ class TXTRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
         )
 
 
-class PTRRecordModelTable(BaseTable):  # pylint: disable=too-few-public-methods
+class PTRRecordModelTable(BaseTable):
     """Table for list view."""
 
     pk = ToggleColumn()

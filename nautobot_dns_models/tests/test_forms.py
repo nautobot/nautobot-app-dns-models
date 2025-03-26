@@ -8,6 +8,52 @@ from nautobot_dns_models import forms
 from nautobot_dns_models.models import DNSZoneModel
 
 
+class DNSZoneModelTest(TestCase):
+    """Test DnsZoneModel forms."""
+
+    def test_specifying_all_fields_success(self):
+        form = forms.DNSZoneModelForm(
+            data={
+                "name": "Development",
+                "description": "Development Testing",
+                "ttl": 1010101,
+                "filename": "development.zone",
+                "soa_mname": "ns1.example.com",
+                "soa_rname": "admin@example.com",
+                "soa_refresh": 10800,
+                "soa_retry": 3600,
+                "soa_expire": 604800,
+                "soa_serial": 202,
+                "soa_minimum": 3600,
+            }
+        )
+        self.assertTrue(form.is_valid())
+        self.assertTrue(form.save())
+
+    def test_specifying_only_required_success(self):
+        form = forms.DNSZoneModelForm(
+            data={
+                "name": "Development",
+                "ttl": 1010101,
+                "filename": "development.zone",
+                "soa_mname": "ns1.example.com",
+                "soa_rname": "admin@example.com",
+                "soa_refresh": 10800,
+                "soa_retry": 3600,
+                "soa_expire": 604800,
+                "soa_serial": 202,
+                "soa_minimum": 3600,
+            }
+        )
+        self.assertTrue(form.is_valid())
+        self.assertTrue(form.save())
+
+    def test_validate_name_dnszonemodel_is_required(self):
+        form = forms.DNSZoneModelForm(data={"ttl": "1010101"})
+        self.assertFalse(form.is_valid())
+        self.assertIn("This field is required.", form.errors["name"])
+
+
 class NSRecordModelFormTestCase(TestCase):
     """Test NSRecordModel forms."""
 
@@ -235,6 +281,40 @@ class TXTRecordModelFormTestCase(TestCase):
         data = {
             "name": "txt-record",
             "text": "spf record",
+            "zone": self.dns_zone,
+            "description": "this is a boring description",
+        }
+        form = self.form_class(data)
+        self.assertTrue(form.is_valid())
+        self.assertTrue(form.save())
+
+
+class PTRRecordModelFormTestCase(TestCase):
+    """Test PTRRecordModel forms."""
+
+    form_class = forms.PTRRecordModelForm
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com")
+
+    def test_specifying_only_required_success(self):
+        data = {
+            "name": "ptr-record",
+            "ptrdname": "ptr-record",
+            "ttl": 3600,
+            "zone": self.dns_zone,
+        }
+        form = self.form_class(data)
+        self.assertTrue(form.is_valid())
+        self.assertTrue(form.save())
+
+    def test_specifying_all_fields_success(self):
+        data = {
+            "name": "ptr-record",
+            "ptrdname": "ptr-record",
+            "ttl": 3600,
+            "comment": "example-comment",
             "zone": self.dns_zone,
             "description": "this is a boring description",
         }

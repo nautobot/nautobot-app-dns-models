@@ -178,7 +178,7 @@ class PTRRecordModelTestCase(TestCase):
         cls.dns_zone = DNSZoneModel.objects.create(name="example.com")
 
     def test_create_ptrrecordmodel(self):
-        ptr_record = PTRRecordModel.objects.create(ptrdname="ptr-record", zone=self.dns_zone)
+        ptr_record = PTRRecordModel.objects.create(name="ptr-record", ptrdname="ptr-record", zone=self.dns_zone)
 
         self.assertEqual(ptr_record.ptrdname, "ptr-record")
         self.assertEqual(str(ptr_record), ptr_record.ptrdname)
