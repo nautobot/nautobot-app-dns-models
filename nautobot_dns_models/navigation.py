@@ -18,7 +18,7 @@ items = [
 
 menu_items = (
     NavMenuTab(
-        name="Plugins",
+        name="Apps",
         groups=(NavMenuGroup(name="DNS", items=tuple(items)),),
     ),
 )
