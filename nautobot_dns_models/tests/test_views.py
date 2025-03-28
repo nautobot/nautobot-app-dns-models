@@ -18,15 +18,12 @@ from nautobot_dns_models.models import (
 
 User = get_user_model()
 
-# TODO check how to remove the disable of list_objects_with_constrained_permission in the test cases
-
 
 class DnsZoneModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     # pylint: disable=too-many-ancestors
     """Test the DnsZoneModel views."""
 
     model = DNSZoneModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):
@@ -66,6 +63,7 @@ class DnsZoneModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
         cls.form_data = {
             "name": "Test 1",
+            "ttl": 3600,
             "description": "Initial model",
             "filename": "test three",
             "soa_mname": "auth-server",
@@ -78,8 +76,8 @@ class DnsZoneModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         }
 
         cls.csv_data = (
-            "name, description, filename, soa_mname, soa_rname, soa_refresh, soa_retry, soa_expire, soa_serial, soa_minimum",
-            "Test 3, Description 3, filename 3, auth-server, admin@example_three.com, 86400, 7200, 3600000, 0, 172800",
+            "name, ttl, description, filename, soa_mname, soa_rname, soa_refresh, soa_retry, soa_expire, soa_serial, soa_minimum",
+            "Test 3, 3600, Description 3, filename 3, auth-server, admin@example_three.com, 86400, 7200, 3600000, 0, 172800",
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}
@@ -90,7 +88,6 @@ class NSRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the NSRecordModel views."""
 
     model = NSRecordModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):
@@ -118,11 +115,12 @@ class NSRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             "name": "test record",
             "server": "test server",
             "zone": zone.pk,
+            "ttl": 3600,
         }
 
         cls.csv_data = (
-            "name,server,zone",
-            f"Test 3,server 3,{zone.name}",
+            "name,server,zone, ttl",
+            f"Test 3,server 3,{zone.name}, 3600",
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}
@@ -133,7 +131,6 @@ class ARecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the ARecordModel views."""
 
     model = ARecordModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):
@@ -185,7 +182,6 @@ class AAAARecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the AAAARecordModel views."""
 
     model = AAAARecordModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):
@@ -237,7 +233,6 @@ class CNAMERecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the CNAMERecordModel views."""
 
     model = CNAMERecordModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):
@@ -264,6 +259,7 @@ class CNAMERecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.form_data = {
             "name": "test record",
             "alias": "test.example.com",
+            "ttl": 3600,
             "zone": zone.pk,
         }
 
@@ -280,7 +276,6 @@ class MXRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the MXRecordModel views."""
 
     model = MXRecordModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):
@@ -308,6 +303,7 @@ class MXRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             "name": "test record",
             "mail_server": "test_mail.example.com",
             "preference": 10,
+            "ttl": 3600,
             "zone": zone.pk,
         }
 
@@ -324,7 +320,6 @@ class TXTRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the TXTRecordModel views."""
 
     model = TXTRecordModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):
@@ -352,6 +347,7 @@ class TXTRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.form_data = {
             "name": "test record",
             "text": "test-text",
+            "ttl": 3600,
             "zone": zone.pk,
         }
 
@@ -368,7 +364,6 @@ class PTRRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the PTRRecordModel views."""
 
     model = PTRRecordModel
-    test_list_objects_with_constrained_permission = None
 
     @classmethod
     def setUpTestData(cls):

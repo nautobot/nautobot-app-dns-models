@@ -10,28 +10,15 @@ from nautobot.extras.forms import NautobotFilterForm
 
 from nautobot_dns_models import models
 
-# TODO: use `fields = "__all__"` instead of listing all fields
-
 
 class DNSZoneModelForm(NautobotModelForm):
     """DnsZoneModel creation/edit form."""
 
-    class Meta:  # pylint: disable=nb-use-fields-all
+    class Meta:
         """Meta attributes."""
 
         model = models.DNSZoneModel
-        fields = [
-            "name",
-            "description",
-            "filename",
-            "soa_mname",
-            "soa_rname",
-            "soa_refresh",
-            "soa_retry",
-            "soa_expire",
-            "soa_serial",
-            "soa_minimum",
-        ]
+        fields = "__all__"
 
 
 class DNSZoneModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -68,16 +55,11 @@ class DNSZoneModelFilterForm(NautobotFilterForm):
 class NSRecordModelForm(NautobotModelForm):
     """NSRecordModel creation/edit form."""
 
-    class Meta:  # pylint: disable=nb-use-fields-all
+    class Meta:
         """Meta attributes."""
 
         model = models.NSRecordModel
-        fields = [
-            "name",
-            "server",
-            "zone",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class NSRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -116,18 +98,11 @@ class NSRecordModelFilterForm(NautobotFilterForm):
 class ARecordModelForm(NautobotModelForm):
     """ARecordModel creation/edit form."""
 
-    class Meta:  # pylint: disable=nb-use-fields-all
+    class Meta:
         """Meta attributes."""
 
         model = models.ARecordModel
-        fields = [
-            "name",
-            "address",
-            "ttl",
-            "zone",
-            "comment",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class ARecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -166,18 +141,11 @@ class ARecordModelFilterForm(NautobotFilterForm):
 class AAAARecordModelForm(NautobotModelForm):
     """AAAARecordModel creation/edit form."""
 
-    class Meta:  # pylint: disable=nb-use-fields-all
+    class Meta:
         """Meta attributes."""
 
         model = models.AAAARecordModel
-        fields = [
-            "name",
-            "address",
-            "ttl",
-            "zone",
-            "comment",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class AAAARecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -215,16 +183,11 @@ class AAAARecordModelFilterForm(NautobotFilterForm):
 class CNAMERecordModelForm(NautobotModelForm):
     """CNAMERecordModel creation/edit form."""
 
-    class Meta:  # pylint: disable=nb-use-fields-all
+    class Meta:
         """Meta attributes."""
 
         model = models.CNAMERecordModel
-        fields = [
-            "name",
-            "alias",
-            "zone",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class CNAMERecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -264,17 +227,11 @@ class CNAMERecordModelFilterForm(NautobotFilterForm):
 class MXRecordModelForm(NautobotModelForm):
     """MXRecordModel creation/edit form."""
 
-    class Meta:  # pylint: disable=nb-use-fields-all
+    class Meta:
         """Meta attributes."""
 
         model = models.MXRecordModel
-        fields = [
-            "name",
-            "preference",
-            "mail_server",
-            "zone",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class MXRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -313,16 +270,11 @@ class MXRecordModelFilterForm(NautobotFilterForm):
 class TXTRecordModelForm(NautobotModelForm):
     """TXTRecordModel creation/edit form."""
 
-    class Meta:  # pylint: disable=nb-use-fields-all
+    class Meta:
         """Meta attributes."""
 
         model = models.TXTRecordModel
-        fields = [
-            "name",
-            "text",
-            "zone",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class TXTRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -357,22 +309,14 @@ class TXTRecordModelFilterForm(NautobotFilterForm):
     ]
 
 
-# TODO: check if we need all those fields as necessary
 class PTRRecordModelForm(NautobotModelForm):
     """PTRRecordModel creation/edit form."""
 
-    class Meta:  # pylint: disable=nb-use-fields-all
+    class Meta:
         """Meta attributes."""
 
         model = models.PTRRecordModel
-        fields = [
-            "name",
-            "ptrdname",
-            "ttl",
-            "zone",
-            "comment",
-            "description",
-        ]
+        fields = "__all__"
 
 
 class PTRRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
