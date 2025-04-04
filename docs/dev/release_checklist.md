@@ -128,7 +128,7 @@ Once CI has completed on the PR, merge it.
 
 ### Create a New Release in GitHub
 
-Draft a [new release](nautobot-app-dns-models/releases/new) with the following parameters.
+Draft a [new release](https://www.github.com/nautobot/nautobot-app-dns-models/releases/new) with the following parameters.
 
 * **Tag:** Input current version (e.g. `v1.4.2`) and select `Create new tag: v1.4.2 on publish`
 * **Target:** `main`
