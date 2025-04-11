@@ -1,13 +1,26 @@
 {% if dns_records %}
     <div class="panel panel-default">
-        <div class="panel-heading"><strong>{{ dns_records_type }} Records</strong></div>
+        <div class="panel-heading">
+            <strong>{{ dns_records_type }} Records</strong>
+            {% if dns_records_type == "PTR" %}
+                <a href="/plugins/dns/{{ dns_records_type|lower }}-records/add/?ptrdname={{ ptrdname }}
+                            &return_url=/ipam/ip-addresses/{{ object.pk }}/" class="pull-right btn btn-xs btn-primary">
+                    <span class="mdi mdi-plus-thick" aria-hidden="true"></span> Add {{ dns_records_type }} Record
+                </a>
+            {% else %}
+                <a href="/plugins/dns/{{ dns_records_type|lower }}-records/add/?address={{ object.pk }}
+                            &return_url=/ipam/ip-addresses/{{ object.pk }}/" class="pull-right btn btn-xs btn-primary">
+                    <span class="mdi mdi-plus-thick" aria-hidden="true"></span> Add {{ dns_records_type }} Record
+                </a>
+            {% endif %}
+        </div>
         <table class="table table-hover panel-body">
             <tr>
                 <th>Name</th>
                 <th>Zone</th>
                 <th>TTL</th>
             </tr>
-        {% for dns_record in dns_records %}
+            {% for dns_record in dns_records %}
             <tr>
                 <td>
                     <a href="{{ dns_record.get_absolute_url }}">{{ dns_record.name }}</a>
@@ -17,12 +30,25 @@
                 </td>
                 <td>{{ dns_record.ttl }}</td>
             </tr>
-        {% endfor %}
+            {% endfor %}
         </table>
     </div>
 {% else %}
     <div class="panel panel-default">
-        <div class="panel-heading"><strong>{{ dns_records_type }} Records</strong></div>
+        <div class="panel-heading">
+            <strong>{{ dns_records_type }} Records</strong>
+            {% if dns_records_type == "PTR" %}
+                <a href="/plugins/dns/{{ dns_records_type|lower }}-records/add/?ptrdname={{ ptrdname }}
+                            &return_url=/ipam/ip-addresses/{{ object.pk }}/" class="pull-right btn btn-xs btn-primary">
+                    <span class="mdi mdi-plus-thick" aria-hidden="true"></span> Add {{ dns_records_type }} Record
+                </a>
+            {% else %}
+                <a href="/plugins/dns/{{ dns_records_type|lower }}-records/add/?address={{ object.pk }}
+                            &return_url=/ipam/ip-addresses/{{ object.pk }}/" class="pull-right btn btn-xs btn-primary">
+                    <span class="mdi mdi-plus-thick" aria-hidden="true"></span> Add {{ dns_records_type }} Record
+                </a>
+            {% endif %}
+        </div>
         <table class="table table-hover panel-body">
             <tr>
                 <td>

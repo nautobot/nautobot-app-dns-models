@@ -48,7 +48,11 @@ class ReverseRecords(TemplateExtension):  # pylint: disable=abstract-method
         dns_records = PTRRecordModel.objects.filter(ptrdname=ptrdname)
         return self.render(
             "nautobot_dns_models/inc/ipaddress_dns_records.html",
-            extra_context={"dns_records": dns_records, "dns_records_type": "PTR"},
+            extra_context={
+                "dns_records": dns_records,
+                "dns_records_type": "PTR",
+                "ptrdname": ptrdname,
+            },
         )
 
 
