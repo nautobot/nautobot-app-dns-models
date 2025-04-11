@@ -133,6 +133,8 @@ class AAAARecordModelTable(BaseTable):
 
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
+    address = tables.LinkColumn()
+    zone = tables.LinkColumn()
     actions = ButtonsColumn(
         models.AAAARecordModel,
         # Option for modifying the default action buttons on each row:
