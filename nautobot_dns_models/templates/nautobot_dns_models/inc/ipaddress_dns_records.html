@@ -1,0 +1,34 @@
+{% if dns_records %}
+    <div class="panel panel-default">
+        <div class="panel-heading"><strong>{{ dns_records_type }} Records</strong></div>
+        <table class="table table-hover panel-body">
+            <tr>
+                <th>Name</th>
+                <th>Zone</th>
+                <th>TTL</th>
+            </tr>
+        {% for dns_record in dns_records %}
+            <tr>
+                <td>
+                    <a href="{{ dns_record.get_absolute_url }}">{{ dns_record }}</a>
+                </td>
+                <td>
+                    <a href="{{ dns_record.zone.get_absolute_url }}">{{ dns_record.zone.name }}</a>
+                </td>
+                <td>{{ dns_record.ttl }}</td>
+            </tr>
+        {% endfor %}
+        </table>
+    </div>
+{% else %}
+    <div class="panel panel-default">
+        <div class="panel-heading"><strong>{{ dns_records_type }} Records</strong></div>
+        <table class="table table-hover panel-body">
+            <tr>
+                <td>
+                    No DNS Records found.
+                </td>
+            </tr>
+        </table>
+    </div>
+{% endif %}
