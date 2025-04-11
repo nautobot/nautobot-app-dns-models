@@ -1,12 +1,13 @@
 """Extensions of baseline Nautobot views."""
 
 from nautobot.apps.ui import TemplateExtension
+from netutils.ip import ipaddress_address
 
-from .models import AAAARecordModel, ARecordModel
+from .models import AAAARecordModel, ARecordModel, PTRRecordModel
 
 
-class IPAddressDNSRecords(TemplateExtension):  # pylint: disable=abstract-method
-    """Add DNS A Records to the right side of the IP Address page."""
+class ForwardRecords(TemplateExtension):  # pylint: disable=abstract-method
+    """Add DNS A/AAAA Records to the right side of the IP Address page."""
 
     model = "ipam.ipaddress"
 
@@ -36,4 +37,19 @@ class IPAddressDNSRecords(TemplateExtension):  # pylint: disable=abstract-method
         )
 
 
-template_extensions = [IPAddressDNSRecords]
+class ReverseRecords(TemplateExtension):  # pylint: disable=abstract-method
+    """Add DNS PTR Records to the right side of the IP Address page."""
+
+    model = "ipam.ipaddress"
+
+    def right_page(self):
+        """Add content to the right side of the IP Address page."""
+        ptrdname = ipaddress_address(self.context["object"].host, "reverse_pointer")
+        dns_records = PTRRecordModel.objects.filter(ptrdname=ptrdname)
+        return self.render(
+            "nautobot_dns_models/inc/ipaddress_dns_records.html",
+            extra_context={"dns_records": dns_records, "dns_records_type": "PTR"},
+        )
+
+
+template_extensions = [ForwardRecords, ReverseRecords]

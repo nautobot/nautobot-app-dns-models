@@ -10,7 +10,7 @@
         {% for dns_record in dns_records %}
             <tr>
                 <td>
-                    <a href="{{ dns_record.get_absolute_url }}">{{ dns_record }}</a>
+                    <a href="{{ dns_record.get_absolute_url }}">{{ dns_record.name }}</a>
                 </td>
                 <td>
                     <a href="{{ dns_record.zone.get_absolute_url }}">{{ dns_record.zone.name }}</a>
