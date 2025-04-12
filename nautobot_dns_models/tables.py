@@ -6,7 +6,7 @@ from nautobot.apps.tables import BaseTable, ButtonsColumn, ToggleColumn
 from nautobot_dns_models import models
 
 
-class DNSRecordModelTable(BaseTable):
+class DNSRecordsTable(BaseTable):
     """Base table for DNS records list view."""
 
     pk = ToggleColumn()
@@ -55,7 +55,7 @@ class DNSZoneModelTable(BaseTable):
         )
 
 
-class NSRecordModelTable(DNSRecordModelTable):
+class NSRecordModelTable(DNSRecordsTable):
     """Table for list view."""
 
     actions = ButtonsColumn(
@@ -91,7 +91,7 @@ class NSRecordModelTable(DNSRecordModelTable):
         )
 
 
-class ARecordModelTable(DNSRecordModelTable):
+class ARecordModelTable(DNSRecordsTable):
     """Table for list view."""
 
     address = tables.LinkColumn()
@@ -129,7 +129,7 @@ class ARecordModelTable(DNSRecordModelTable):
         )
 
 
-class AAAARecordModelTable(DNSRecordModelTable):
+class AAAARecordModelTable(DNSRecordsTable):
     """Table for list view."""
 
     address = tables.LinkColumn()
@@ -167,7 +167,7 @@ class AAAARecordModelTable(DNSRecordModelTable):
         )
 
 
-class CNAMERecordModelTable(DNSRecordModelTable):
+class CNAMERecordModelTable(DNSRecordsTable):
     """Table for list view."""
 
     actions = ButtonsColumn(
@@ -204,7 +204,7 @@ class CNAMERecordModelTable(DNSRecordModelTable):
         )
 
 
-class MXRecordModelTable(DNSRecordModelTable):
+class MXRecordModelTable(DNSRecordsTable):
     """Table for list view."""
 
     actions = ButtonsColumn(
@@ -241,7 +241,7 @@ class MXRecordModelTable(DNSRecordModelTable):
         )
 
 
-class TXTRecordModelTable(DNSRecordModelTable):
+class TXTRecordModelTable(DNSRecordsTable):
     """Table for list view."""
 
     actions = ButtonsColumn(
@@ -278,7 +278,7 @@ class TXTRecordModelTable(DNSRecordModelTable):
         )
 
 
-class PTRRecordModelTable(DNSRecordModelTable):
+class PTRRecordModelTable(DNSRecordsTable):
     """Table for list view."""
 
     actions = ButtonsColumn(
