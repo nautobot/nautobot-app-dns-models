@@ -3,7 +3,7 @@
 from nautobot.apps.ui import TemplateExtension
 from netutils.ip import ipaddress_address
 
-from .models import AAAARecordModel, ARecordModel, PTRRecordModel
+from nautobot_dns_models.models import AAAARecordModel, ARecordModel, PTRRecordModel
 
 
 class IPAddressARecords(TemplateExtension):  # pylint: disable=abstract-method
