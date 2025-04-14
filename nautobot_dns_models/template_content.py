@@ -6,41 +6,47 @@ from netutils.ip import ipaddress_address
 from .models import AAAARecordModel, ARecordModel, PTRRecordModel
 
 
-class ForwardRecords(TemplateExtension):  # pylint: disable=abstract-method
-    """Add DNS A/AAAA Records to the right side of the IP Address page."""
+class IPAddressARecords(TemplateExtension):  # pylint: disable=abstract-method
+    """Add DNS A Records to the right side of the IP Address page."""
 
     model = "ipam.ipaddress"
 
     def right_page(self):
         """Add content to the right side of the IP Address page."""
-        dns_records = None
-        dns_records_type = None
-
-        # Check if the IP address is IPv4 or IPv6
         ip_version = self.context["object"].ip_version
-        if ip_version == 4:
-            dns_records = ARecordModel.objects.filter(
-                address=self.context["object"],
-            )
-            dns_records_type = "A"
-        elif ip_version == 6:
-            dns_records = AAAARecordModel.objects.filter(
-                address=self.context["object"],
-            )
-            dns_records_type = "AAAA"
         user = self.context["request"].user
-        if user.has_perm(f"nautobot_dns_models.view_{dns_records_type.lower()}recordmodel"):
+        if (ip_version == 4) and (user.has_perm("nautobot_dns_models.view_arecordmodel")):
             return self.render(
                 "nautobot_dns_models/inc/ipaddress_dns_records.html",
                 extra_context={
-                    "dns_records": dns_records,
-                    "dns_records_type": dns_records_type,
+                    "dns_records": ARecordModel.objects.filter(address=self.context["object"]),
+                    "dns_records_type": "A",
                 },
             )
         return ""
 
 
-class ReverseRecords(TemplateExtension):  # pylint: disable=abstract-method
+class IPAddressAAAARecords(TemplateExtension):  # pylint: disable=abstract-method
+    """Add DNS AAAA Records to the right side of the IP Address page."""
+
+    model = "ipam.ipaddress"
+
+    def right_page(self):
+        """Add content to the right side of the IP Address page."""
+        ip_version = self.context["object"].ip_version
+        user = self.context["request"].user
+        if (ip_version == 6) and (user.has_perm("nautobot_dns_models.view_aaaarecordmodel")):
+            return self.render(
+                "nautobot_dns_models/inc/ipaddress_dns_records.html",
+                extra_context={
+                    "dns_records": AAAARecordModel.objects.filter(address=self.context["object"]),
+                    "dns_records_type": "AAAA",
+                },
+            )
+        return ""
+
+
+class IPAddressPTRRecords(TemplateExtension):  # pylint: disable=abstract-method
     """Add DNS PTR Records to the right side of the IP Address page."""
 
     model = "ipam.ipaddress"
@@ -48,19 +54,17 @@ class ReverseRecords(TemplateExtension):  # pylint: disable=abstract-method
     def right_page(self):
         """Add content to the right side of the IP Address page."""
         ptrdname = ipaddress_address(self.context["object"].host, "reverse_pointer")
-        dns_records = PTRRecordModel.objects.filter(ptrdname=ptrdname)
-        dns_records_type = "PTR"
         user = self.context["request"].user
-        if user.has_perm(f"nautobot_dns_models.view_{dns_records_type.lower()}recordmodel"):
+        if user.has_perm("nautobot_dns_models.view_ptrrecordmodel"):
             return self.render(
                 "nautobot_dns_models/inc/ipaddress_dns_records.html",
                 extra_context={
-                    "dns_records": dns_records,
-                    "dns_records_type": dns_records_type,
+                    "dns_records": PTRRecordModel.objects.filter(ptrdname=ptrdname),
+                    "dns_records_type": "PTR",
                     "ptrdname": ptrdname,
                 },
             )
         return ""
 
 
-template_extensions = [ForwardRecords, ReverseRecords]
+template_extensions = [IPAddressARecords, IPAddressAAAARecords, IPAddressPTRRecords]
