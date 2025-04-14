@@ -28,13 +28,16 @@ class ForwardRecords(TemplateExtension):  # pylint: disable=abstract-method
                 address=self.context["object"],
             )
             dns_records_type = "AAAA"
-        return self.render(
-            "nautobot_dns_models/inc/ipaddress_dns_records.html",
-            extra_context={
-                "dns_records": dns_records,
-                "dns_records_type": dns_records_type,
-            },
-        )
+        user = self.context["request"].user
+        if user.has_perm(f"nautobot_dns_models.view_{dns_records_type.lower()}recordmodel"):
+            return self.render(
+                "nautobot_dns_models/inc/ipaddress_dns_records.html",
+                extra_context={
+                    "dns_records": dns_records,
+                    "dns_records_type": dns_records_type,
+                },
+            )
+        return ""
 
 
 class ReverseRecords(TemplateExtension):  # pylint: disable=abstract-method
@@ -46,14 +49,18 @@ class ReverseRecords(TemplateExtension):  # pylint: disable=abstract-method
         """Add content to the right side of the IP Address page."""
         ptrdname = ipaddress_address(self.context["object"].host, "reverse_pointer")
         dns_records = PTRRecordModel.objects.filter(ptrdname=ptrdname)
-        return self.render(
-            "nautobot_dns_models/inc/ipaddress_dns_records.html",
-            extra_context={
-                "dns_records": dns_records,
-                "dns_records_type": "PTR",
-                "ptrdname": ptrdname,
-            },
-        )
+        dns_records_type = "PTR"
+        user = self.context["request"].user
+        if user.has_perm(f"nautobot_dns_models.view_{dns_records_type.lower()}recordmodel"):
+            return self.render(
+                "nautobot_dns_models/inc/ipaddress_dns_records.html",
+                extra_context={
+                    "dns_records": dns_records,
+                    "dns_records_type": dns_records_type,
+                    "ptrdname": ptrdname,
+                },
+            )
+        return ""
 
 
 template_extensions = [ForwardRecords, ReverseRecords]
