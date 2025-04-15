@@ -1,15 +1,10 @@
 """Plugin declaration for nautobot_dns_models."""
 
-# Metadata is inherited from Nautobot. If not including Nautobot in the environment, this should be added
-try:
-    from importlib import metadata
-except ImportError:
-    # Python version < 3.8
-    import importlib_metadata as metadata
+from importlib import metadata
+
+from nautobot.apps import ConstanceConfigItem, NautobotAppConfig
 
 __version__ = metadata.version(__name__)
-
-from nautobot.apps import NautobotAppConfig
 
 
 class NautobotDnsModelsConfig(NautobotAppConfig):
@@ -27,6 +22,14 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
     default_settings = {}
     caching_config = {}
     docs_view_name = "plugins:nautobot_dns_models:docs"
+
+    constance_config = {
+        "IPADDRESS_PANELS": ConstanceConfigItem(
+            default={"forward": "always", "reverse": "always"},
+            help_text="Show DNS Records panels in IP Address detailed view (always/if_present/never).",
+            field_type="optional_json_field",
+        ),
+    }
 
 
 config = NautobotDnsModelsConfig  # pylint:disable=invalid-name

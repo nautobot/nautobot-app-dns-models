@@ -1,10 +1,11 @@
 """Extensions of baseline Nautobot views."""
 
+from constance import config as constance_config
 from nautobot.apps.ui import ObjectsTablePanel, SectionChoices, TemplateExtension
 from nautobot.core.views.utils import get_obj_from_context
 from netutils.ip import ipaddress_address
 
-from nautobot_dns_models.models import PTRRecordModel
+from nautobot_dns_models.models import AAAARecordModel, ARecordModel, PTRRecordModel
 from nautobot_dns_models.tables import (
     AAAARecordModelTable,
     ARecordModelTable,
@@ -14,6 +15,19 @@ from nautobot_dns_models.tables import (
 
 class ForwardDNSRecordsTablePanel(ObjectsTablePanel):
     """Add A/AAAA DNS Records to the right side of the IP Address page."""
+
+    def should_render(self, context):
+        """Check if the table should be rendered."""
+        show_panel = constance_config.nautobot_dns_models__IPADDRESS_PANELS["forward"]
+        if show_panel == "never":
+            return False
+        if show_panel == "if_present":
+            ip_address = get_obj_from_context(context)
+            if ip_address.ip_version == 4:
+                return ARecordModel.objects.filter(address=ip_address).exists()
+            if ip_address.ip_version == 6:
+                return AAAARecordModel.objects.filter(address=ip_address).exists()
+        return True
 
     def get_extra_context(self, context):
         """Set the table class based on the IP version of the IP address."""
@@ -31,6 +45,17 @@ class ForwardDNSRecordsTablePanel(ObjectsTablePanel):
 
 class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
     """Add PTR DNS Records to the right side of the IP Address page."""
+
+    def should_render(self, context):
+        """Check if the table should be rendered."""
+        show_panel = constance_config.nautobot_dns_models__IPADDRESS_PANELS["reverse"]
+        if show_panel == "never":
+            return False
+        if show_panel == "if_present":
+            ip_address = get_obj_from_context(context)
+            ptrdname = ipaddress_address(ip_address.host, "reverse_pointer")
+            return PTRRecordModel.objects.filter(ptrdname=ptrdname).exists()
+        return True
 
     def get_extra_context(self, context):
         """Set the table class based on the IP version of the IP address."""
