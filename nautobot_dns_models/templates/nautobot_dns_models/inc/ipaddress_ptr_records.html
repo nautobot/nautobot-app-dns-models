@@ -1,47 +1,49 @@
+{% load helpers %}
 <div class="panel panel-default">
     <div class="panel-heading">
         <strong>PTR Records</strong>
-        <span class="badge" style="background-color: black; margin-left: 8px;">
-            {{ dns_records|length }}
+        <span class="badge" style="background-color: black;">
+            {% if perms.nautobot_dns_models.view_ptrrecordmodel %}{{ ptr_records|length }}{% else %}0{% endif %}
         </span>
     </div>
-
     <table class="table table-hover panel-body">
-        <tr>
+        <tr class="panel-heading">
             <th><a href="">Name</a></th>
             <th><a href="">Zone</a></th>
             <th><a href="">TTL</a></th>
             <th></th>
         </tr>
-        {% if dns_records %}
-            {% for dns_record in dns_records %}
-            <tr>
-                <td>
-                    <a href="{{ dns_record.get_absolute_url }}">{{ dns_record.name }}</a>
-                </td>
-                <td>
-                    <a href="{{ dns_record.zone.get_absolute_url }}">{{ dns_record.zone.name }}</a>
-                </td>
-                <td>
-                    {{ dns_record.ttl }}
-                </td>
-                <td class="text-right">
-                    {% with url_base="plugins:nautobot_dns_models:ptrrecordmodel_" %}
-                        <a href="{% url url_base|add:'changelog' dns_record.id %}"
-                            class="btn btn-xs btn-outline-info btn-default">
-                            <span class="mdi mdi-history" aria-hidden="true"></span>
-                        </a>
-                        <a href="{% url url_base|add:'edit' dns_record.id %}"
-                            class="btn btn-xs btn-warning">
-                            <span class="mdi mdi-pencil" aria-hidden="true"></span>
-                        </a>
-                        <a href="{% url url_base|add:'delete' dns_record.id %}"
-                            class="btn btn-xs btn-danger">
-                            <span class="mdi mdi-delete" aria-hidden="true"></span>
-                        </a>
-                    {% endwith %}
-                </td>
-            </tr>
+        {% if perms.nautobot_dns_models.view_ptrrecordmodel and ptr_records %}
+            {% for ptr_record in ptr_records %}
+                <tr>
+                    <td>
+                        <a href="{{ ptr_record.get_absolute_url }}">{{ ptr_record.name }}</a>
+                    </td>
+                    <td>
+                        <a href="{{ ptr_record.zone.get_absolute_url }}">{{ ptr_record.zone.name }}</a>
+                    </td>
+                    <td>
+                        {{ ptr_record.ttl }}
+                    </td>
+                    <td class="text-right">
+                        {% with url_base="plugins:nautobot_dns_models:ptrrecordmodel_" %}
+                            <a href="{% url url_base|add:'changelog' ptr_record.id %}"
+                                class="btn btn-xs btn-outline-info btn-default">
+                                <span class="mdi mdi-history" aria-hidden="true"></span>
+                            </a>
+                            {% if perms.nautobot_dns_models.change_ptrrecordmodel %}
+                                <a href="{% url url_base|add:'edit' ptr_record.id %}" class="btn btn-xs btn-warning">
+                                    <span class="mdi mdi-pencil" aria-hidden="true"></span>
+                                </a>
+                            {% endif %}
+                            {% if perms.nautobot_dns_models.delete_ptrrecordmodel %}
+                                <a href="{% url url_base|add:'delete' ptr_record.id %}" class="btn btn-xs btn-danger">
+                                    <span class="mdi mdi-delete" aria-hidden="true"></span>
+                                </a>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+                </tr>
             {% endfor %}
         {% else %}
             <tr>
@@ -51,13 +53,14 @@
             </tr>
         {% endif %}
     </table>
-
-    <div class="panel-footer text-right">
-        {% with url_base="/plugins/dns/ptr-records/add/" %}
-            <a href="{{ url_base }}?ptrdname={{ ptrdname }}&return_url=/ipam/ip-addresses/{{ object.pk }}/"
-                class="btn btn-xs btn-primary">
-                <span class="mdi mdi-plus-thick" aria-hidden="true"></span> Add PTR Record
-            </a>
-        {% endwith %}
-    </div>
+    {% if perms.nautobot_dns_models.add_ptrrecordmodel %}
+        <div class="panel-footer text-right">
+            {% with url_base="/plugins/dns/ptr-records/add/" %}
+                <a href="{{ url_base }}?ptrdname={{ ptrdname }}&return_url=/ipam/ip-addresses/{{ object.pk }}/"
+                    class="btn btn-xs btn-primary">
+                    <span class="mdi mdi-plus-thick" aria-hidden="true"></span> Add PTR Record
+                </a>
+            {% endwith %}
+        </div>
+    {% endif %}
 </div>

@@ -51,15 +51,13 @@ class IPAddressPTRRecords(TemplateExtension):  # pylint: disable=abstract-method
         """Add content to the right side of the IP Address page."""
         ptrdname = ipaddress_address(self.context["object"].host, "reverse_pointer")
         user = self.context["request"].user
-        if user.has_perm("nautobot_dns_models.view_ptrrecordmodel"):
-            return self.render(
-                "nautobot_dns_models/inc/ipaddress_ptr_records.html",
-                extra_context={
-                    "dns_records": PTRRecordModel.objects.filter(ptrdname=ptrdname),
-                    "ptrdname": ptrdname,
-                },
-            )
-        return ""
+        return self.render(
+            "nautobot_dns_models/inc/ipaddress_ptr_records.html",
+            extra_context={
+                "ptr_records": PTRRecordModel.objects.filter(ptrdname=ptrdname),
+                "ptrdname": ptrdname,
+            },
+        )
 
 
 template_extensions = [IPAddressDNSRecords, IPAddressPTRRecords]
