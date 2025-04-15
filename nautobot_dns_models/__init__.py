@@ -2,8 +2,8 @@
 
 from importlib import metadata
 
-from nautobot.apps import ConstanceConfigItem, NautobotAppConfig
 from django.conf import settings
+from nautobot.apps import ConstanceConfigItem, NautobotAppConfig
 
 __version__ = metadata.version(__name__)
 
