@@ -34,8 +34,7 @@ class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
 
     def get_extra_context(self, context):
         """Set the table class based on the IP version of the IP address."""
-        # if user.has_perm("nautobot_dns_models.view_ptrrecordmodel"):
-        # Calculate the `ptrdname`` based on the IP address.
+        # Calculate the ptrdname based on the IP address.
         ip_address = get_obj_from_context(context)
         ptrdname = ipaddress_address(ip_address.host, "reverse_pointer")
 
@@ -51,8 +50,6 @@ class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
         return super().get_extra_context(context)
 
 
-# This class is named IPAddressDNSRecords (instead of e.g. IPAddressARecords) as
-# eventually it will also host the PTR records too.
 class IPAddressDNSRecords(TemplateExtension):  # pylint: disable=abstract-method
     """Add DNS Records to the right side of the IP Address page."""
 
