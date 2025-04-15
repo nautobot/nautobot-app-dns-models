@@ -34,19 +34,19 @@ class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
 
     def get_extra_context(self, context):
         """Set the table class based on the IP version of the IP address."""
-        user = context.get("request").user
-        if user.has_perm("nautobot_dns_models.view_ptrrecordmodel"):
-            # Calculate the `ptrdname`` based on the IP address.
-            ip_address = get_obj_from_context(context)
-            ptrdname = ipaddress_address(ip_address.host, "reverse_pointer")
+        # if user.has_perm("nautobot_dns_models.view_ptrrecordmodel"):
+        # Calculate the `ptrdname`` based on the IP address.
+        ip_address = get_obj_from_context(context)
+        ptrdname = ipaddress_address(ip_address.host, "reverse_pointer")
 
-            # Construct the table with the filtered PTR records.
-            queryset = PTRRecordModel.objects.filter(ptrdname=ptrdname)
-            ptrdtable = PTRRecordModelTable(queryset)
+        # Construct the table with the filtered PTR records, apply permissions.
+        queryset = PTRRecordModel.objects.filter(ptrdname=ptrdname)
+        queryset = queryset.restrict(context.get("request").user, "view")
+        ptrdtable = PTRRecordModelTable(queryset)
 
-            # Inject the table into the context.
-            context["ptrdtable"] = ptrdtable
-            self.context_table_key = "ptrdtable"
+        # Inject the table into the context.
+        context["ptrdtable"] = ptrdtable
+        self.context_table_key = "ptrdtable"
 
         return super().get_extra_context(context)
 
