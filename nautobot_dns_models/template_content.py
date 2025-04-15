@@ -18,7 +18,7 @@ class ForwardDNSRecordsTablePanel(ObjectsTablePanel):
 
     def should_render(self, context):
         """Check if the table should be rendered."""
-        show_panel = constance_config.nautobot_dns_models__IPADDRESS_PANELS["forward"]
+        show_panel = constance_config.nautobot_dns_models__SHOW_FORWARD_PANEL
         if show_panel == "never":
             return False
         if show_panel == "if_present":
@@ -48,7 +48,7 @@ class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
 
     def should_render(self, context):
         """Check if the table should be rendered."""
-        show_panel = constance_config.nautobot_dns_models__IPADDRESS_PANELS["reverse"]
+        show_panel = constance_config.nautobot_dns_models__SHOW_REVERSE_PANEL
         if show_panel == "never":
             return False
         if show_panel == "if_present":
