@@ -1,11 +1,18 @@
 """Extensions of baseline Nautobot views."""
 
+from urllib.parse import urlencode
+
 from constance import config as constance_config
 from nautobot.apps.ui import ObjectsTablePanel, SectionChoices, TemplateExtension
 from nautobot.core.views.utils import get_obj_from_context
 from netutils.ip import ipaddress_address
 
-from nautobot_dns_models.models import AAAARecordModel, ARecordModel, PTRRecordModel
+from nautobot_dns_models.models import (
+    AAAARecordModel,
+    ARecordModel,
+    DNSZoneModel,
+    PTRRecordModel,
+)
 from nautobot_dns_models.tables import (
     AAAARecordModelTable,
     ARecordModelTable,
@@ -40,7 +47,19 @@ class ForwardDNSRecordsTablePanel(ObjectsTablePanel):
         elif ip_address.ip_version == 6:
             self.table_class = AAAARecordModelTable
 
-        return super().get_extra_context(context)
+        # Construct the URL query to auto-populate fields when adding a new record.
+        autopop_fields = {"address": ip_address.id}
+        name, zone = ip_address.dns_name.split(".", 1)
+        if zone in DNSZoneModel.objects.values_list("name", flat=True):
+            autopop_fields["name"] = name
+            autopop_fields["zone"] = DNSZoneModel.objects.get(name=zone).id
+
+        # Tweak returned ctx
+        ctx = super().get_extra_context(context)
+        ctx["body_content_table_add_url"] = (
+            f"/plugins/dns/a-records/add/?{urlencode(autopop_fields)}&return_url=/ipam/ip-addresses/{ip_address.id}/"
+        )
+        return ctx
 
 
 class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
@@ -72,7 +91,23 @@ class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
         context["ptrdtable"] = ptrdtable
         self.context_table_key = "ptrdtable"
 
-        return super().get_extra_context(context)
+        # Construct the URL query to auto-populate fields when adding a new record.
+        autopop_fields = {
+            "address": ip_address.id,
+            "name": ip_address.dns_name,
+            "ptrdname": ptrdname,
+        }
+        zone = ptrdname.split(".", 1)[1]
+        if zone in DNSZoneModel.objects.values_list("name", flat=True):
+            autopop_fields["zone"] = DNSZoneModel.objects.get(name=zone).id
+
+        # Tweak returned ctx
+        ctx = super().get_extra_context(context)
+        ctx["body_content_table_add_url"] = (
+            f"/plugins/dns/ptr-records/add/?{urlencode(autopop_fields)}&return_url=/ipam/ip-addresses/{ip_address.id}/"
+        )
+        print(ctx["body_content_table_add_url"])
+        return ctx
 
 
 class IPAddressDNSRecords(TemplateExtension):  # pylint: disable=abstract-method
