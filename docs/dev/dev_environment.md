@@ -413,7 +413,7 @@ namespace.configure(
     {
         "nautobot_dns_models": {
             ...
-            "nautobot_ver": "2.2.9",
+            "nautobot_ver": "3.0.0",
 	    ...
         }
     }
