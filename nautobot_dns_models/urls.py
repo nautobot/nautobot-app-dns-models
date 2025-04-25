@@ -5,18 +5,17 @@ from django.urls import path
 from django.views.generic import RedirectView
 from nautobot.apps.urls import NautobotUIViewSetRouter
 
+
 from nautobot_dns_models import views
 
+
+app_name = "nautobot_dns_models"
 router = NautobotUIViewSetRouter()
 
-router.register("dns-zones", views.DNSZoneModelUIViewSet)
-router.register("a-records", views.ARecordModelUIViewSet)
-router.register("aaaa-records", views.AAAARecordModelUIViewSet)
-router.register("ns-records", views.NSRecordModelUIViewSet)
-router.register("cname-records", views.CNAMERecordModelUIViewSet)
-router.register("mx-records", views.MXRecordModelUIViewSet)
-router.register("txt-records", views.TXTRecordModelUIViewSet)
-router.register("ptr-records", views.PTRRecordModelUIViewSet)
+# The standard is for the route to be the hyphenated version of the model class name plural.
+# for example, ExampleModel would be example-models.
+router.register("dns-zone-models", views.DnsZoneModelUIViewSet)
+
 
 urlpatterns = [
     path("docs/", RedirectView.as_view(url=static("nautobot_dns_models/docs/index.html")), name="docs"),

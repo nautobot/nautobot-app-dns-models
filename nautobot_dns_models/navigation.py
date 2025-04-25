@@ -5,7 +5,7 @@ from nautobot.apps.ui import NavMenuAddButton, NavMenuGroup, NavMenuItem, NavMen
 items = [
     NavMenuItem(
         link="plugins:nautobot_dns_models:dnszonemodel_list",
-        name="DNS Zones",
+        name="Nautobot DNS Models",
         permissions=["nautobot_dns_models.view_dnszonemodel"],
         buttons=(
             NavMenuAddButton(

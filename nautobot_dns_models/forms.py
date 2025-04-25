@@ -17,7 +17,7 @@ class DNSZoneModelForm(NautobotModelForm):
     class Meta:
         """Meta attributes."""
 
-        model = models.DNSZoneModel
+        model = models.DnsZoneModel
         fields = "__all__"
 
 
