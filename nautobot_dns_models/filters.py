@@ -5,7 +5,7 @@ from nautobot.apps.filters import NameSearchFilterSet, NautobotFilterSet
 from nautobot_dns_models import models
 
 
-class DnsZoneModelFilterSet(NautobotFilterSet, NameSearchFilterSet):  # pylint: disable=too-many-ancestors
+class DnsZoneModelFilterSet(NameSearchFilterSet, NautobotFilterSet):  # pylint: disable=too-many-ancestors
     """Filter for DnsZoneModel."""
 
     class Meta:
@@ -14,4 +14,4 @@ class DnsZoneModelFilterSet(NautobotFilterSet, NameSearchFilterSet):  # pylint: 
         model = models.DnsZoneModel
 
         # add any fields from the model that you would like to filter your searches by using those
-        fields = ["id", "name", "description"]
+        fields = "__all__"

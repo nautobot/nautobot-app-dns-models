@@ -22,7 +22,7 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
     max_version = "2.9999"
     default_settings = {}
     caching_config = {}
-    docs_view_name = "plugins:dns_models:docs"
+    docs_view_name = "plugins:nautobot_dns_models:docs"
 
 
 config = NautobotDnsModelsConfig  # pylint:disable=invalid-name

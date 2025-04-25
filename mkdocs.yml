@@ -1,7 +1,7 @@
 ---
 dev_addr: "127.0.0.1:8001"
 edit_uri: "edit/main/docs"
-site_dir: "nautobot_dns_models/static/dns_models/docs"
+site_dir: "nautobot_dns_models/static/nautobot_dns_models/docs"
 site_name: "Nautobot DNS Models Documentation"
 site_url: "https://docs.nautobot.com/projects/nautobot-dns-models/en/latest/"
 repo_url: "https://github.com/nautobot/nautobot-app-dns-models"
@@ -45,12 +45,6 @@ theme:
         name: "Switch to light mode"
 extra_css:
   - "assets/extra.css"
-
-# needed for RTD version flyout menu
-# jquery is not (yet) injected by RTD automatically and it might be dropped
-# as a dependency in the future
-extra_javascript:
-  - "https://code.jquery.com/jquery-3.6.0.min.js"
 
 extra:
   generator: false
@@ -101,6 +95,12 @@ plugins:
 watch:
   - "README.md"
 
+validation:
+  omitted_files: "warn"
+  absolute_links: "warn"
+  unrecognized_links: "warn"
+  anchors: "warn"
+
 nav:
   - Overview: "index.md"
   - User Guide:
@@ -109,6 +109,8 @@ nav:
       - Using the App: "user/app_use_cases.md"
       - Frequently Asked Questions: "user/faq.md"
       - External Interactions: "user/external_interactions.md"
+      - Data Models:
+          - Dns Zone Model: "models/dnszonemodel.md"
   - Administrator Guide:
       - Install and Configure: "admin/install.md"
       - Upgrade: "admin/upgrade.md"
@@ -121,6 +123,7 @@ nav:
       - Extending the App: "dev/extending.md"
       - Contributing to the App: "dev/contributing.md"
       - Development Environment: "dev/dev_environment.md"
+      - Release Checklist: "dev/release_checklist.md"
       - Architecture Decision Records: "dev/arch_decision.md"
       - Code Reference:
           - "dev/code_reference/index.md"

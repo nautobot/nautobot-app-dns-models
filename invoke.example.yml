@@ -1,5 +1,5 @@
 ---
- nautobot_dns_models:
+nautobot_dns_models:
   nautobot_ver: "2.4.0"
   python_ver: "3.11"
   # local: false

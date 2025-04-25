@@ -14,13 +14,13 @@ This is a quick reference guide if you're already familiar with the development 
 The [Invoke](http://www.pyinvoke.org/) library is used to provide some helper commands based on the environment. There are a few configuration parameters which can be passed to Invoke to override the default configuration:
 
 - `nautobot_ver`: the version of Nautobot to use as a base for any built docker containers (default: 2.4.0)
-- `project_name`: the default docker compose project name (default: `dns-models`)
+- `project_name`: the default docker compose project name (default: `nautobot-dns-models`)
 - `python_ver`: the version of Python to use as a base for any built docker containers (default: 3.11)
 - `local`: a boolean flag indicating if invoke tasks should be run on the host or inside the docker containers (default: False, commands will be run in docker containers)
 - `compose_dir`: the full path to a directory containing the project compose files
 - `compose_files`: a list of compose files applied in order (see [Multiple Compose files](https://docs.docker.com/compose/extends/#multiple-compose-files) for more information)
 
-Using **Invoke** these configuration options can be overridden using [several methods](https://docs.pyinvoke.org/en/stable/concepts/configuration.html). Perhaps the simplest is setting an environment variable `INVOKE_DNS_MODELS_VARIABLE_NAME` where `VARIABLE_NAME` is the variable you are trying to override. The only exception is `compose_files`, because it is a list it must be overridden in a YAML file. There is an example `invoke.yml` (`invoke.example.yml`) in this directory which can be used as a starting point.
+Using **Invoke** these configuration options can be overridden using [several methods](https://docs.pyinvoke.org/en/stable/concepts/configuration.html). Perhaps the simplest is setting an environment variable `INVOKE_NAUTOBOT_DNS_MODELS_VARIABLE_NAME` where `VARIABLE_NAME` is the variable you are trying to override. The only exception is `compose_files`, because it is a list it must be overridden in a YAML file. There is an example `invoke.yml` (`invoke.example.yml`) in this directory which can be used as a starting point.
 
 ### Docker Development Environment
 
@@ -38,7 +38,6 @@ Once you have Poetry and Docker installed you can run the following commands (in
 ```shell
 poetry shell
 poetry install
-cp development/creds.example.env development/creds.env
 invoke build
 invoke start
 ```
@@ -56,7 +55,7 @@ To either stop or destroy the development environment use the following options.
 
 ```yaml
 ---
- nautobot_dns_models:
+nautobot_dns_models:
   local: true
 ```
 
@@ -125,6 +124,7 @@ Each command can be executed with `invoke <command>`. All commands support the a
 ```
   ruff             Run ruff to perform code formatting and/or linting.
   pylint           Run pylint code analysis.
+  markdownlint     Run pymarkdown linting.
   tests            Run all tests for this app.
   unittest         Run Django unit tests for the app.
 ```
@@ -159,7 +159,7 @@ This project is set up with a number of **Invoke** tasks consumed as simple CLI 
 
 ### Copy the credentials file for Nautobot
 
-First, you need to create the `development/creds.env` file - it stores a bunch of private information such as passwords and tokens for your local Nautobot install. You can make a copy of the `development/creds.example.env` and modify it to suit you.
+First, you may create/overwrite the `development/creds.env` file - it stores a bunch of private information such as passwords and tokens for your local Nautobot install. You can make a copy of the `development/creds.example.env` and modify it to suit you.
 
 ```shell
 cp development/creds.example.env development/creds.env
@@ -177,7 +177,7 @@ The first thing you need to do is build the necessary Docker image for Nautobot 
 #14 exporting layers
 #14 exporting layers 1.2s done
 #14 writing image sha256:2d524bc1665327faa0d34001b0a9d2ccf450612bf8feeb969312e96a2d3e3503 done
-#14 naming to docker.io/dns-models/nautobot:2.4.0-py3.11 done
+#14 naming to docker.io/nautobot-dns-models/nautobot:2.4.0-py3.11 done
 ```
 
 ### Invoke - Starting the Development Environment
@@ -314,7 +314,7 @@ When trying to debug an issue, one helpful thing you can look at are the logs wi
 !!! info
     Want to limit the log output even further? Use the `--tail <#>` command line argument in conjunction with `-f`.
 
-So for example, our app is named `dns-models`, the command would most likely be `docker logs nautobot_dns_models_nautobot_1 -f`. You can find the name of all running containers via `docker ps`.
+So for example, our app is named `nautobot-dns-models`, the command would most likely be `docker logs nautobot_dns_models_nautobot_1 -f`. You can find the name of all running containers via `docker ps`.
 
 If you want to view the logs specific to the worker container, simply use the name of that container instead.
 
@@ -396,7 +396,7 @@ namespace.configure(
 )
 ```
 
-Or set the `INVOKE_DNS_MODELS_PYTHON_VER` variable.
+Or set the `INVOKE_NAUTOBOT_DNS_MODELS_PYTHON_VER` variable.
 
 ### Updating Nautobot Version
 
@@ -415,7 +415,7 @@ namespace.configure(
 )
 ```
 
-Or set the `INVOKE_DNS_MODELS_NAUTOBOT_VER` variable.
+Or set the `INVOKE_NAUTOBOT_DNS_MODELS_NAUTOBOT_VER` variable.
 
 ## Other Miscellaneous Commands To Know
 
@@ -467,7 +467,7 @@ To run an individual test, you can run any or all of the following:
 
 ### App Configuration Schema
 
-In the package source, there is the `dns_models/app-config-schema.json` file, conforming to the [JSON Schema](https://json-schema.org/) format. This file is used to validate the configuration of the app in CI pipelines.
+In the package source, there is the `nautobot_dns_models/app-config-schema.json` file, conforming to the [JSON Schema](https://json-schema.org/) format. This file is used to validate the configuration of the app in CI pipelines.
 
 If you make changes to `PLUGINS_CONFIG` or the configuration schema, you can run the following command to validate the schema:
 
