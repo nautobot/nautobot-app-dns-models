@@ -271,3 +271,42 @@ class PTRRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     def __str__(self):
         """String representation of PTRRecordModel."""
         return self.ptrdname
+
+
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
+class SRVRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
+    """SRV Record model."""
+
+    priority = models.IntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(65535)],
+        default=0,
+        help_text="Priority of the SRV record.",
+    )
+    weight = models.IntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(65535)],
+        default=0,
+        help_text="Weight of the SRV record.",
+    )
+    port = models.IntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(65535)],
+        help_text="Port number of the service.",
+    )
+    target = models.CharField(
+        max_length=200,
+        help_text="FQDN of the target host providing the service.",
+    )
+
+    class Meta:
+        """Meta attributes for SRVRecordModel."""
+
+        unique_together = [["name", "target", "port", "zone"]]
+        verbose_name = "SRV Record"
+        verbose_name_plural = "SRV Records"

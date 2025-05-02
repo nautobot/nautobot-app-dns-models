@@ -313,3 +313,41 @@ class PTRRecordModelTable(DNSRecordsTable):
             "ttl",
             "actions",
         )
+
+
+class SRVRecordModelTable(DNSRecordsTable):
+    """Table for list view."""
+
+    actions = ButtonsColumn(
+        models.SRVRecordModel,
+    )
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.SRVRecordModel
+        fields = (
+            "pk",
+            "name",
+            "priority",
+            "weight",
+            "port",
+            "target",
+            "zone",
+            "comment",
+            "ttl",
+            "description",
+            "actions",
+        )
+
+        # Option for modifying the columns that show up in the list view by default:
+        default_columns = (
+            "pk",
+            "name",
+            "priority",
+            "weight",
+            "port",
+            "target",
+            "zone",
+            "actions",
+        )

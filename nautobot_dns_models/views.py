@@ -19,6 +19,7 @@ from nautobot_dns_models.api.serializers import (
     MXRecordModelSerializer,
     NSRecordModelSerializer,
     PTRRecordModelSerializer,
+    SRVRecordModelSerializer,
     TXTRecordModelSerializer,
 )
 from nautobot_dns_models.filters import (
@@ -29,6 +30,7 @@ from nautobot_dns_models.filters import (
     MXRecordModelFilterSet,
     NSRecordModelFilterSet,
     PTRRecordModelFilterSet,
+    SRVRecordModelFilterSet,
     TXTRecordModelFilterSet,
 )
 from nautobot_dns_models.forms import (
@@ -53,6 +55,9 @@ from nautobot_dns_models.forms import (
     PTRRecordModelBulkEditForm,
     PTRRecordModelFilterForm,
     PTRRecordModelForm,
+    SRVRecordModelBulkEditForm,
+    SRVRecordModelFilterForm,
+    SRVRecordModelForm,
     TXTRecordModelBulkEditForm,
     TXTRecordModelFilterForm,
     TXTRecordModelForm,
@@ -65,6 +70,7 @@ from nautobot_dns_models.models import (
     MXRecordModel,
     NSRecordModel,
     PTRRecordModel,
+    SRVRecordModel,
     TXTRecordModel,
 )
 from nautobot_dns_models.tables import (
@@ -75,6 +81,7 @@ from nautobot_dns_models.tables import (
     MXRecordModelTable,
     NSRecordModelTable,
     PTRRecordModelTable,
+    SRVRecordModelTable,
     TXTRecordModelTable,
 )
 
@@ -120,6 +127,7 @@ class DNSZoneModelUIViewSet(views.NautobotUIViewSet):
                     CNAMERecordModel,
                     MXRecordModel,
                     PTRRecordModel,
+                    SRVRecordModel,
                     TXTRecordModel,
                 ],
             ),
@@ -170,6 +178,15 @@ class DNSZoneModelUIViewSet(views.NautobotUIViewSet):
             ),
             ObjectsTablePanel(
                 weight=600,
+                section=SectionChoices.RIGHT_HALF,
+                table_filter="zone",
+                table_class=SRVRecordModelTable,
+                table_title="SRV Records",
+                exclude_columns=["zone"],
+                max_display_count=5,
+            ),
+            ObjectsTablePanel(
+                weight=700,
                 section=SectionChoices.RIGHT_HALF,
                 table_filter="zone",
                 table_class=TXTRecordModelTable,
@@ -224,6 +241,12 @@ class DNSZoneModelUIViewSet(views.NautobotUIViewSet):
                     ),
                     object_detail.Button(
                         weight=700,
+                        link_name="plugins:nautobot_dns_models:zone_srv_records_add",
+                        label="SRV Record",
+                        required_permissions=["nautobot_dns_models.add_srvrecordmodel"],
+                    ),
+                    object_detail.Button(
+                        weight=800,
                         link_name="plugins:nautobot_dns_models:zone_txt_records_add",
                         label="TXT Record",
                         required_permissions=["nautobot_dns_models.add_txtrecordmodel"],
@@ -377,6 +400,28 @@ class PTRRecordModelUIViewSet(views.NautobotUIViewSet):
     lookup_field = "pk"
     queryset = PTRRecordModel.objects.all()
     table_class = PTRRecordModelTable
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            )
+        ]
+    )
+
+
+class SRVRecordModelUIViewSet(views.NautobotUIViewSet):
+    """SRVRecordModel UI ViewSet."""
+
+    form_class = SRVRecordModelForm
+    bulk_update_form_class = SRVRecordModelBulkEditForm
+    filterset_class = SRVRecordModelFilterSet
+    filterset_form_class = SRVRecordModelFilterForm
+    serializer_class = SRVRecordModelSerializer
+    lookup_field = "pk"
+    queryset = SRVRecordModel.objects.all()
+    table_class = SRVRecordModelTable
     object_detail_content = ObjectDetailContent(
         panels=[
             ObjectFieldsPanel(

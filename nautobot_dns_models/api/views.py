@@ -10,6 +10,7 @@ from nautobot_dns_models.api.serializers import (
     MXRecordModelSerializer,
     NSRecordModelSerializer,
     PTRRecordModelSerializer,
+    SRVRecordModelSerializer,
     TXTRecordModelSerializer,
 )
 from nautobot_dns_models.filters import (
@@ -20,6 +21,7 @@ from nautobot_dns_models.filters import (
     MXRecordModelFilterSet,
     NSRecordModelFilterSet,
     PTRRecordModelFilterSet,
+    SRVRecordModelFilterSet,
     TXTRecordModelFilterSet,
 )
 from nautobot_dns_models.models import (
@@ -30,6 +32,7 @@ from nautobot_dns_models.models import (
     MXRecordModel,
     NSRecordModel,
     PTRRecordModel,
+    SRVRecordModel,
     TXTRecordModel,
 )
 
@@ -112,5 +115,15 @@ class PTRRecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-a
     queryset = PTRRecordModel.objects.all()
     serializer_class = PTRRecordModelSerializer
     filterset_class = PTRRecordModelFilterSet
+
+    lookup_field = "pk"
+
+
+class SRVRecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+    """SRVRecordModel API ViewSet."""
+
+    queryset = SRVRecordModel.objects.all()
+    serializer_class = SRVRecordModelSerializer
+    filterset_class = SRVRecordModelFilterSet
 
     lookup_field = "pk"
