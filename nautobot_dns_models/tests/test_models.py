@@ -206,7 +206,7 @@ class SRVRecordModelTestCase(TestCase):
             zone=self.dns_zone,
             ttl=3600,
             description="SIP server",
-            comment="Primary SIP server"
+            comment="Primary SIP server",
         )
 
         self.assertEqual(srv_record.name, "_sip._tcp.example.com")
@@ -221,14 +221,6 @@ class SRVRecordModelTestCase(TestCase):
 
     def test_get_absolute_url(self):
         srv_record = SRVRecordModel.objects.create(
-            name="_sip._tcp.example.com",
-            priority=10,
-            weight=5,
-            port=5060,
-            target="sip.example.com",
-            zone=self.dns_zone
+            name="_sip._tcp.example.com", priority=10, weight=5, port=5060, target="sip.example.com", zone=self.dns_zone
         )
-        self.assertEqual(
-            srv_record.get_absolute_url(),
-            f"/plugins/dns/srv-records/{srv_record.id}/"
-        )
+        self.assertEqual(srv_record.get_absolute_url(), f"/plugins/dns/srv-records/{srv_record.id}/")

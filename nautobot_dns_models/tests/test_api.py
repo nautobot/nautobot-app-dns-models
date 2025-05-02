@@ -412,28 +412,13 @@ class SRVRecordModelAPITestCase(APIViewTestCases.APIViewTestCase):
     def setUpTestData(cls):
         zone = DNSZoneModel.objects.create(name="example.com")
         SRVRecordModel.objects.create(
-            name="_sip._tcp.example.com",
-            priority=10,
-            weight=5,
-            port=5060,
-            target="sip.example.com",
-            zone=zone
+            name="_sip._tcp.example.com", priority=10, weight=5, port=5060, target="sip.example.com", zone=zone
         )
         SRVRecordModel.objects.create(
-            name="_ldap._tcp.example.com",
-            priority=20,
-            weight=10,
-            port=389,
-            target="ldap.example.com",
-            zone=zone
+            name="_ldap._tcp.example.com", priority=20, weight=10, port=389, target="ldap.example.com", zone=zone
         )
         SRVRecordModel.objects.create(
-            name="_xmpp._tcp.example.com",
-            priority=30,
-            weight=15,
-            port=5222,
-            target="xmpp.example.com",
-            zone=zone
+            name="_xmpp._tcp.example.com", priority=30, weight=15, port=5222, target="xmpp.example.com", zone=zone
         )
 
         cls.create_data = [
