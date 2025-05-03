@@ -66,6 +66,13 @@ erDiagram
         charfied server
     }
 
+    SRVRecordModel {
+        integer priority
+        integer weight
+        integer port
+        charfied target
+    }
+
     DNSModel ||--o{ DNSZoneModel : implements
     DNSModel ||--o{ DNSRecordModel : implements
     DNSRecordModel ||--o{ ARecordModel: implements
@@ -75,6 +82,7 @@ erDiagram
     DNSRecordModel ||--o{ TXTRecordModel: implements
     DNSRecordModel ||--o{ PTRRecordModel: implements
     DNSRecordModel ||--o{ NSRecordModel: implements
+    DNSRecordModel ||--o{ SRVRecordModel: implements
 
     DNSRecordModel ||--o{ DNSZoneModel: "is inside of a"
 
