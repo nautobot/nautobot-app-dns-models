@@ -1,5 +1,6 @@
 """Models for Nautobot DNS Models."""
 
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from nautobot.apps.models import PrimaryModel, extras_features
@@ -75,6 +76,25 @@ class DNSZoneModel(DNSModel):
         verbose_name = "DNS Zone"
         verbose_name_plural = "DNS Zones"
 
+    def clean(self):
+        """Validate the zone name conforms to DNS label length restrictions.
+
+        DNS name length restrictions (RFC 1035 §3.1):
+        - Each label is limited to 63 octets
+        - Empty labels are not allowed
+        """
+        super().clean()
+
+        # Split name into labels
+        zone_label_list = self.name.split(".")
+
+        # Check each label
+        for zone_label in zone_label_list:
+            if len(zone_label) > 63:
+                raise ValidationError({"name": f"Label '{zone_label}' exceeds maximum length of 63 characters"})
+            if not zone_label:
+                raise ValidationError({"name": "Empty labels are not allowed"})
+
 
 class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
     """Primary Dns Record model for plugin."""
@@ -86,6 +106,45 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
     )
     description = models.TextField(help_text="Description of the Record.", blank=True)
     comment = models.CharField(max_length=200, help_text="Comment for the Record.", blank=True)
+
+    def clean(self):
+        """Validate the record name conforms to DNS label length restrictions.
+
+        DNS name length restrictions (RFC 1035 §3.1):
+        - Each label is limited to 63 octets
+        - The total length of a domain name is limited to 255 octets
+        - The length of each label is stored in a single octet
+        - The final length octet must be zero (root)
+
+        Wire format calculation:
+        - Each label: 1 octet (length) + label content
+        - Final root: 1 octet (zero length)
+        - Total must not exceed 255 octets
+        """
+        super().clean()
+
+        # Split names into labels
+        record_label_list = self.name.split(".")
+        zone_label_list = self.zone.name.split(".")
+
+        # Check each label in the relative name
+        for record_label in record_label_list:
+            if len(record_label) > 63:
+                raise ValidationError({"name": f"Label '{record_label}' exceeds maximum length of 63 characters"})
+            if not record_label:
+                raise ValidationError({"name": "Empty labels are not allowed"})
+
+        # Calculate wire format length including zone name
+        # - 1 length octet + label length for each record label
+        # - 1 length octet + label length for each zone label
+        # - 1 octet for root label (zero length)
+        wire_length = (
+            sum(1 + len(record_label) for record_label in record_label_list)
+            + sum(1 + len(zone_label) for zone_label in zone_label_list)
+            + 1  # final zero length
+        )
+        if wire_length > 255:
+            raise ValidationError({"name": "Total length of DNS name cannot exceed 255 characters"})
 
     class Meta:
         """Meta attributes for DnsRecordModel."""

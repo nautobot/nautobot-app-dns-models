@@ -2,6 +2,7 @@
 
 from nautobot.apps.testing import ModelTestCases, TestCase
 from nautobot.extras.models import Status
+from django.core.exceptions import ValidationError
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 
 from nautobot_dns_models.models import (
@@ -199,6 +200,7 @@ class PTRRecordModelTestCase(TestCase):
         self.assertEqual(ptr_record.get_absolute_url(), f"/plugins/dns/ptr-records/{ptr_record.id}/")
 
 
+
 class SRVRecordModelTestCase(TestCase):
     """Test the SRVRecordModel model."""
 
@@ -234,3 +236,118 @@ class SRVRecordModelTestCase(TestCase):
             name="_sip._tcp.example.com", priority=10, weight=5, port=5060, target="sip.example.com", zone=self.dns_zone
         )
         self.assertEqual(srv_record.get_absolute_url(), f"/plugins/dns/srv-records/{srv_record.id}/")
+
+class DNSRecordNameLengthValidationTest(TestCase):
+    """Test DNS record name validation rules from RFC 1035 §3.1."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZoneModel.objects.create(name="example.com")
+
+    def test_valid_record_labels(self):
+        """Test that valid record labels are accepted."""
+        # Single label
+        record = TXTRecordModel(name="www", text="test", zone=self.zone)
+        record.full_clean()  # Should not raise
+
+        # Multiple labels
+        record = TXTRecordModel(name="www.subdomain", text="test", zone=self.zone)
+        record.full_clean()  # Should not raise
+
+        # Maximum length label (63 chars)
+        record = TXTRecordModel(name="a" * 63, text="test", zone=self.zone)
+        record.full_clean()  # Should not raise
+
+    def test_record_label_too_long(self):
+        """Test that record labels exceeding 63 octets are rejected."""
+        record = TXTRecordModel(name="a" * 64, text="test", zone=self.zone)
+        with self.assertRaises(ValidationError) as context:
+            record.full_clean()
+        self.assertIn("exceeds maximum length of 63 characters", str(context.exception))
+
+    def test_record_empty_label(self):
+        """Test that empty record labels are rejected."""
+        record = TXTRecordModel(name="www..subdomain", text="test", zone=self.zone)
+        with self.assertRaises(ValidationError) as context:
+            record.full_clean()
+        self.assertIn("Empty labels are not allowed", str(context.exception))
+
+    def test_record_wire_format_length(self):
+        """Test that total wire format length is limited to 255 octets."""
+        # Create a zone with a long name to test total length
+        zone = DNSZoneModel.objects.create(
+            name="x" * 63, filename="x" * 63 + ".zone", soa_mname="ns1." + "x" * 63 + ".", soa_rname="admin@example.com"
+        )
+
+        # This should be under 255 octets in wire format:
+        # - 1 length octet + 63 octets for label 1
+        # - 1 length octet + 63 octets for label 2
+        # - 1 length octet + 63 octets for zone name
+        # - 1 octet for root label (zero length)
+        # Total: (1 + 63) * 3 + 1 = 193
+        record = TXTRecordModel(name="x" * 63 + "." + "x" * 63, text="test", zone=zone)
+        record.full_clean()  # Should not raise
+
+        # This should exceed 255 octets in wire format
+        # - 1 length octet + 63 octets for label 1
+        # - 1 length octet + 63 octets for label 2
+        # - 1 length octet + 63 octets for label 3
+        # - 1 length octet + 63 octets for zone name
+        # - 1 octet for root label (zero length)
+        # Total: (1 + 63) * 4 + 1 = 257
+        record = TXTRecordModel(name="x" * 63 + "." + "x" * 63 + "." + "x" * 63, text="test", zone=zone)
+        with self.assertRaises(ValidationError) as context:
+            record.full_clean()
+        self.assertIn("cannot exceed 255 characters", str(context.exception))
+
+
+class DNSZoneNameLengthValidationTest(TestCase):
+    """Test DNS zone name validation rules from RFC 1035 §3.1.
+
+    Note: We don't test wire format length for zones because the model's CharField
+    max_length=200 constraint is stricter than the DNS wire format limit of 255 octets.
+    The wire format test is only needed for records, which can have longer names
+    when combined with their zone.
+    """
+
+    def test_valid_zone_labels(self):
+        """Test that valid zone labels are accepted."""
+        # Test single label
+        zone = DNSZoneModel(name="test1", filename="test1.zone", soa_mname="ns1.test1.", soa_rname="admin@example.com")
+        zone.full_clean()  # Should not raise
+
+        # Test multiple labels
+        zone = DNSZoneModel(
+            name="test2.example.com",
+            filename="test2.example.com.zone",
+            soa_mname="ns1.test2.example.com.",
+            soa_rname="admin@example.com",
+        )
+        zone.full_clean()  # Should not raise
+
+        # Test maximum length label
+        zone = DNSZoneModel(
+            name="a" * 63, filename="a" * 63 + ".zone", soa_mname="ns1." + "a" * 63 + ".", soa_rname="admin@example.com"
+        )
+        zone.full_clean()  # Should not raise
+
+    def test_zone_label_too_long(self):
+        """Test that zone labels exceeding 63 octets are rejected."""
+        zone = DNSZoneModel(
+            name="a" * 64, filename="a" * 64 + ".zone", soa_mname="ns1." + "a" * 64 + ".", soa_rname="admin@example.com"
+        )
+        with self.assertRaises(ValidationError) as context:
+            zone.full_clean()
+        self.assertIn("exceeds maximum length of 63 characters", str(context.exception))
+
+    def test_zone_empty_label(self):
+        """Test that empty zone labels are rejected."""
+        zone = DNSZoneModel(
+            name="example..com",
+            filename="example..com.zone",
+            soa_mname="ns1.example..com.",
+            soa_rname="admin@example.com",
+        )
+        with self.assertRaises(ValidationError) as context:
+            zone.full_clean()
+        self.assertIn("Empty labels are not allowed", str(context.exception))
