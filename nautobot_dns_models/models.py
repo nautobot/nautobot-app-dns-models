@@ -112,12 +112,12 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
 
         DNS name length restrictions (RFC 1035 §3.1):
         - Each label is limited to 63 octets
-        - The total length of a domain name is limited to 255 octets
+        - The total length of an FQDN is limited to 255 octets
         - The length of each label is stored in a single octet
         - The final length octet must be zero (root)
 
         Wire format calculation:
-        - Each label: 1 octet (length) + label content
+        - Each label: 1 length octet + label content
         - Final root: 1 octet (zero length)
         - Total must not exceed 255 octets
         """
