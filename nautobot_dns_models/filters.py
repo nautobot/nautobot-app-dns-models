@@ -83,3 +83,13 @@ class PTRRecordModelFilterSet(NautobotFilterSet):
 
         model = models.PTRRecordModel
         fields = "__all__"
+
+
+class SRVRecordModelFilterSet(NautobotFilterSet):
+    """Filter for SRVRecordModel."""
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.SRVRecordModel
+        fields = "__all__"

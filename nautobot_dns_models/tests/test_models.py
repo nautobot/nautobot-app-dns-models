@@ -12,6 +12,7 @@ from nautobot_dns_models.models import (
     MXRecordModel,
     NSRecordModel,
     PTRRecordModel,
+    SRVRecordModel,
     TXTRecordModel,
 )
 
@@ -186,3 +187,40 @@ class PTRRecordModelTestCase(TestCase):
     def test_get_absolute_url(self):
         ptr_record = PTRRecordModel.objects.create(ptrdname="ptr-record", zone=self.dns_zone)
         self.assertEqual(ptr_record.get_absolute_url(), f"/plugins/dns/ptr-records/{ptr_record.id}/")
+
+
+class SRVRecordModelTestCase(TestCase):
+    """Test the SRVRecordModel model."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com")
+
+    def test_create_srvrecordmodel(self):
+        srv_record = SRVRecordModel.objects.create(
+            name="_sip._tcp.example.com",
+            priority=10,
+            weight=5,
+            port=5060,
+            target="sip.example.com",
+            zone=self.dns_zone,
+            ttl=3600,
+            description="SIP server",
+            comment="Primary SIP server",
+        )
+
+        self.assertEqual(srv_record.name, "_sip._tcp.example.com")
+        self.assertEqual(srv_record.priority, 10)
+        self.assertEqual(srv_record.weight, 5)
+        self.assertEqual(srv_record.port, 5060)
+        self.assertEqual(srv_record.target, "sip.example.com")
+        self.assertEqual(srv_record.ttl, 3600)
+        self.assertEqual(srv_record.description, "SIP server")
+        self.assertEqual(srv_record.comment, "Primary SIP server")
+        self.assertEqual(str(srv_record), srv_record.name)
+
+    def test_get_absolute_url(self):
+        srv_record = SRVRecordModel.objects.create(
+            name="_sip._tcp.example.com", priority=10, weight=5, port=5060, target="sip.example.com", zone=self.dns_zone
+        )
+        self.assertEqual(srv_record.get_absolute_url(), f"/plugins/dns/srv-records/{srv_record.id}/")

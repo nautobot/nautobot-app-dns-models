@@ -124,3 +124,18 @@ class PTRRecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-
 
         # Option for disabling write for certain fields:
         # read_only_fields = []
+
+
+class SRVRecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
+    """SRVRecordModel Serializer."""
+
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:srvrecordmodel-detail")
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.SRVRecordModel
+        fields = "__all__"
+
+        # Option for disabling write for certain fields:
+        # read_only_fields = []

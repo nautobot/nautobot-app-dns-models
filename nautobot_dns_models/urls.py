@@ -17,6 +17,7 @@ router.register("cname-records", views.CNAMERecordModelUIViewSet)
 router.register("mx-records", views.MXRecordModelUIViewSet)
 router.register("txt-records", views.TXTRecordModelUIViewSet)
 router.register("ptr-records", views.PTRRecordModelUIViewSet)
+router.register("srv-records", views.SRVRecordModelUIViewSet)
 
 urlpatterns = [
     path("docs/", RedirectView.as_view(url=static("nautobot_dns_models/docs/index.html")), name="docs"),
@@ -52,6 +53,11 @@ urlpatterns = [
         "dns-zones/<uuid:pk>/ptr-records/add/",
         RedirectView.as_view(url="/plugins/dns/ptr-records/add/?zone=%(pk)s&return_url=/plugins/dns/dns-zones/%(pk)s"),
         name="zone_ptr_records_add",
+    ),
+    path(
+        "dns-zones/<uuid:pk>/srv-records/add/",
+        RedirectView.as_view(url="/plugins/dns/srv-records/add/?zone=%(pk)s&return_url=/plugins/dns/dns-zones/%(pk)s"),
+        name="zone_srv_records_add",
     ),
     path(
         "dns-zones/<uuid:pk>/txt-records/add/",
