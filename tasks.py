@@ -716,7 +716,7 @@ def help_task(context):
 )
 def generate_release_notes(context, version=""):
     """Generate Release Notes using Towncrier."""
-    command = "poetry run towncrier build"
+    command = "poetry run towncrier build --name {namespace.name}"
     if version:
         command += f" --version {version}"
     else:
