@@ -1,37 +1,55 @@
-"""Test dnszonemodel forms."""
+"""Tests for nautobot_dns_models Form Classes."""
 
-from nautobot.apps.testing import TestCase
-from nautobot.extras.models import Status
+from django.test import TestCase
+from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 
 from nautobot_dns_models import forms
 from nautobot_dns_models.models import DNSZoneModel
 
 
-class DnsZoneModelTest(TestCase):
+class DNSZoneModelTest(TestCase):
     """Test DnsZoneModel forms."""
 
     def test_specifying_all_fields_success(self):
-        form = forms.DnsZoneModelForm(
+        form = forms.DNSZoneModelForm(
             data={
                 "name": "Development",
                 "description": "Development Testing",
+                "ttl": 1010101,
+                "filename": "development.zone",
+                "soa_mname": "ns1.example.com",
+                "soa_rname": "admin@example.com",
+                "soa_refresh": 10800,
+                "soa_retry": 3600,
+                "soa_expire": 604800,
+                "soa_serial": 202,
+                "soa_minimum": 3600,
             }
         )
         self.assertTrue(form.is_valid())
         self.assertTrue(form.save())
 
     def test_specifying_only_required_success(self):
-        form = forms.DnsZoneModelForm(
+        form = forms.DNSZoneModelForm(
             data={
                 "name": "Development",
+                "ttl": 1010101,
+                "filename": "development.zone",
+                "soa_mname": "ns1.example.com",
+                "soa_rname": "admin@example.com",
+                "soa_refresh": 10800,
+                "soa_retry": 3600,
+                "soa_expire": 604800,
+                "soa_serial": 202,
+                "soa_minimum": 3600,
             }
         )
         self.assertTrue(form.is_valid())
         self.assertTrue(form.save())
 
     def test_validate_name_dnszonemodel_is_required(self):
-        form = forms.DnsZoneModelForm(data={"description": "Development Testing"})
+        form = forms.DNSZoneModelForm(data={"ttl": "1010101"})
         self.assertFalse(form.is_valid())
         self.assertIn("This field is required.", form.errors["name"])
 
