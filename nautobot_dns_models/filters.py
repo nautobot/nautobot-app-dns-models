@@ -16,3 +16,13 @@ class DnsZoneModelFilterSet(NameSearchFilterSet, NautobotFilterSet):  # pylint: 
 
         # add any fields from the model that you would like to filter your searches by using those
         fields = "__all__"
+
+
+class SRVRecordModelFilterSet(NautobotFilterSet):
+    """Filter for SRVRecordModel."""
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.SRVRecordModel
+        fields = "__all__"

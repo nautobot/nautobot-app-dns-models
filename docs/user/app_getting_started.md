@@ -51,6 +51,10 @@ The A record will be displayed under the record's DNS Zone Detail view, along wi
 
 ![DNS Zone with records](../images/getting_started-add-record-3.png)
 
+A/AAAA and PTR records will also be shown in the IP Address detail view as side panels. You may configure when these panels appear by selecting the appropriate option in the App settings (`Admin -> Configuration -> Config -> Nautobot DNS Models`).
+
+![IP Address with DNS Records](../images/getting-started-ip-address-dns-panels.png)
+
 ## What are the next steps?
 
 The next steps are up to you! You can start adding more zones and records to your Nautobot instance, or create a process to generate a configuration.

@@ -13,6 +13,7 @@ from nautobot_dns_models.models import (
     MXRecordModel,
     NSRecordModel,
     PTRRecordModel,
+    SRVRecordModel,
     TXTRecordModel,
 )
 
@@ -410,3 +411,58 @@ class PTRRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views", "ttl": 3600}
+
+
+class SRVRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+    # pylint: disable=too-many-ancestors
+    """Test the SRVRecordModel views."""
+
+    model = SRVRecordModel
+
+    @classmethod
+    def setUpTestData(cls):
+        zone = DNSZoneModel.objects.create(
+            name="example.com",
+        )
+
+        SRVRecordModel.objects.create(
+            name="_sip._tcp",
+            priority=10,
+            weight=5,
+            port=5060,
+            target="sip.example.com",
+            zone=zone,
+        )
+        SRVRecordModel.objects.create(
+            name="_sip._tcp",
+            priority=20,
+            weight=10,
+            port=5060,
+            target="sip2.example.com",
+            zone=zone,
+        )
+        SRVRecordModel.objects.create(
+            name="_sip._tcp",
+            priority=30,
+            weight=15,
+            port=5060,
+            target="sip3.example.com",
+            zone=zone,
+        )
+
+        cls.form_data = {
+            "name": "_xmpp._tcp",
+            "priority": 10,
+            "weight": 5,
+            "port": 5222,
+            "target": "xmpp.example.com",
+            "ttl": 3600,
+            "zone": zone.pk,
+        }
+
+        cls.csv_data = (
+            "name,priority,weight,port,target,zone",
+            f"_ldap._tcp,20,10,389,ldap.example.com,{zone.name}",
+        )
+
+        cls.bulk_edit_data = {"description": "Bulk edit views"}

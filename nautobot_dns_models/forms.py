@@ -351,3 +351,48 @@ class PTRRecordModelFilterForm(NautobotFilterForm):
         "comment",
         "description",
     ]
+
+
+class SRVRecordModelForm(NautobotModelForm):
+    """SRVRecordModel creation/edit form."""
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.SRVRecordModel
+        fields = "__all__"
+
+
+class SRVRecordModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
+    """SRVRecordModel bulk edit form."""
+
+    pk = forms.ModelMultipleChoiceField(queryset=models.SRVRecordModel.objects.all(), widget=forms.MultipleHiddenInput)
+    description = forms.CharField(required=False)
+
+    class Meta:
+        """Meta attributes."""
+
+        nullable_fields = [
+            "description",
+        ]
+
+
+class SRVRecordModelFilterForm(NautobotFilterForm):
+    """Filter form to filter searches."""
+
+    q = forms.CharField(
+        required=False,
+        label="Search",
+        help_text="Search within Name.",
+    )
+    name = forms.CharField(required=False, label="Name")
+    model = models.SRVRecordModel
+    # Define the fields above for ordering and widget purposes
+    fields = [
+        "q",
+        "name",
+        "priority",
+        "weight",
+        "port",
+        "target",
+    ]
