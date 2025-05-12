@@ -1,7 +1,15 @@
-# Dns Zone Model
+# DNS Zone Model
 
-!!! warning "Developer Note - Remove Me!"
-    Provide a summary of this model and how it is to be used. Then provide a list of the fields, field_type and field_description.
+The DNS zone model is used to represent a distinct DNS zone. It contains the zone name, TTL, and SOA record details.
 
-- `name` (string): Unique identifier for the dns zone model.
-- `description`: (string): Description for the dns zone model.
+- `name` (string): Unique FQDN of the Zone, w/ TLD. e.g `example.com`.
+- `ttl` (integer): Time to live for the DNS zone.
+- `filename` (string): Filename of the DNS zone file.
+- `description`: (string): Description of the DNS zone.
+- `soa_mname`: (string): FQDN of the authoritative name server for the DNS zone.
+- `soa_rname`: (string): Email address of the administrator for the DNS zone.
+- `soa_refresh`: (integer): Time in seconds for secondary name servers to query the master for the SOA record.
+- `soa_retry`: (integer): Time in seconds for secondary name servers to retry to request the serial number from the master.
+- `soa_expire`: (integer): Time in seconds for secondary name servers to stop answering requests if the master does not respond. This value must be bigger than the sum of refresh and retry.
+- `soa_serial`: (integer): Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.
+- `soa_minimum`: (integer): Minimum TTL for records in this zone.
