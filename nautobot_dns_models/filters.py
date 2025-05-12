@@ -6,7 +6,7 @@ from nautobot_dns_models import models
 
 
 class DnsZoneModelFilterSet(NameSearchFilterSet, NautobotFilterSet):  # pylint: disable=too-many-ancestors
-    """Filter for DnsZoneModel."""
+    """Filter for DNSZoneModel."""
 
     class Meta:
         """Meta attributes for filter."""

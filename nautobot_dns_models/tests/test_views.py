@@ -24,7 +24,7 @@ class DnsZoneModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     # pylint: disable=too-many-ancestors
     """Test the DnsZoneModel views."""
 
-    model = models.DnsZoneModel
+    model = DNSZoneModel
     bulk_edit_data = {"description": "Bulk edit views"}
     form_data = {
         "name": "Test 1",

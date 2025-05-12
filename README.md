@@ -1,20 +1,10 @@
 # Nautobot DNS Models
 
-<!--
-Developer Note - Remove Me!
-
-The README will have certain links/images broken until the PR is merged into `develop`. Update the GitHub links with whichever branch you're using (main etc.) if different.
-
-The logo of the project is a placeholder (docs/images/icon-nautobot-dns-models.png) - please replace it with your app icon, making sure it's at least 200x200px and has a transparent background!
-
-To avoid extra work and temporary links, make sure that publishing docs (or merging a PR) is done at the same time as setting up the docs site on RTD, then test everything.
--->
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/nautobot/nautobot-app-dns-models/develop/docs/images/icon-nautobot-dns-models.png" class="logo" height="200px">
   <br>
   <a href="https://github.com/nautobot/nautobot-app-dns-models/actions"><img src="https://github.com/nautobot/nautobot-app-dns-models/actions/workflows/ci.yml/badge.svg?branch=main"></a>
-  <a href="https://docs.nautobot.com/projects/nautobot-dns-models/en/latest/"><img src="https://readthedocs.org/projects/nautobot-app-dns/badge/"></a>
+  <a href="https://docs.nautobot.com/projects/dns-models/en/latest"><img src="https://readthedocs.org/projects/nautobot-app-dns-models/badge/"></a>
   <a href="https://pypi.org/project/nautobot-dns-models/"><img src="https://img.shields.io/pypi/v/nautobot-dns-models"></a>
   <a href="https://pypi.org/project/nautobot-dns-models/"><img src="https://img.shields.io/pypi/dm/nautobot-dns-models"></a>
   <br>
