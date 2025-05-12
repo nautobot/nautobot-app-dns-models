@@ -2,27 +2,9 @@
 
 from importlib import metadata
 
-from django.conf import settings
 from nautobot.apps import ConstanceConfigItem, NautobotAppConfig
 
 __version__ = metadata.version(__name__)
-
-constance_additional_fields = {
-    "show_dns_panel": [
-        "django.forms.fields.ChoiceField",
-        {
-            "widget": "django.forms.Select",
-            "choices": [
-                ("always", "Always"),
-                ("if_present", "If records are present"),
-                ("never", "Never"),
-            ],
-        },
-    ],
-}
-
-# pylint:disable=no-member
-settings.CONSTANCE_ADDITIONAL_FIELDS |= constance_additional_fields
 
 
 class NautobotDnsModelsConfig(NautobotAppConfig):
@@ -43,14 +25,14 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
 
     constance_config = {
         "SHOW_FORWARD_PANEL": ConstanceConfigItem(
-            default="Always",
+            default=True,
             help_text="Show A/AAAA Records panel in IP Address detailed view.",
-            field_type="show_dns_panel",
+            field_type=bool,
         ),
         "SHOW_REVERSE_PANEL": ConstanceConfigItem(
-            default="Always",
+            default=True,
             help_text="Show PTR Records panel in IP Address detailed view.",
-            field_type="show_dns_panel",
+            field_type=bool,
         ),
     }
 

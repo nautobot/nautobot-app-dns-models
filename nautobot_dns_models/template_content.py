@@ -9,8 +9,6 @@ from nautobot.core.views.utils import get_obj_from_context
 from netutils.ip import ipaddress_address
 
 from nautobot_dns_models.models import (
-    AAAARecordModel,
-    ARecordModel,
     DNSZoneModel,
     PTRRecordModel,
 )
@@ -26,16 +24,7 @@ class ForwardDNSRecordsTablePanel(ObjectsTablePanel):
 
     def should_render(self, context):
         """Check if the table should be rendered."""
-        show_panel = constance_config.nautobot_dns_models__SHOW_FORWARD_PANEL
-        if show_panel == "never":
-            return False
-        if show_panel == "if_present":
-            ip_address = get_obj_from_context(context)
-            if ip_address.ip_version == 4:
-                return ARecordModel.objects.filter(address=ip_address).exists()
-            if ip_address.ip_version == 6:
-                return AAAARecordModel.objects.filter(address=ip_address).exists()
-        return True
+        return constance_config.nautobot_dns_models__SHOW_FORWARD_PANEL
 
     def get_extra_context(self, context):
         """Set the table class based on the IP version of the IP address."""
@@ -73,14 +62,7 @@ class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
 
     def should_render(self, context):
         """Check if the table should be rendered."""
-        show_panel = constance_config.nautobot_dns_models__SHOW_REVERSE_PANEL
-        if show_panel == "never":
-            return False
-        if show_panel == "if_present":
-            ip_address = get_obj_from_context(context)
-            ptrdname = ipaddress_address(ip_address.host, "reverse_pointer")
-            return PTRRecordModel.objects.filter(ptrdname=ptrdname).exists()
-        return True
+        return constance_config.nautobot_dns_models__SHOW_REVERSE_PANEL
 
     def get_extra_context(self, context):
         """Set the table class based on the IP version of the IP address."""
