@@ -121,7 +121,6 @@ nav:
           - PTR Record: "models/ptrrecordmodel.md"
           - SRV Record: "models/srvrecordmodel.md"
           - TXT Record: "models/txtrecordmodel.md"
-
   - Administrator Guide:
       - Install and Configure: "admin/install.md"
       - Upgrade: "admin/upgrade.md"
