@@ -1,0 +1,1 @@
+# MX Record Model

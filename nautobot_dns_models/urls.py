@@ -7,6 +7,7 @@ from nautobot.apps.urls import NautobotUIViewSetRouter
 
 from nautobot_dns_models import views
 
+app_name = "nautobot_dns_models"
 router = NautobotUIViewSetRouter()
 
 router.register("dns-zones", views.DNSZoneModelUIViewSet)

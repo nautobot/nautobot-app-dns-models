@@ -1,7 +1,7 @@
 """Test DnsZoneModel."""
 
-from django.test import TestCase
-from nautobot.extras.models.statuses import Status
+from nautobot.apps.testing import ModelTestCases, TestCase
+from nautobot.extras.models import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 
 from nautobot_dns_models.models import (
@@ -15,10 +15,20 @@ from nautobot_dns_models.models import (
     SRVRecordModel,
     TXTRecordModel,
 )
+from nautobot_dns_models.tests import fixtures
 
 
-class DNSZoneModelTest(TestCase):
+class TestDnsZoneModel(ModelTestCases.BaseModelTestCase):
     """Test DnsZoneModel."""
+
+    model = DNSZoneModel
+
+    @classmethod
+    def setUpTestData(cls):
+        """Create test data for DnsZoneModel Model."""
+        super().setUpTestData()
+        # Create 3 objects for the model test cases.
+        fixtures.create_dnszonemodel()
 
     def test_create_dnszonemodel_only_required(self):
         """Create with only required fields, and validate null description and __str__."""
