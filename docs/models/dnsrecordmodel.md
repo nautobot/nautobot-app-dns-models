@@ -1,0 +1,1 @@
+# DNS Record Model

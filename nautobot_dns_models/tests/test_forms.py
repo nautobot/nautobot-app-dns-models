@@ -329,3 +329,114 @@ class PTRRecordModelFormTestCase(TestCase):
         form = self.form_class(data)
         self.assertTrue(form.is_valid())
         self.assertTrue(form.save())
+
+
+class SRVRecordModelFormTestCase(TestCase):
+    """Test SRVRecordModel forms."""
+
+    form_class = forms.SRVRecordModelForm
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.dns_zone = DNSZoneModel.objects.create(name="example.com")
+
+    def test_specifying_only_required_success(self):
+        data = {
+            "name": "srv-record",
+            "priority": 10,
+            "weight": 5,
+            "port": 8080,
+            "target": "server.example.com",
+            "ttl": 3600,
+            "zone": self.dns_zone,
+        }
+        form = self.form_class(data)
+        self.assertTrue(form.is_valid())
+        self.assertTrue(form.save())
+
+    def test_specifying_all_fields_success(self):
+        data = {
+            "name": "srv-record",
+            "priority": 10,
+            "weight": 5,
+            "port": 8080,
+            "target": "server.example.com",
+            "ttl": 3600,
+            "zone": self.dns_zone,
+            "description": "this is an srv description",
+            "comment": "example-comment",
+        }
+        form = self.form_class(data)
+        self.assertTrue(form.is_valid())
+        self.assertTrue(form.save())
+
+    def test_validate_priority_range(self):
+        data = {
+            "name": "srv-record",
+            "priority": 65536,  # Invalid priority (max is 65535)
+            "weight": 5,
+            "port": 8080,
+            "target": "server.example.com",
+            "ttl": 3600,
+            "zone": self.dns_zone,
+        }
+        form = self.form_class(data)
+        self.assertFalse(form.is_valid())
+        self.assertIn("Ensure this value is less than or equal to 65535.", form.errors["priority"])
+
+    def test_validate_weight_range(self):
+        data = {
+            "name": "srv-record",
+            "priority": 10,
+            "weight": 65536,  # Invalid weight (max is 65535)
+            "port": 8080,
+            "target": "server.example.com",
+            "ttl": 3600,
+            "zone": self.dns_zone,
+        }
+        form = self.form_class(data)
+        self.assertFalse(form.is_valid())
+        self.assertIn("Ensure this value is less than or equal to 65535.", form.errors["weight"])
+
+    def test_validate_port_range(self):
+        data = {
+            "name": "srv-record",
+            "priority": 10,
+            "weight": 5,
+            "port": 65536,  # Invalid port (max is 65535)
+            "target": "server.example.com",
+            "ttl": 3600,
+            "zone": self.dns_zone,
+        }
+        form = self.form_class(data)
+        self.assertFalse(form.is_valid())
+        self.assertIn("Ensure this value is less than or equal to 65535.", form.errors["port"])
+
+    def test_zone_is_required(self):
+        data = {
+            "name": "srv-record",
+            "priority": 10,
+            "weight": 5,
+            "port": 8080,
+            "target": "server.example.com",
+            "ttl": 3600,
+        }
+        form = self.form_class(data)
+        self.assertFalse(form.is_valid())
+        self.assertIn("This field is required.", form.errors["zone"])
+
+    def test_validate_negative_values(self):
+        data = {
+            "name": "srv-record",
+            "priority": -1,  # Invalid priority (min is 0)
+            "weight": -1,  # Invalid weight (min is 0)
+            "port": -1,  # Invalid port (min is 0)
+            "target": "server.example.com",
+            "ttl": 3600,
+            "zone": self.dns_zone,
+        }
+        form = self.form_class(data)
+        self.assertFalse(form.is_valid())
+        self.assertIn("Ensure this value is greater than or equal to 0.", form.errors["priority"])
+        self.assertIn("Ensure this value is greater than or equal to 0.", form.errors["weight"])
+        self.assertIn("Ensure this value is greater than or equal to 0.", form.errors["port"])

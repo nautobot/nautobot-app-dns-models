@@ -1,15 +1,28 @@
 """Plugin declaration for nautobot_dns_models."""
 
-# Metadata is inherited from Nautobot. If not including Nautobot in the environment, this should be added
-try:
-    from importlib import metadata
-except ImportError:
-    # Python version < 3.8
-    import importlib_metadata as metadata
+from importlib import metadata
+
+from django.conf import settings
+from nautobot.apps import ConstanceConfigItem, NautobotAppConfig
 
 __version__ = metadata.version(__name__)
 
-from nautobot.apps import NautobotAppConfig
+constance_additional_fields = {
+    "show_dns_panel": [
+        "django.forms.fields.ChoiceField",
+        {
+            "widget": "django.forms.Select",
+            "choices": [
+                ("always", "Always"),
+                ("if_present", "If records are present"),
+                ("never", "Never"),
+            ],
+        },
+    ],
+}
+
+# pylint:disable=no-member
+settings.CONSTANCE_ADDITIONAL_FIELDS |= constance_additional_fields
 
 
 class NautobotDnsModelsConfig(NautobotAppConfig):
@@ -27,6 +40,19 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
     default_settings = {}
     caching_config = {}
     docs_view_name = "plugins:nautobot_dns_models:docs"
+
+    constance_config = {
+        "SHOW_FORWARD_PANEL": ConstanceConfigItem(
+            default="Always",
+            help_text="Show A/AAAA Records panel in IP Address detailed view.",
+            field_type="show_dns_panel",
+        ),
+        "SHOW_REVERSE_PANEL": ConstanceConfigItem(
+            default="Always",
+            help_text="Show PTR Records panel in IP Address detailed view.",
+            field_type="show_dns_panel",
+        ),
+    }
 
 
 config = NautobotDnsModelsConfig  # pylint:disable=invalid-name

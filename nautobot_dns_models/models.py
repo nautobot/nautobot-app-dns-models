@@ -5,15 +5,6 @@ from django.db import models
 from nautobot.apps.models import PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 
-# from nautobot.extras.utils import extras_features
-# If you want to use the extras_features decorator please reference the following documentation
-# https://nautobot.readthedocs.io/en/latest/plugins/development/#using-the-extras_features-decorator-for-graphql
-# Then based on your reading you may decide to put the following decorator before the declaration of your class
-# @extras_features("custom_fields", "custom_validators", "relationships", "graphql")
-
-# If you want to choose a specific model to overload in your class declaration, please reference the following documentation:
-# how to chose a database model: https://nautobot.readthedocs.io/en/stable/plugins/development/#database-models
-
 
 class DNSModel(PrimaryModel):
     """Abstract Model for Nautobot DNS Models."""
@@ -22,12 +13,6 @@ class DNSModel(PrimaryModel):
         """Meta class."""
 
         abstract = True
-
-        # Option for fixing capitalization (i.e. "Snmp" vs "SNMP")
-        # verbose_name = "Nautobot DNS Models"
-
-        # Option for fixing plural name (i.e. "Chicken Tenders" vs "Chicken Tendies")
-        # verbose_name_plural = "Nautobot DNS Modelss"
 
     def __str__(self):
         """Stringify instance."""
@@ -271,3 +256,42 @@ class PTRRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     def __str__(self):
         """String representation of PTRRecordModel."""
         return self.ptrdname
+
+
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
+class SRVRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
+    """SRV Record model."""
+
+    priority = models.IntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(65535)],
+        default=0,
+        help_text="Priority of the SRV record.",
+    )
+    weight = models.IntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(65535)],
+        default=0,
+        help_text="Weight of the SRV record.",
+    )
+    port = models.IntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(65535)],
+        help_text="Port number of the service.",
+    )
+    target = models.CharField(
+        max_length=200,
+        help_text="FQDN of the target host providing the service.",
+    )
+
+    class Meta:
+        """Meta attributes for SRVRecordModel."""
+
+        unique_together = [["name", "target", "port", "zone"]]
+        verbose_name = "SRV Record"
+        verbose_name_plural = "SRV Records"

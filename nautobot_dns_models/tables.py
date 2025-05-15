@@ -6,9 +6,16 @@ from nautobot.apps.tables import BaseTable, ButtonsColumn, ToggleColumn
 from nautobot_dns_models import models
 
 
-# TODO: Create a BaseTable with links in Name & Zone fields and inherit all other tables from it.
+class DNSRecordsTable(BaseTable):
+    """Base table for DNS records list view."""
+
+    pk = ToggleColumn()
+    name = tables.Column(linkify=True)
+    zone = tables.LinkColumn()
+
+
 class DNSZoneModelTable(BaseTable):
-    """Table for list view."""
+    """Table for DNS Zone list view."""
 
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
@@ -48,12 +55,9 @@ class DNSZoneModelTable(BaseTable):
         )
 
 
-class NSRecordModelTable(BaseTable):
+class NSRecordModelTable(DNSRecordsTable):
     """Table for list view."""
 
-    pk = ToggleColumn()
-    name = tables.Column(linkify=True)
-    zone = tables.LinkColumn()
     actions = ButtonsColumn(
         models.NSRecordModel,
         buttons=("changelog", "edit", "delete"),
@@ -87,13 +91,10 @@ class NSRecordModelTable(BaseTable):
         )
 
 
-class ARecordModelTable(BaseTable):
+class ARecordModelTable(DNSRecordsTable):
     """Table for list view."""
 
-    pk = ToggleColumn()
-    name = tables.Column(linkify=True)
     address = tables.LinkColumn()
-    zone = tables.LinkColumn()
     actions = ButtonsColumn(
         models.ARecordModel,
         # Option for modifying the default action buttons on each row:
@@ -128,11 +129,10 @@ class ARecordModelTable(BaseTable):
         )
 
 
-class AAAARecordModelTable(BaseTable):
+class AAAARecordModelTable(DNSRecordsTable):
     """Table for list view."""
 
-    pk = ToggleColumn()
-    name = tables.Column(linkify=True)
+    address = tables.LinkColumn()
     actions = ButtonsColumn(
         models.AAAARecordModel,
         # Option for modifying the default action buttons on each row:
@@ -167,11 +167,9 @@ class AAAARecordModelTable(BaseTable):
         )
 
 
-class CNAMERecordModelTable(BaseTable):
+class CNAMERecordModelTable(DNSRecordsTable):
     """Table for list view."""
 
-    pk = ToggleColumn()
-    name = tables.Column(linkify=True)
     actions = ButtonsColumn(
         models.CNAMERecordModel,
         # Option for modifying the default action buttons on each row:
@@ -206,11 +204,9 @@ class CNAMERecordModelTable(BaseTable):
         )
 
 
-class MXRecordModelTable(BaseTable):
+class MXRecordModelTable(DNSRecordsTable):
     """Table for list view."""
 
-    pk = ToggleColumn()
-    name = tables.Column(linkify=True)
     actions = ButtonsColumn(
         models.MXRecordModel,
         # Option for modifying the default action buttons on each row:
@@ -245,11 +241,9 @@ class MXRecordModelTable(BaseTable):
         )
 
 
-class TXTRecordModelTable(BaseTable):
+class TXTRecordModelTable(DNSRecordsTable):
     """Table for list view."""
 
-    pk = ToggleColumn()
-    name = tables.Column(linkify=True)
     actions = ButtonsColumn(
         models.TXTRecordModel,
         # Option for modifying the default action buttons on each row:
@@ -284,11 +278,9 @@ class TXTRecordModelTable(BaseTable):
         )
 
 
-class PTRRecordModelTable(BaseTable):
+class PTRRecordModelTable(DNSRecordsTable):
     """Table for list view."""
 
-    pk = ToggleColumn()
-    name = tables.Column(linkify=True)
     actions = ButtonsColumn(
         models.PTRRecordModel,
         # Option for modifying the default action buttons on each row:
@@ -319,5 +311,43 @@ class PTRRecordModelTable(BaseTable):
             "zone",
             "comment",
             "ttl",
+            "actions",
+        )
+
+
+class SRVRecordModelTable(DNSRecordsTable):
+    """Table for list view."""
+
+    actions = ButtonsColumn(
+        models.SRVRecordModel,
+    )
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.SRVRecordModel
+        fields = (
+            "pk",
+            "name",
+            "priority",
+            "weight",
+            "port",
+            "target",
+            "zone",
+            "comment",
+            "ttl",
+            "description",
+            "actions",
+        )
+
+        # Option for modifying the columns that show up in the list view by default:
+        default_columns = (
+            "pk",
+            "name",
+            "priority",
+            "weight",
+            "port",
+            "target",
+            "zone",
             "actions",
         )
