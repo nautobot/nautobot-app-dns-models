@@ -52,6 +52,11 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
             help_text="Show PTR Records panel in IP Address detailed view.",
             field_type="show_dns_panel",
         ),
+        "ENFORCE_RFC1035_LENGTH": ConstanceConfigItem(
+            default=True,
+            help_text="Enforce RFC 1035 label/overall length restrictions.",
+            field_type=bool,
+        ),
     }
 
 

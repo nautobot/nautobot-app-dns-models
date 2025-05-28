@@ -1,5 +1,6 @@
 """Test DnsZoneModel."""
 
+from constance.test import override_config
 from django.core.exceptions import ValidationError
 from nautobot.apps.testing import ModelTestCases, TestCase
 from nautobot.extras.models import Status
@@ -258,12 +259,19 @@ class DNSRecordNameLengthValidationTest(TestCase):
         record = TXTRecordModel(name="a" * 63, text="test", zone=self.zone)
         record.full_clean()  # Should not raise
 
-    def test_record_label_too_long(self):
-        """Test that record labels exceeding 63 octets are rejected."""
+    def test_record_label_too_long_with_rfc1035_enforcement_enabled(self):
+        """Test that record labels exceeding 63 octets are rejected when enforcement is enabled."""
         record = TXTRecordModel(name="a" * 64, text="test", zone=self.zone)
         with self.assertRaises(ValidationError) as context:
             record.full_clean()
         self.assertIn("exceeds maximum length of 63 characters", str(context.exception))
+
+    @override_config(nautobot_dns_models__ENFORCE_RFC1035_LENGTH=False)
+    def test_record_label_too_long_with_rfc1035_enforcement_disabled(self):
+        """Test that record labels exceeding 63 octets are accepted when enforcement is disabled."""
+        record = TXTRecordModel(name="a" * 64, text="test", zone=self.zone)
+
+        record.full_clean()
 
     def test_record_empty_label(self):
         """Test that empty record labels are rejected."""
@@ -272,7 +280,7 @@ class DNSRecordNameLengthValidationTest(TestCase):
             record.full_clean()
         self.assertIn("Empty labels are not allowed", str(context.exception))
 
-    def test_record_wire_format_length(self):
+    def test_record_wire_format_length_with_rfc1035_enforcement_enabled(self):
         """Test that total wire format length is limited to 255 octets."""
         # Create a zone with a long name to test total length
         zone = DNSZoneModel.objects.create(
@@ -299,6 +307,16 @@ class DNSRecordNameLengthValidationTest(TestCase):
         with self.assertRaises(ValidationError) as context:
             record.full_clean()
         self.assertIn("cannot exceed 255 characters", str(context.exception))
+
+    @override_config(nautobot_dns_models__ENFORCE_RFC1035_LENGTH=False)
+    def test_record_wire_format_length_with_rfc1035_enforcement_disabled(self):
+        """Test that total wire format length is not limited when enforcement is disabled."""
+        zone = DNSZoneModel.objects.create(
+            name="x" * 63, filename="x" * 63 + ".zone", soa_mname="ns1." + "x" * 63 + ".", soa_rname="admin@example.com"
+        )
+
+        record = TXTRecordModel(name="x" * 63 + "." + "x" * 63 + "." + "x" * 63, text="test", zone=zone)
+        record.full_clean()  # Should not raise
 
 
 class DNSZoneNameLengthValidationTest(TestCase):
@@ -331,7 +349,7 @@ class DNSZoneNameLengthValidationTest(TestCase):
         )
         zone.full_clean()  # Should not raise
 
-    def test_zone_label_too_long(self):
+    def test_zone_label_too_long_with_rfc1035_enforcement_enabled(self):
         """Test that zone labels exceeding 63 octets are rejected."""
         zone = DNSZoneModel(
             name="a" * 64, filename="a" * 64 + ".zone", soa_mname="ns1." + "a" * 64 + ".", soa_rname="admin@example.com"
@@ -339,6 +357,14 @@ class DNSZoneNameLengthValidationTest(TestCase):
         with self.assertRaises(ValidationError) as context:
             zone.full_clean()
         self.assertIn("exceeds maximum length of 63 characters", str(context.exception))
+
+    @override_config(nautobot_dns_models__ENFORCE_RFC1035_LENGTH=False)
+    def test_zone_label_too_long_with_rfc1035_enforcement_disabled(self):
+        """Test that zone labels exceeding 63 octets are accepted when enforcement is disabled."""
+        zone = DNSZoneModel(
+            name="a" * 64, filename="a" * 64 + ".zone", soa_mname="ns1." + "a" * 64 + ".", soa_rname="admin@example.com"
+        )
+        zone.full_clean()  # Should not raise
 
     def test_zone_empty_label(self):
         """Test that empty zone labels are rejected."""

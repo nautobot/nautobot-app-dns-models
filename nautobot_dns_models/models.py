@@ -1,5 +1,6 @@
 """Models for Nautobot DNS Models."""
 
+from constance import config as constance_config
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -27,6 +28,11 @@ class DNSModel(PrimaryModel):
         - Empty labels are not allowed
         """
         super().clean()
+
+        enforce_rfc1035_length = constance_config.nautobot_dns_models__ENFORCE_RFC1035_LENGTH
+
+        if not enforce_rfc1035_length:
+            return
 
         # Split name into labels
         label_list = self.name.split(".")
@@ -122,6 +128,11 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
         - Total must not exceed 255 octets
         """
         super().clean()
+
+        enforce_rfc1035_length = constance_config.nautobot_dns_models__ENFORCE_RFC1035_LENGTH
+
+        if not enforce_rfc1035_length:
+            return
 
         if not hasattr(self, "zone"):
             raise ValidationError({"zone": "Zone is required"})
