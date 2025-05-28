@@ -1,8 +1,8 @@
 """Test DnsZoneModel."""
 
+from django.core.exceptions import ValidationError
 from nautobot.apps.testing import ModelTestCases, TestCase
 from nautobot.extras.models import Status
-from django.core.exceptions import ValidationError
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 
 from nautobot_dns_models.models import (
@@ -200,7 +200,6 @@ class PTRRecordModelTestCase(TestCase):
         self.assertEqual(ptr_record.get_absolute_url(), f"/plugins/dns/ptr-records/{ptr_record.id}/")
 
 
-
 class SRVRecordModelTestCase(TestCase):
     """Test the SRVRecordModel model."""
 
@@ -236,6 +235,7 @@ class SRVRecordModelTestCase(TestCase):
             name="_sip._tcp.example.com", priority=10, weight=5, port=5060, target="sip.example.com", zone=self.dns_zone
         )
         self.assertEqual(srv_record.get_absolute_url(), f"/plugins/dns/srv-records/{srv_record.id}/")
+
 
 class DNSRecordNameLengthValidationTest(TestCase):
     """Test DNS record name validation rules from RFC 1035 §3.1."""
