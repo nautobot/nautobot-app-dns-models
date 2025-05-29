@@ -13,3 +13,9 @@ The DNS zone model is used to represent a distinct DNS zone. It contains the zon
 - `soa_expire`: (integer): Time in seconds for secondary name servers to stop answering requests if the master does not respond. This value must be bigger than the sum of refresh and retry.
 - `soa_serial`: (integer): Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.
 - `soa_minimum`: (integer): Minimum TTL for records in this zone.
+
++++ 1.2.0 "DNS label length rules"
+    By default, `DNSZoneModel` now enforces the following DNS label length rules, as specified by [RFC 1035 §3.1](https://datatracker.ietf.org/doc/html/rfc1035#section-3.1):
+
+    - Each label (the parts of the name separated by dots) must be no more than 63 characters long.
+    - Empty labels (e.g., consecutive dots or leading/trailing dots) are not allowed.
