@@ -11,6 +11,14 @@ from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 class DNSModel(PrimaryModel):
     """Abstract Model for Nautobot DNS Models."""
 
+    #
+    # name is effectively a NOOP here; it's overridden in both subclasses but
+    # is here so that linters don't complain about it being used in clean().
+    name = models.CharField(max_length=200)
+    ttl = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+    )
+
     class Meta:
         """Meta class."""
 
@@ -58,9 +66,6 @@ class DNSZoneModel(DNSModel):
     """Model for DNS SOA Records. An SOA Record defines a DNS Zone."""
 
     name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD. e.g example.com", unique=True)
-    ttl = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
-    )
     filename = models.CharField(max_length=200, help_text="Filename of the Zone File.")
     description = models.TextField(help_text="Description of the Zone.", blank=True)
     soa_mname = models.CharField(
@@ -107,9 +112,6 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
 
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
     zone = ForeignKeyWithAutoRelatedName(DNSZoneModel, on_delete=models.PROTECT)
-    ttl = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
-    )
     description = models.TextField(help_text="Description of the Record.", blank=True)
     comment = models.CharField(max_length=200, help_text="Comment for the Record.", blank=True)
 
