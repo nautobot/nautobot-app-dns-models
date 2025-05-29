@@ -54,7 +54,7 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
         ),
         "ENFORCE_RFC1035_LENGTH": ConstanceConfigItem(
             default=True,
-            help_text="Enforce RFC 1035 label/overall length restrictions.",
+            help_text="Enforce RFC 1035 label/record length restrictions.",
             field_type=bool,
         ),
     }
