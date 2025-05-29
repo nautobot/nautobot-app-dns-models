@@ -127,7 +127,12 @@ class NSRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
 class ARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """A Record model."""
 
-    address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
+    address = models.ForeignKey(
+        to="ipam.IPAddress",
+        on_delete=models.CASCADE,
+        limit_choices_to={"ip_version": 4},
+        help_text="IP address for the record.",
+    )
 
     class Meta:
         """Meta attributes for ARecordModel."""
@@ -149,7 +154,12 @@ class ARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
 class AAAARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """AAAA Record model."""
 
-    address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
+    address = models.ForeignKey(
+        to="ipam.IPAddress",
+        on_delete=models.CASCADE,
+        limit_choices_to={"ip_version": 6},
+        help_text="IP address for the record.",
+    )
 
     class Meta:
         """Meta attributes for AAAARecordModel."""
