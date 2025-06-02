@@ -16,8 +16,23 @@ from nautobot_dns_models.models import (
     PTRRecordModel,
     SRVRecordModel,
     TXTRecordModel,
+    dns_wire_label_length,
 )
 from nautobot_dns_models.tests import fixtures
+
+# Helper for generating unicode labels of a specific IDNA-encoded length
+
+
+def _make_unicode_label_with_idna_length(char, target_length):
+    """Return a string of repeated `char` whose IDNA-encoded length is exactly `target_length` bytes."""
+    label = ""
+    while dns_wire_label_length(label) < target_length:
+        label += char
+    if dns_wire_label_length(label) > target_length:
+        label = label[:-1]
+    if dns_wire_label_length(label) != target_length:
+        raise ValueError(f"Could not generate label of exactly {target_length} bytes in IDNA.")
+    return label
 
 
 class TestDnsZoneModel(ModelTestCases.BaseModelTestCase):
@@ -245,78 +260,106 @@ class DNSRecordNameLengthValidationTest(TestCase):
     def setUpTestData(cls):
         cls.zone = DNSZoneModel.objects.create(name="example.com")
 
-    def test_valid_record_labels(self):
-        """Test that valid record labels are accepted."""
-        # Single label
+    # ASCII Label Tests
+    def test_accepts_valid_ascii_label(self):
         record = TXTRecordModel(name="www", text="test", zone=self.zone)
         record.full_clean()  # Should not raise
-
-        # Multiple labels
         record = TXTRecordModel(name="www.subdomain", text="test", zone=self.zone)
         record.full_clean()  # Should not raise
 
-        # Maximum length label (63 chars)
-        record = TXTRecordModel(name="a" * 63, text="test", zone=self.zone)
+    def test_accepts_ascii_label_of_63_bytes(self):
+        label_63 = "a" * 63
+        record = TXTRecordModel(name=label_63, text="test", zone=self.zone)
         record.full_clean()  # Should not raise
 
-    def test_record_label_too_long_with_rfc1035_enforcement_enabled(self):
-        """Test that record labels exceeding 63 octets are rejected when enforcement is enabled."""
+    def test_rejects_ascii_label_of_64_bytes(self):
+        label_64 = "a" * 64
+        record = TXTRecordModel(name=label_64, text="test", zone=self.zone)
+        with self.assertRaises(ValidationError) as context:
+            record.full_clean()
+        self.assertIn(
+            f"Label '{label_64}' exceeds the maximum length of 63 bytes (octets) in wire format", str(context.exception)
+        )
+
+    # Unicode Label Tests
+    def test_accepts_valid_unicode_label(self):
+        label = "ü"
+        record = TXTRecordModel(name=label, text="test", zone=self.zone)
+        record.full_clean()  # Should not raise
+
+    def test_accepts_unicode_label_of_63_idna_bytes(self):
+        label = _make_unicode_label_with_idna_length("ü", 63)
+        record = TXTRecordModel(name=label, text="test", zone=self.zone)
+        record.full_clean()  # Should not raise
+
+    def test_rejects_unicode_label_exceeding_63_idna_bytes(self):
+        label = _make_unicode_label_with_idna_length("ü", 63) + "ü"
+        record = TXTRecordModel(name=label, text="test", zone=self.zone)
+        with self.assertRaises(ValidationError) as context:
+            record.full_clean()
+        self.assertIn(
+            f"Label '{label}' exceeds the maximum length of 63 bytes (octets) in wire format", str(context.exception)
+        )
+
+    # Enforcement Flag Tests
+    @override_config(nautobot_dns_models__ENFORCE_RFC1035_LENGTH=False)
+    def test_accepts_label_exceeding_63_bytes_when_enforcement_disabled(self):
+        record = TXTRecordModel(name="a" * 64, text="test", zone=self.zone)
+        record.full_clean()  # Should not raise
+
+    def test_rejects_label_exceeding_63_bytes_when_enforcement_enabled(self):
         record = TXTRecordModel(name="a" * 64, text="test", zone=self.zone)
         with self.assertRaises(ValidationError) as context:
             record.full_clean()
-        self.assertIn("exceeds maximum length of 63 characters", str(context.exception))
+        self.assertIn(
+            "Label 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' exceeds the maximum length of 63 bytes (octets) in wire format",
+            str(context.exception),
+        )
 
+    # FQDN Length Tests
     @override_config(nautobot_dns_models__ENFORCE_RFC1035_LENGTH=False)
-    def test_record_label_too_long_with_rfc1035_enforcement_disabled(self):
-        """Test that record labels exceeding 63 octets are accepted when enforcement is disabled."""
-        record = TXTRecordModel(name="a" * 64, text="test", zone=self.zone)
+    def test_accepts_fqdn_exceeding_255_bytes_when_enforcement_disabled(self):
+        zone = DNSZoneModel.objects.create(
+            name="x" * 63, filename="x" * 63 + ".zone", soa_mname="ns1." + "x" * 63 + ".", soa_rname="admin@example.com"
+        )
+        record = TXTRecordModel(name="x" * 63 + "." + "x" * 63 + "." + "x" * 63, text="test", zone=zone)
+        record.full_clean()  # Should not raise
 
-        record.full_clean()
+    def test_rejects_fqdn_exceeding_255_bytes_when_enforcement_enabled(self):
+        zone_label = "z" * 63
+        zone = DNSZoneModel.objects.create(
+            name=zone_label,
+            filename=zone_label + ".zone",
+            soa_mname="ns1." + zone_label + ".",
+            soa_rname="admin@example.com",
+        )
+        record = TXTRecordModel(name="a" * 63 + "." + "b" * 63, text="test", zone=zone)
+        record.full_clean()  # Should not raise
+        record = TXTRecordModel(name="a" * 63 + "." + "b" * 63 + "." + "c" * 63, text="test", zone=zone)
+        with self.assertRaises(ValidationError) as context:
+            record.full_clean()
+        self.assertIn(
+            "Total length of DNS name cannot exceed 255 bytes (octets) in wire format", str(context.exception)
+        )
 
-    def test_record_empty_label(self):
-        """Test that empty record labels are rejected."""
+    # Structure/Format Tests
+    def test_rejects_empty_label(self):
         record = TXTRecordModel(name="www..subdomain", text="test", zone=self.zone)
         with self.assertRaises(ValidationError) as context:
             record.full_clean()
         self.assertIn("Empty labels are not allowed", str(context.exception))
 
-    def test_record_wire_format_length_with_rfc1035_enforcement_enabled(self):
-        """Test that total wire format length is limited to 255 octets."""
-        # Create a zone with a long name to test total length
-        zone = DNSZoneModel.objects.create(
-            name="x" * 63, filename="x" * 63 + ".zone", soa_mname="ns1." + "x" * 63 + ".", soa_rname="admin@example.com"
-        )
-
-        # This should be under 255 octets in wire format:
-        # - 1 length octet + 63 octets for label 1
-        # - 1 length octet + 63 octets for label 2
-        # - 1 length octet + 63 octets for zone name
-        # - 1 octet for root label (zero length)
-        # Total: (1 + 63) * 3 + 1 = 193
-        record = TXTRecordModel(name="x" * 63 + "." + "x" * 63, text="test", zone=zone)
-        record.full_clean()  # Should not raise
-
-        # This should exceed 255 octets in wire format
-        # - 1 length octet + 63 octets for label 1
-        # - 1 length octet + 63 octets for label 2
-        # - 1 length octet + 63 octets for label 3
-        # - 1 length octet + 63 octets for zone name
-        # - 1 octet for root label (zero length)
-        # Total: (1 + 63) * 4 + 1 = 257
-        record = TXTRecordModel(name="x" * 63 + "." + "x" * 63 + "." + "x" * 63, text="test", zone=zone)
+    def test_rejects_label_with_leading_or_trailing_dot(self):
+        # Leading dot
+        record = TXTRecordModel(name=".example", text="test", zone=self.zone)
         with self.assertRaises(ValidationError) as context:
             record.full_clean()
-        self.assertIn("cannot exceed 255 characters", str(context.exception))
-
-    @override_config(nautobot_dns_models__ENFORCE_RFC1035_LENGTH=False)
-    def test_record_wire_format_length_with_rfc1035_enforcement_disabled(self):
-        """Test that total wire format length is not limited when enforcement is disabled."""
-        zone = DNSZoneModel.objects.create(
-            name="x" * 63, filename="x" * 63 + ".zone", soa_mname="ns1." + "x" * 63 + ".", soa_rname="admin@example.com"
-        )
-
-        record = TXTRecordModel(name="x" * 63 + "." + "x" * 63 + "." + "x" * 63, text="test", zone=zone)
-        record.full_clean()  # Should not raise
+        self.assertIn("Empty labels are not allowed", str(context.exception))
+        # Trailing dot
+        record = TXTRecordModel(name="example.", text="test", zone=self.zone)
+        with self.assertRaises(ValidationError) as context:
+            record.full_clean()
+        self.assertIn("Empty labels are not allowed", str(context.exception))
 
 
 class DNSZoneNameLengthValidationTest(TestCase):
@@ -328,13 +371,14 @@ class DNSZoneNameLengthValidationTest(TestCase):
     when combined with their zone.
     """
 
-    def test_valid_zone_labels(self):
-        """Test that valid zone labels are accepted."""
-        # Test single label
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZoneModel.objects.create(name="example.com")
+
+    # ASCII Label Tests
+    def test_accepts_valid_ascii_label(self):
         zone = DNSZoneModel(name="test1", filename="test1.zone", soa_mname="ns1.test1.", soa_rname="admin@example.com")
         zone.full_clean()  # Should not raise
-
-        # Test multiple labels
         zone = DNSZoneModel(
             name="test2.example.com",
             filename="test2.example.com.zone",
@@ -343,35 +387,112 @@ class DNSZoneNameLengthValidationTest(TestCase):
         )
         zone.full_clean()  # Should not raise
 
-        # Test maximum length label
+    def test_accepts_ascii_label_of_63_bytes(self):
+        label_63 = "a" * 63
         zone = DNSZoneModel(
-            name="a" * 63, filename="a" * 63 + ".zone", soa_mname="ns1." + "a" * 63 + ".", soa_rname="admin@example.com"
+            name=label_63,
+            filename=label_63 + ".zone",
+            soa_mname="ns1." + label_63 + ".",
+            soa_rname="admin@example.com",
         )
         zone.full_clean()  # Should not raise
 
-    def test_zone_label_too_long_with_rfc1035_enforcement_enabled(self):
-        """Test that zone labels exceeding 63 octets are rejected."""
+    def test_rejects_ascii_label_of_64_bytes(self):
+        label_64 = "a" * 64
+        zone = DNSZoneModel(
+            name=label_64,
+            filename=label_64 + ".zone",
+            soa_mname="ns1." + label_64 + ".",
+            soa_rname="admin@example.com",
+        )
+        with self.assertRaises(ValidationError) as context:
+            zone.full_clean()
+        self.assertIn(
+            f"Label '{label_64}' exceeds the maximum length of 63 bytes (octets) in wire format", str(context.exception)
+        )
+
+    # Unicode Label Tests
+    def test_accepts_valid_unicode_label(self):
+        label = "ü"
+        zone = DNSZoneModel(
+            name=label,
+            filename=label + ".zone",
+            soa_mname="ns1." + label + ".",
+            soa_rname="admin@example.com",
+        )
+        zone.full_clean()  # Should not raise
+
+    def test_accepts_unicode_label_of_63_idna_bytes(self):
+        label = _make_unicode_label_with_idna_length("ü", 63)
+        zone = DNSZoneModel(
+            name=label,
+            filename=label + ".zone",
+            soa_mname="ns1." + label + ".",
+            soa_rname="admin@example.com",
+        )
+        zone.full_clean()  # Should not raise
+
+    def test_rejects_unicode_label_exceeding_63_idna_bytes(self):
+        label = _make_unicode_label_with_idna_length("ü", 63) + "ü"
+        zone = DNSZoneModel(
+            name=label,
+            filename=label + ".zone",
+            soa_mname="ns1." + label + ".",
+            soa_rname="admin@example.com",
+        )
+        with self.assertRaises(ValidationError) as context:
+            zone.full_clean()
+        self.assertIn(
+            f"Label '{label}' exceeds the maximum length of 63 bytes (octets) in wire format", str(context.exception)
+        )
+
+    # Enforcement Flag Tests
+    @override_config(nautobot_dns_models__ENFORCE_RFC1035_LENGTH=False)
+    def test_accepts_label_exceeding_63_bytes_when_enforcement_disabled(self):
+        zone = DNSZoneModel(
+            name="a" * 64, filename="a" * 64 + ".zone", soa_mname="ns1." + "a" * 64 + ".", soa_rname="admin@example.com"
+        )
+        zone.full_clean()  # Should not raise
+
+    def test_rejects_label_exceeding_63_bytes_when_enforcement_enabled(self):
         zone = DNSZoneModel(
             name="a" * 64, filename="a" * 64 + ".zone", soa_mname="ns1." + "a" * 64 + ".", soa_rname="admin@example.com"
         )
         with self.assertRaises(ValidationError) as context:
             zone.full_clean()
-        self.assertIn("exceeds maximum length of 63 characters", str(context.exception))
-
-    @override_config(nautobot_dns_models__ENFORCE_RFC1035_LENGTH=False)
-    def test_zone_label_too_long_with_rfc1035_enforcement_disabled(self):
-        """Test that zone labels exceeding 63 octets are accepted when enforcement is disabled."""
-        zone = DNSZoneModel(
-            name="a" * 64, filename="a" * 64 + ".zone", soa_mname="ns1." + "a" * 64 + ".", soa_rname="admin@example.com"
+        self.assertIn(
+            "Label 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' exceeds the maximum length of 63 bytes (octets) in wire format",
+            str(context.exception),
         )
-        zone.full_clean()  # Should not raise
 
-    def test_zone_empty_label(self):
-        """Test that empty zone labels are rejected."""
+    # Structure/Format Tests
+    def test_rejects_empty_label(self):
         zone = DNSZoneModel(
             name="example..com",
             filename="example..com.zone",
             soa_mname="ns1.example..com.",
+            soa_rname="admin@example.com",
+        )
+        with self.assertRaises(ValidationError) as context:
+            zone.full_clean()
+        self.assertIn("Empty labels are not allowed", str(context.exception))
+
+    def test_rejects_label_with_leading_or_trailing_dot(self):
+        # Leading dot
+        zone = DNSZoneModel(
+            name=".example",
+            filename=".example.zone",
+            soa_mname="ns1..example.",
+            soa_rname="admin@example.com",
+        )
+        with self.assertRaises(ValidationError) as context:
+            zone.full_clean()
+        self.assertIn("Empty labels are not allowed", str(context.exception))
+        # Trailing dot
+        zone = DNSZoneModel(
+            name="example.",
+            filename="example..zone",
+            soa_mname="ns1.example..",
             soa_rname="admin@example.com",
         )
         with self.assertRaises(ValidationError) as context:

@@ -8,6 +8,16 @@ from nautobot.apps.models import PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 
 
+def dns_wire_label_length(label):
+    """Return the wire-format (IDNA/Punycode) length of a DNS label."""
+    if all(ord(char) < 128 for char in label):
+        #
+        # If the label is all ASCII, return the length of the label.
+        return len(label)
+
+    return len("xn--" + label.encode("punycode").decode("ascii"))
+
+
 class DNSModel(PrimaryModel):
     """Abstract Model for Nautobot DNS Models."""
 
@@ -28,29 +38,35 @@ class DNSModel(PrimaryModel):
         """Stringify instance."""
         return self.name  # pylint: disable=no-member
 
-    def clean(self):
-        """Validate the name conforms to DNS label length restrictions.
+    @staticmethod
+    def _validate_dns_label(label, field="name"):
+        """
+        Validate a DNS label for wire-format length using punycode encoding.
 
-        DNS name length restrictions (RFC 1035 §3.1):
-        - Each label is limited to 63 octets
-        - Empty labels are not allowed
+        Only checks for non-empty and length.
+        """
+        if not label:
+            raise ValidationError({field: "Empty labels are not allowed"})
+        length = dns_wire_label_length(label)
+        if length > 63:
+            raise ValidationError(
+                {field: f"Label '{label}' exceeds the maximum length of 63 bytes (octets) in wire format."}
+            )
+        return length
+
+    def clean(self):
+        """
+        Validate DNS label length and format per RFC 1035 §3.1 using punycode for wire-format length.
+
+        Ensures each label in the name is ≤ 63 bytes (octets) in wire format and not empty.
+        Raises ValidationError if any label is empty or exceeds the length limit.
         """
         super().clean()
 
-        enforce_rfc1035_length = constance_config.nautobot_dns_models__ENFORCE_RFC1035_LENGTH
-
-        if not enforce_rfc1035_length:
-            return
-
-        # Split name into labels
-        label_list = self.name.split(".")
-
-        # Check each label
-        for label in label_list:
-            if len(label) > 63:
-                raise ValidationError({"name": f"Label '{label}' exceeds maximum length of 63 characters"})
-            if not label:
-                raise ValidationError({"name": "Empty labels are not allowed"})
+        if getattr(constance_config, "nautobot_dns_models__ENFORCE_RFC1035_LENGTH", True):
+            label_list = self.name.split(".")
+            for label in label_list:
+                self._validate_dns_label(label, field="name")
 
 
 @extras_features(
@@ -116,43 +132,34 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
     comment = models.CharField(max_length=200, help_text="Comment for the Record.", blank=True)
 
     def clean(self):
-        """Validate the record name conforms to DNS label length restrictions.
+        """
+        Extend base validation to check total DNS name wire format length per RFC 1035 §3.1 using punycode for wire-format length.
 
-        DNS name length restrictions (RFC 1035 §3.1):
-        - Each label is limited to 63 octets
-        - The total length of an FQDN is limited to 255 octets
-        - The length of each label is stored in a single octet
-        - The final length octet must be zero (root)
-
-        Wire format calculation:
-        - Each label: 1 length octet + label content
-        - Final root: 1 octet (zero length)
-        - Total must not exceed 255 octets
+        In addition to label checks, ensures the full DNS name (record + zone) does not exceed 255 bytes (octets) in wire format.
+        Raises ValidationError if the total name length exceeds the RFC 1035 limit.
         """
         super().clean()
-
-        enforce_rfc1035_length = constance_config.nautobot_dns_models__ENFORCE_RFC1035_LENGTH
-
-        if not enforce_rfc1035_length:
-            return
 
         if not hasattr(self, "zone"):
             raise ValidationError({"zone": "Zone is required"})
 
-        record_label_list = self.name.split(".")
-        zone_label_list = self.zone.name.split(".")
+        if getattr(constance_config, "nautobot_dns_models__ENFORCE_RFC1035_LENGTH", True):
+            record_label_list = self.name.split(".")
+            zone_label_list = self.zone.name.split(".")
 
-        # Calculate wire format length including zone name
-        # - 1 length octet + label length for each record label
-        # - 1 length octet + label length for each zone label
-        # - 1 octet for root label (zero length)
-        wire_length = (
-            sum(1 + len(record_label) for record_label in record_label_list)
-            + sum(1 + len(zone_label) for zone_label in zone_label_list)
-            + 1
-        )
-        if wire_length > 255:
-            raise ValidationError({"name": "Total length of DNS name cannot exceed 255 characters"})
+            wire_length = 0
+            # Record labels
+            for label in record_label_list:
+                wire_length += 1 + dns_wire_label_length(label)
+            # Zone labels
+            for label in zone_label_list:
+                wire_length += 1 + dns_wire_label_length(label)
+            wire_length += 1  # Add the final zero byte for root
+
+            if wire_length > 255:
+                raise ValidationError(
+                    {"name": "Total length of DNS name cannot exceed 255 bytes (octets) in wire format."}
+                )
 
     class Meta:
         """Meta attributes for DnsRecordModel."""
