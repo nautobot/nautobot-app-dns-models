@@ -6,7 +6,7 @@ from nautobot.apps.tables import BaseTable, ButtonsColumn, ToggleColumn
 from nautobot_dns_models import models
 
 
-class DNSRecordsTable(BaseTable):
+class DNSRecordsTable(BaseTable):  # pylint: disable=nb-no-model-found
     """Base table for DNS records list view."""
 
     pk = ToggleColumn()

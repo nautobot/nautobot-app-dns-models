@@ -33,7 +33,10 @@ class DNSZoneModel(DNSModel):
 
     name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD. e.g example.com", unique=True)
     ttl = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live.", verbose_name="TTL"
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+        default=3600,
+        help_text="Time To Live.",
+        verbose_name="TTL",
     )
     filename = models.CharField(max_length=200, help_text="Filename of the Zone File.")
     description = models.TextField(help_text="Description of the Zone.", blank=True)
@@ -88,7 +91,7 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
     zone = ForeignKeyWithAutoRelatedName(DNSZoneModel, on_delete=models.PROTECT)
     _ttl = models.IntegerField(
-        validators=[MinValueValidator(300),MaxValueValidator(2147483647)],
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
         help_text="Time To Live (if no value is given, the Zone TTL will be used).",
         blank=True,
         null=True,
@@ -106,8 +109,14 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
     def ttl(self):
         """Return the TTL value for the record."""
         if not self._ttl:
-            return self.zone.ttl
+            return self.zone.ttl  # pylint: disable=no-member
         return self._ttl
+
+    @ttl.setter
+    def ttl(self, value):
+        """Set the TTL value for the record."""
+        self._ttl = value
+
 
 @extras_features(
     "custom_fields",

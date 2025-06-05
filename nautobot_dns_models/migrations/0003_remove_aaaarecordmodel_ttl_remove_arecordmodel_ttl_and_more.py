@@ -5,82 +5,137 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('nautobot_dns_models', '0002_srvrecordmodel'),
+        ("nautobot_dns_models", "0002_srvrecordmodel"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='aaaarecordmodel',
-            name='ttl',
+            model_name="aaaarecordmodel",
+            name="ttl",
         ),
         migrations.RemoveField(
-            model_name='arecordmodel',
-            name='ttl',
+            model_name="arecordmodel",
+            name="ttl",
         ),
         migrations.RemoveField(
-            model_name='cnamerecordmodel',
-            name='ttl',
+            model_name="cnamerecordmodel",
+            name="ttl",
         ),
         migrations.RemoveField(
-            model_name='mxrecordmodel',
-            name='ttl',
+            model_name="mxrecordmodel",
+            name="ttl",
         ),
         migrations.RemoveField(
-            model_name='nsrecordmodel',
-            name='ttl',
+            model_name="nsrecordmodel",
+            name="ttl",
         ),
         migrations.RemoveField(
-            model_name='ptrrecordmodel',
-            name='ttl',
+            model_name="ptrrecordmodel",
+            name="ttl",
         ),
         migrations.RemoveField(
-            model_name='srvrecordmodel',
-            name='ttl',
+            model_name="srvrecordmodel",
+            name="ttl",
         ),
         migrations.RemoveField(
-            model_name='txtrecordmodel',
-            name='ttl',
+            model_name="txtrecordmodel",
+            name="ttl",
         ),
         migrations.AddField(
-            model_name='aaaarecordmodel',
-            name='_ttl',
-            field=models.IntegerField(blank=True, null=True, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)]),
+            model_name="aaaarecordmodel",
+            name="_ttl",
+            field=models.IntegerField(
+                blank=True,
+                null=True,
+                validators=[
+                    django.core.validators.MinValueValidator(300),
+                    django.core.validators.MaxValueValidator(2147483647),
+                ],
+            ),
         ),
         migrations.AddField(
-            model_name='arecordmodel',
-            name='_ttl',
-            field=models.IntegerField(blank=True, null=True, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)]),
+            model_name="arecordmodel",
+            name="_ttl",
+            field=models.IntegerField(
+                blank=True,
+                null=True,
+                validators=[
+                    django.core.validators.MinValueValidator(300),
+                    django.core.validators.MaxValueValidator(2147483647),
+                ],
+            ),
         ),
         migrations.AddField(
-            model_name='cnamerecordmodel',
-            name='_ttl',
-            field=models.IntegerField(blank=True, null=True, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)]),
+            model_name="cnamerecordmodel",
+            name="_ttl",
+            field=models.IntegerField(
+                blank=True,
+                null=True,
+                validators=[
+                    django.core.validators.MinValueValidator(300),
+                    django.core.validators.MaxValueValidator(2147483647),
+                ],
+            ),
         ),
         migrations.AddField(
-            model_name='mxrecordmodel',
-            name='_ttl',
-            field=models.IntegerField(blank=True, null=True, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)]),
+            model_name="mxrecordmodel",
+            name="_ttl",
+            field=models.IntegerField(
+                blank=True,
+                null=True,
+                validators=[
+                    django.core.validators.MinValueValidator(300),
+                    django.core.validators.MaxValueValidator(2147483647),
+                ],
+            ),
         ),
         migrations.AddField(
-            model_name='nsrecordmodel',
-            name='_ttl',
-            field=models.IntegerField(blank=True, null=True, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)]),
+            model_name="nsrecordmodel",
+            name="_ttl",
+            field=models.IntegerField(
+                blank=True,
+                null=True,
+                validators=[
+                    django.core.validators.MinValueValidator(300),
+                    django.core.validators.MaxValueValidator(2147483647),
+                ],
+            ),
         ),
         migrations.AddField(
-            model_name='ptrrecordmodel',
-            name='_ttl',
-            field=models.IntegerField(blank=True, null=True, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)]),
+            model_name="ptrrecordmodel",
+            name="_ttl",
+            field=models.IntegerField(
+                blank=True,
+                null=True,
+                validators=[
+                    django.core.validators.MinValueValidator(300),
+                    django.core.validators.MaxValueValidator(2147483647),
+                ],
+            ),
         ),
         migrations.AddField(
-            model_name='srvrecordmodel',
-            name='_ttl',
-            field=models.IntegerField(blank=True, null=True, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)]),
+            model_name="srvrecordmodel",
+            name="_ttl",
+            field=models.IntegerField(
+                blank=True,
+                null=True,
+                validators=[
+                    django.core.validators.MinValueValidator(300),
+                    django.core.validators.MaxValueValidator(2147483647),
+                ],
+            ),
         ),
         migrations.AddField(
-            model_name='txtrecordmodel',
-            name='_ttl',
-            field=models.IntegerField(blank=True, null=True, validators=[django.core.validators.MinValueValidator(300), django.core.validators.MaxValueValidator(2147483647)]),
+            model_name="txtrecordmodel",
+            name="_ttl",
+            field=models.IntegerField(
+                blank=True,
+                null=True,
+                validators=[
+                    django.core.validators.MinValueValidator(300),
+                    django.core.validators.MaxValueValidator(2147483647),
+                ],
+            ),
         ),
     ]
