@@ -33,7 +33,7 @@ class DNSZoneModel(DNSModel):
 
     name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD. e.g example.com", unique=True)
     ttl = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live.", verbose_name="TTL"
     )
     filename = models.CharField(max_length=200, help_text="Filename of the Zone File.")
     description = models.TextField(help_text="Description of the Zone.", blank=True)
@@ -41,32 +41,38 @@ class DNSZoneModel(DNSModel):
         max_length=200,
         help_text="FQDN of the Authoritative Name Server for Zone.",
         null=False,
+        verbose_name="SOA MNAME",
     )
-    soa_rname = models.EmailField(help_text="Admin Email for the Zone in the form")
+    soa_rname = models.EmailField(help_text="Admin Email for the Zone in the form", verbose_name="SOA RNAME")
     soa_refresh = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
         default=86400,
         help_text="Number of seconds after which secondary name servers should query the master for the SOA record, to detect zone changes.",
+        verbose_name="SOA Refresh",
     )
     soa_retry = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
         default=7200,
         help_text="Number of seconds after which secondary name servers should retry to request the serial number from the master if the master does not respond.",
+        verbose_name="SOA Retry",
     )
     soa_expire = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
         default=3600000,
         help_text="Number of seconds after which secondary name servers should stop answering request for this zone if the master does not respond. This value must be bigger than the sum of Refresh and Retry.",
+        verbose_name="SOA Expire",
     )
     soa_serial = models.IntegerField(
         validators=[MinValueValidator(0), MaxValueValidator(2147483647)],
         default=0,
         help_text="Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.",
+        verbose_name="SOA Serial",
     )
     soa_minimum = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
         default=3600,
         help_text="Minimum TTL for records in this zone.",
+        verbose_name="SOA Minimum",
     )
 
     class Meta:
@@ -81,8 +87,12 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
 
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
     zone = ForeignKeyWithAutoRelatedName(DNSZoneModel, on_delete=models.PROTECT)
-    ttl = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+    _ttl = models.IntegerField(
+        validators=[MinValueValidator(300),MaxValueValidator(2147483647)],
+        help_text="Time To Live (if no value is given, the Zone TTL will be used).",
+        blank=True,
+        null=True,
+        verbose_name="TTL",
     )
     description = models.TextField(help_text="Description of the Record.", blank=True)
     comment = models.CharField(max_length=200, help_text="Comment for the Record.", blank=True)
@@ -92,6 +102,12 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
 
         abstract = True
 
+    @property
+    def ttl(self):
+        """Return the TTL value for the record."""
+        if not self._ttl:
+            return self.zone.ttl
+        return self._ttl
 
 @extras_features(
     "custom_fields",

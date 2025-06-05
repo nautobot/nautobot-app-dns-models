@@ -12,6 +12,7 @@ class DNSRecordsTable(BaseTable):
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
     zone = tables.LinkColumn()
+    ttl = tables.Column(verbose_name="TTL")
 
 
 class DNSZoneModelTable(BaseTable):
