@@ -10,9 +10,7 @@ from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 
 def dns_wire_label_length(label):
     """Return the wire-format (IDNA/Punycode) length of a DNS label."""
-    if all(ord(char) < 128 for char in label):
-        #
-        # If the label is all ASCII, return the length of the label.
+    if label.isascii():
         return len(label)
 
     return len("xn--" + label.encode("punycode").decode("ascii"))
