@@ -15,7 +15,10 @@ The DNS zone model is used to represent a distinct DNS zone. It contains the zon
 - `soa_minimum`: (integer): Minimum TTL for records in this zone.
 
 +++ 1.2.0 "DNS label length rules"
-    By default, `DNSZoneModel` now enforces the following DNS label length rules, as specified by [RFC 1035 §3.1](https://datatracker.ietf.org/doc/html/rfc1035#section-3.1):
 
-    - Each label (the parts of the name separated by dots) must be no more than 63 characters long.
-    - Empty labels (e.g., consecutive dots or leading/trailing dots) are not allowed.
+When DNS validation is enabled (via the `DNS_VALIDATION_LEVEL` configuration), `DNSZoneModel` enforces the following DNS label length rules, as specified by [RFC 1035 §3.1](https://datatracker.ietf.org/doc/html/rfc1035#section-3.1):
+
+- Each label (the parts of the name separated by dots) must be no more than 63 bytes in wire format
+- Empty labels (e.g., consecutive dots or leading/trailing dots) are not allowed
+
+See the [installation guide](../admin/install.md#app-configuration) for configuration options.

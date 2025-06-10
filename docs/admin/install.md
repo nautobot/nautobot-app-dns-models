@@ -67,10 +67,12 @@ sudo systemctl restart nautobot nautobot-worker nautobot-scheduler
 
 This option is configured via the Admin GUI.
 
-`ENFORCE_RFC1035_LENGTH` (default: `True`)
+`DNS_VALIDATION_LEVEL` (default: "Wire format")
 
-This setting enforces the DNS label and name length rules as specified in [RFC 1035 §3.1](https://datatracker.ietf.org/doc/html/rfc1035#section-3.1):
+This setting controls the DNS validation level applied to zones and records:
 
-- Each label (the parts of the name separated by dots) must be no more than 63 characters long.
-- Empty labels (e.g., consecutive dots or leading/trailing dots) are not allowed.
-- The total length of the fully qualified DNS name (including all dots, in wire format) must not exceed 255 bytes.
+- **Disabled** - No DNS validation is performed
+- **Wire format** - Enforces DNS label and name length rules as specified in [RFC 1035 §3.1](https://datatracker.ietf.org/doc/html/rfc1035#section-3.1):
+    - Each label (the parts of the name separated by dots) must be no more than 63 bytes in wire format
+    - Empty labels (e.g., consecutive dots or leading/trailing dots) are not allowed
+    - The total length of the fully qualified DNS name (including all dots, in wire format) must not exceed 255 bytes

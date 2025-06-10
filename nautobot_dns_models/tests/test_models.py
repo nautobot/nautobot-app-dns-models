@@ -302,7 +302,7 @@ class DNSRecordNameLengthValidationTest(TestCase):
         )
 
     # Enforcement Flag Tests
-    @override_config(nautobot_dns_models__ENFORCE_RFC1035_LENGTH=False)
+    @override_config(nautobot_dns_models__DNS_VALIDATION_LEVEL=False)
     def test_accepts_label_exceeding_63_bytes_when_enforcement_disabled(self):
         record = TXTRecordModel(name="a" * 64, text="test", zone=self.zone)
         record.full_clean()  # Should not raise
@@ -317,7 +317,7 @@ class DNSRecordNameLengthValidationTest(TestCase):
         )
 
     # FQDN Length Tests
-    @override_config(nautobot_dns_models__ENFORCE_RFC1035_LENGTH=False)
+    @override_config(nautobot_dns_models__DNS_VALIDATION_LEVEL=False)
     def test_accepts_fqdn_exceeding_255_bytes_when_enforcement_disabled(self):
         zone = DNSZoneModel.objects.create(
             name="x" * 63, filename="x" * 63 + ".zone", soa_mname="ns1." + "x" * 63 + ".", soa_rname="admin@example.com"
@@ -447,7 +447,7 @@ class DNSZoneNameLengthValidationTest(TestCase):
         )
 
     # Enforcement Flag Tests
-    @override_config(nautobot_dns_models__ENFORCE_RFC1035_LENGTH=False)
+    @override_config(nautobot_dns_models__DNS_VALIDATION_LEVEL=False)
     def test_accepts_label_exceeding_63_bytes_when_enforcement_disabled(self):
         zone = DNSZoneModel(
             name="a" * 64, filename="a" * 64 + ".zone", soa_mname="ns1." + "a" * 64 + ".", soa_rname="admin@example.com"

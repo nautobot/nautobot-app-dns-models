@@ -57,11 +57,11 @@ class DNSModel(PrimaryModel):
         Validate DNS label length and format per RFC 1035 §3.1 using punycode for wire-format length.
 
         Ensures each label in the name is ≤ 63 bytes (octets) in wire format and not empty.
-        Raises ValidationError if any label is empty or exceeds the length limit.
         """
         super().clean()
 
-        if getattr(constance_config, "nautobot_dns_models__ENFORCE_RFC1035_LENGTH", True):
+        validation_level = getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL")
+        if validation_level == "wire-format":
             label_list = self.name.split(".")
             for label in label_list:
                 self._validate_dns_label(label, field="name")
@@ -134,14 +134,14 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
         Extend base validation to check total DNS name wire format length per RFC 1035 §3.1 using punycode for wire-format length.
 
         In addition to label checks, ensures the full DNS name (record + zone) does not exceed 255 bytes (octets) in wire format.
-        Raises ValidationError if the total name length exceeds the RFC 1035 limit.
         """
         super().clean()
 
         if not hasattr(self, "zone"):
             raise ValidationError({"zone": "Zone is required"})
 
-        if getattr(constance_config, "nautobot_dns_models__ENFORCE_RFC1035_LENGTH", True):
+        validation_level = getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL")
+        if validation_level == "wire-format":
             record_label_list = self.name.split(".")
             zone_label_list = self.zone.name.split(".")
 
