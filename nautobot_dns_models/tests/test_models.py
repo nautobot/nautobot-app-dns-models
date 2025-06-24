@@ -1,5 +1,6 @@
 """Test DnsZoneModel."""
 
+from constance.test import override_config
 from django.core.exceptions import ValidationError
 from nautobot.apps.testing import ModelTestCases, TestCase
 from nautobot.extras.models import Status
