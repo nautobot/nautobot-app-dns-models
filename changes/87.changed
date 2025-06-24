@@ -1,0 +1,1 @@
+Changed TTL of DNS Records to be optional and inherited from the zone if no value is provided.
