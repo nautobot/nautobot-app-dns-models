@@ -1,5 +1,6 @@
 """Test DnsZoneModel."""
 
+from django.core.exceptions import ValidationError
 from nautobot.apps.testing import ModelTestCases, TestCase
 from nautobot.extras.models import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
@@ -77,6 +78,11 @@ class ARecordModelTestCase(TestCase):
         namespace = Namespace.objects.get(name="Global")
         Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status)
         cls.ip_address = IPAddress.objects.create(address="10.0.0.1/32", namespace=namespace, status=status)
+        # IPv6 Test data
+        Prefix.objects.create(prefix="2001:db8:abcd:99::/64", namespace=namespace, type="Pool", status=status)
+        cls.ipv6_address = IPAddress.objects.create(
+            address="2001:db8:abcd:99::1/128", namespace=namespace, status=status
+        )
 
     def test_create_arecordmodel(self):
         a_record = ARecordModel.objects.create(name="site.example.com", address=self.ip_address, zone=self.dns_zone)
@@ -85,6 +91,12 @@ class ARecordModelTestCase(TestCase):
         self.assertEqual(a_record.address, self.ip_address)
         self.assertEqual(a_record.ttl, 3600)
         self.assertEqual(str(a_record), a_record.name)
+
+    def test_create_ipv6_arecord_fails(self):
+        # Test that creating an IPv6 Address fails
+        with self.assertRaises(ValidationError):
+            invalid_record = ARecordModel(name="invalid.example.com", address=self.ipv6_address, zone=self.dns_zone)
+            invalid_record.full_clean()
 
     def test_get_absolute_url(self):
         a_record = ARecordModel.objects.create(name="site.example.com", address=self.ip_address, zone=self.dns_zone)
@@ -101,6 +113,9 @@ class AAAARecordModelTestCase(TestCase):
         namespace = Namespace.objects.get(name="Global")
         Prefix.objects.create(prefix="2001:db8:abcd:12::/64", namespace=namespace, type="Pool", status=status)
         cls.ip_address = IPAddress.objects.create(address="2001:db8:abcd:12::1/128", namespace=namespace, status=status)
+        # IPv4 Test Data
+        Prefix.objects.create(prefix="10.1.0.0/24", namespace=namespace, type="Pool", status=status)
+        cls.ipv4_address = IPAddress.objects.create(address="10.1.0.1/32", namespace=namespace, status=status)
 
     def test_create_aaaarecordmodel(self):
         aaaa_record = AAAARecordModel.objects.create(
@@ -111,6 +126,12 @@ class AAAARecordModelTestCase(TestCase):
         self.assertEqual(aaaa_record.address, self.ip_address)
         self.assertEqual(aaaa_record.ttl, 3600)
         self.assertEqual(str(aaaa_record), aaaa_record.name)
+
+    def test_create_ipv4_aaaarecord_fails(self):
+        # Test that creating an IPv4 Address fails
+        with self.assertRaises(ValidationError):
+            invalid_record = AAAARecordModel(name="invalid.example.com", address=self.ipv4_address, zone=self.dns_zone)
+            invalid_record.full_clean()
 
     def test_get_absolute_url(self):
         aaaa_record = AAAARecordModel.objects.create(
