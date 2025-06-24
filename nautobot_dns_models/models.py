@@ -1,13 +1,31 @@
 """Models for Nautobot DNS Models."""
 
+from constance import config as constance_config
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from nautobot.apps.models import PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 
 
+def dns_wire_label_length(label):
+    """Return the wire-format (IDNA/Punycode) length of a DNS label."""
+    if label.isascii():
+        return len(label)
+
+    return len("xn--" + label.encode("punycode").decode("ascii"))
+
+
 class DNSModel(PrimaryModel):
     """Abstract Model for Nautobot DNS Models."""
+
+    #
+    # name is effectively a NOOP here; it's overridden in both subclasses but
+    # is here so that linters don't complain about it being used in clean().
+    name = models.CharField(max_length=200)
+    ttl = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+    )
 
     class Meta:
         """Meta class."""
@@ -17,6 +35,36 @@ class DNSModel(PrimaryModel):
     def __str__(self):
         """Stringify instance."""
         return self.name  # pylint: disable=no-member
+
+    @staticmethod
+    def _validate_dns_label(label, field="name"):
+        """
+        Validate a DNS label for wire-format length using punycode encoding.
+
+        Only checks for non-empty and length.
+        """
+        if not label:
+            raise ValidationError({field: "Empty labels are not allowed"})
+        length = dns_wire_label_length(label)
+        if length > 63:
+            raise ValidationError(
+                {field: f"Label '{label}' exceeds the maximum length of 63 bytes (octets) in wire format."}
+            )
+        return length
+
+    def clean(self):
+        """
+        Validate DNS label length and format per RFC 1035 §3.1 using punycode for wire-format length.
+
+        Ensures each label in the name is ≤ 63 bytes (octets) in wire format and not empty.
+        """
+        super().clean()
+
+        validation_level = getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL")
+        if validation_level == "wire-format":
+            label_list = self.name.split(".")
+            for label in label_list:
+                self._validate_dns_label(label, field="name")
 
 
 @extras_features(
@@ -99,6 +147,36 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
     )
     description = models.TextField(help_text="Description of the Record.", blank=True)
     comment = models.CharField(max_length=200, help_text="Comment for the Record.", blank=True)
+
+    def clean(self):
+        """
+        Extend base validation to check total DNS name wire format length per RFC 1035 §3.1 using punycode for wire-format length.
+
+        In addition to label checks, ensures the full DNS name (record + zone) does not exceed 255 bytes (octets) in wire format.
+        """
+        super().clean()
+
+        if not hasattr(self, "zone"):
+            raise ValidationError({"zone": "Zone is required"})
+
+        validation_level = getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL")
+        if validation_level == "wire-format":
+            record_label_list = self.name.split(".")
+            zone_label_list = self.zone.name.split(".")
+
+            wire_length = 0
+            # Record labels
+            for label in record_label_list:
+                wire_length += 1 + dns_wire_label_length(label)
+            # Zone labels
+            for label in zone_label_list:
+                wire_length += 1 + dns_wire_label_length(label)
+            wire_length += 1  # Add the final zero byte for root
+
+            if wire_length > 255:
+                raise ValidationError(
+                    {"name": "Total length of DNS name cannot exceed 255 bytes (octets) in wire format."}
+                )
 
     class Meta:
         """Meta attributes for DnsRecordModel."""

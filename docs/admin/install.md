@@ -65,4 +65,14 @@ sudo systemctl restart nautobot nautobot-worker nautobot-scheduler
 
 ## App Configuration
 
-There are no specific options to add to `nautobot_config.py` at this time.
+This option is configured via the Admin GUI.
+
+`DNS_VALIDATION_LEVEL` (default: "Wire format")
+
+This setting controls the DNS validation level applied to zones and records:
+
+- **Disabled** - No DNS validation is performed
+- **Wire format** - Enforces DNS label and name length rules as specified in [RFC 1035 §3.1](https://datatracker.ietf.org/doc/html/rfc1035#section-3.1):
+    - Each label (the parts of the name separated by dots) must be no more than 63 bytes in wire format
+    - Empty labels (e.g., consecutive dots or leading/trailing dots) are not allowed
+    - The total length of the fully qualified DNS name (including all dots, in wire format) must not exceed 255 bytes
