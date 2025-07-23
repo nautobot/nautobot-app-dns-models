@@ -400,7 +400,7 @@ class PTRRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             f"Test 3,ptr-test02-record,{zone.name}",
         )
 
-        cls.bulk_edit_data = {"description": "Bulk edit views",}
+        cls.bulk_edit_data = {"description": "Bulk edit views"}
 
 
 class SRVRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
