@@ -1,13 +1,31 @@
 """Models for Nautobot DNS Models."""
 
+from constance import config as constance_config
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from nautobot.apps.models import PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 
 
+def dns_wire_label_length(label):
+    """Return the wire-format (IDNA/Punycode) length of a DNS label."""
+    if label.isascii():
+        return len(label)
+
+    return len("xn--" + label.encode("punycode").decode("ascii"))
+
+
 class DNSModel(PrimaryModel):
     """Abstract Model for Nautobot DNS Models."""
+
+    #
+    # name is effectively a NOOP here; it's overridden in both subclasses but
+    # is here so that linters don't complain about it being used in clean().
+    name = models.CharField(max_length=200)
+    ttl = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+    )
 
     class Meta:
         """Meta class."""
@@ -17,6 +35,36 @@ class DNSModel(PrimaryModel):
     def __str__(self):
         """Stringify instance."""
         return self.name  # pylint: disable=no-member
+
+    @staticmethod
+    def _validate_dns_label(label, field="name"):
+        """
+        Validate a DNS label for wire-format length using punycode encoding.
+
+        Only checks for non-empty and length.
+        """
+        if not label:
+            raise ValidationError({field: "Empty labels are not allowed"})
+        length = dns_wire_label_length(label)
+        if length > 63:
+            raise ValidationError(
+                {field: f"Label '{label}' exceeds the maximum length of 63 bytes (octets) in wire format."}
+            )
+        return length
+
+    def clean(self):
+        """
+        Validate DNS label length and format per RFC 1035 §3.1 using punycode for wire-format length.
+
+        Ensures each label in the name is ≤ 63 bytes (octets) in wire format and not empty.
+        """
+        super().clean()
+
+        validation_level = getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL")
+        if validation_level == "wire-format":
+            label_list = self.name.split(".")
+            for label in label_list:
+                self._validate_dns_label(label, field="name")
 
 
 @extras_features(
@@ -33,7 +81,10 @@ class DNSZoneModel(DNSModel):
 
     name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD. e.g example.com", unique=True)
     ttl = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+        default=3600,
+        help_text="Time To Live.",
+        verbose_name="TTL",
     )
     filename = models.CharField(max_length=200, help_text="Filename of the Zone File.")
     description = models.TextField(help_text="Description of the Zone.", blank=True)
@@ -41,32 +92,38 @@ class DNSZoneModel(DNSModel):
         max_length=200,
         help_text="FQDN of the Authoritative Name Server for Zone.",
         null=False,
+        verbose_name="SOA MNAME",
     )
-    soa_rname = models.EmailField(help_text="Admin Email for the Zone in the form")
+    soa_rname = models.EmailField(help_text="Admin Email for the Zone in the form", verbose_name="SOA RNAME")
     soa_refresh = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
         default=86400,
         help_text="Number of seconds after which secondary name servers should query the master for the SOA record, to detect zone changes.",
+        verbose_name="SOA Refresh",
     )
     soa_retry = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
         default=7200,
         help_text="Number of seconds after which secondary name servers should retry to request the serial number from the master if the master does not respond.",
+        verbose_name="SOA Retry",
     )
     soa_expire = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
         default=3600000,
         help_text="Number of seconds after which secondary name servers should stop answering request for this zone if the master does not respond. This value must be bigger than the sum of Refresh and Retry.",
+        verbose_name="SOA Expire",
     )
     soa_serial = models.IntegerField(
         validators=[MinValueValidator(0), MaxValueValidator(2147483647)],
         default=0,
         help_text="Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.",
+        verbose_name="SOA Serial",
     )
     soa_minimum = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
         default=3600,
         help_text="Minimum TTL for records in this zone.",
+        verbose_name="SOA Minimum",
     )
 
     class Meta:
@@ -81,16 +138,62 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
 
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
     zone = ForeignKeyWithAutoRelatedName(DNSZoneModel, on_delete=models.PROTECT)
-    ttl = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+    _ttl = models.IntegerField(
+        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+        help_text="Time To Live (if no value is given, the Zone TTL will be used).",
+        blank=True,
+        null=True,
+        verbose_name="TTL",
     )
     description = models.TextField(help_text="Description of the Record.", blank=True)
     comment = models.CharField(max_length=200, help_text="Comment for the Record.", blank=True)
+
+    def clean(self):
+        """
+        Extend base validation to check total DNS name wire format length per RFC 1035 §3.1 using punycode for wire-format length.
+
+        In addition to label checks, ensures the full DNS name (record + zone) does not exceed 255 bytes (octets) in wire format.
+        """
+        super().clean()
+
+        if not hasattr(self, "zone"):
+            raise ValidationError({"zone": "Zone is required"})
+
+        validation_level = getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL")
+        if validation_level == "wire-format":
+            record_label_list = self.name.split(".")
+            zone_label_list = self.zone.name.split(".")
+
+            wire_length = 0
+            # Record labels
+            for label in record_label_list:
+                wire_length += 1 + dns_wire_label_length(label)
+            # Zone labels
+            for label in zone_label_list:
+                wire_length += 1 + dns_wire_label_length(label)
+            wire_length += 1  # Add the final zero byte for root
+
+            if wire_length > 255:
+                raise ValidationError(
+                    {"name": "Total length of DNS name cannot exceed 255 bytes (octets) in wire format."}
+                )
 
     class Meta:
         """Meta attributes for DnsRecordModel."""
 
         abstract = True
+
+    @property
+    def ttl(self):
+        """Return the TTL value for the record."""
+        if not self._ttl:
+            return self.zone.ttl  # pylint: disable=no-member
+        return self._ttl
+
+    @ttl.setter
+    def ttl(self, value):
+        """Set the TTL value for the record."""
+        self._ttl = value
 
 
 @extras_features(
@@ -127,7 +230,12 @@ class NSRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
 class ARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """A Record model."""
 
-    address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
+    address = models.ForeignKey(
+        to="ipam.IPAddress",
+        on_delete=models.CASCADE,
+        limit_choices_to={"ip_version": 4},
+        help_text="IP address for the record.",
+    )
 
     class Meta:
         """Meta attributes for ARecordModel."""
@@ -149,7 +257,12 @@ class ARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
 class AAAARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     """AAAA Record model."""
 
-    address = models.ForeignKey(to="ipam.IPAddress", on_delete=models.CASCADE, help_text="IP address for the record.")
+    address = models.ForeignKey(
+        to="ipam.IPAddress",
+        on_delete=models.CASCADE,
+        limit_choices_to={"ip_version": 6},
+        help_text="IP address for the record.",
+    )
 
     class Meta:
         """Meta attributes for AAAARecordModel."""

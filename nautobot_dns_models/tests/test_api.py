@@ -1,9 +1,11 @@
 """Unit tests for nautobot_dns_models."""
 
 from django.contrib.auth import get_user_model
+from django.urls import reverse
 from nautobot.apps.testing import APIViewTestCases
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
+from rest_framework import status
 
 from nautobot_dns_models import models
 from nautobot_dns_models.models import (
@@ -147,11 +149,18 @@ class ARecordModelAPITestCase(APIViewTestCases.APIViewTestCase):
         )
 
         namespace = Namespace.objects.get(name="Global")
-        status = Status.objects.get(name="Active")
-        Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status)
+        active_status = Status.objects.get(name="Active")
+        Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=active_status)
         ip_addresses = (
-            IPAddress.objects.create(address="10.0.0.1/32", namespace=namespace, status=status),
-            IPAddress.objects.create(address="10.0.0.2/32", namespace=namespace, status=status),
+            IPAddress.objects.create(address="10.0.0.1/32", namespace=namespace, status=active_status),
+            IPAddress.objects.create(address="10.0.0.2/32", namespace=namespace, status=active_status),
+        )
+
+        # IPv6 Test Data
+        cls.ipv6_zone = DNSZoneModel.objects.create(name="example_ipv6.com")
+        Prefix.objects.create(prefix="2001:db8::/64", namespace=namespace, type="Pool", status=active_status)
+        cls.invalid_ipv6 = IPAddress.objects.create(
+            address="2001:db8::1/128", namespace=namespace, status=active_status
         )
 
         ARecordModel.objects.create(name="example.com", address=ip_addresses[0], zone=dns_zone)
@@ -176,6 +185,22 @@ class ARecordModelAPITestCase(APIViewTestCases.APIViewTestCase):
             },
         ]
 
+    def test_create_arecord_with_invalid_ipv6_fails(self):
+        """Attempt to create an ARecordModel using an IPv6 address should fail."""
+        self.add_permissions("nautobot_dns_models.add_arecordmodel")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:arecordmodel-list")
+        data = {
+            "name": "invalid.example.com",
+            "address": str(self.invalid_ipv6.id),
+            "zone": str(self.ipv6_zone.id),
+            "ttl": 3600,
+        }
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+
 
 class AAAARecordModelAPITestCase(APIViewTestCases.APIViewTestCase):
     """Test the Nautobot AAAARecordModel API."""
@@ -196,13 +221,18 @@ class AAAARecordModelAPITestCase(APIViewTestCases.APIViewTestCase):
             name="example.com", filename="example.com.zone", soa_mname="ns1.example.com", soa_rname="admin@example.com"
         )
 
-        status = Status.objects.get(name="Active")
+        active_status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
-        Prefix.objects.create(prefix="2001:db8:abcd:12::/64", namespace=namespace, type="Pool", status=status)
+        Prefix.objects.create(prefix="2001:db8:abcd:12::/64", namespace=namespace, type="Pool", status=active_status)
         ip_addresses = (
-            IPAddress.objects.create(address="2001:db8:abcd:12::1/128", namespace=namespace, status=status),
-            IPAddress.objects.create(address="2001:db8:abcd:12::2/128", namespace=namespace, status=status),
+            IPAddress.objects.create(address="2001:db8:abcd:12::1/128", namespace=namespace, status=active_status),
+            IPAddress.objects.create(address="2001:db8:abcd:12::2/128", namespace=namespace, status=active_status),
         )
+
+        # IPv4 Test Data
+        cls.zone = DNSZoneModel.objects.create(name="example_ipv4.com")
+        Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=active_status)
+        cls.invalid_ipv4 = IPAddress.objects.create(address="10.0.0.1/32", namespace=namespace, status=active_status)
 
         AAAARecordModel.objects.create(name="example.com", address=ip_addresses[0], zone=dns_zone)
         AAAARecordModel.objects.create(name="www.example.com", address=ip_addresses[0], zone=dns_zone)
@@ -225,6 +255,22 @@ class AAAARecordModelAPITestCase(APIViewTestCases.APIViewTestCase):
                 "zone": dns_zone.id,
             },
         ]
+
+    def test_create_aaaarecord_with_invalid_ipv4_fails(self):
+        """Attempt to create an AAAARecordModel using an IPv4 address should fail."""
+        self.add_permissions("nautobot_dns_models.add_aaaarecordmodel")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:aaaarecordmodel-list")
+        data = {
+            "name": "invalid.example.com",
+            "address": str(self.invalid_ipv4.id),
+            "zone": str(self.zone.id),
+            "ttl": 3600,
+        }
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
 
 
 class CNAMERecordModelAPITestCase(APIViewTestCases.APIViewTestCase):

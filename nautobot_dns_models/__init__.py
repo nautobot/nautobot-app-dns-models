@@ -19,6 +19,16 @@ constance_additional_fields = {
             ],
         },
     ],
+    "dns_validation_level": [
+        "django.forms.fields.ChoiceField",
+        {
+            "widget": "django.forms.Select",
+            "choices": [
+                ("none", "Disabled"),
+                ("wire-format", "Wire format"),
+            ],
+        },
+    ],
 }
 
 # pylint:disable=no-member
@@ -52,7 +62,24 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
             help_text="Show PTR Records panel in IP Address detailed view.",
             field_type="show_dns_panel",
         ),
+        "DNS_VALIDATION_LEVEL": ConstanceConfigItem(
+            default="wire-format",
+            help_text="DNS validation level for zones and records.",
+            field_type="dns_validation_level",
+        ),
     }
+
+    searchable_models = [
+        "DNSZoneModel",
+        "ARecordModel",
+        "AAAARecordModel",
+        "PTRRecordModel",
+        "CNAMERecordModel",
+        "NSRecordModel",
+        "MXRecordModel",
+        "SRVRecordModel",
+        "TXTRecordModel",
+    ]
 
 
 config = NautobotDnsModelsConfig  # pylint:disable=invalid-name
