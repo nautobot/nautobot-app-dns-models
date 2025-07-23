@@ -1,1 +1,0 @@
-Added DNS name length validation per RFC 1035 §3.1 for zone and record names. 
