@@ -1,2 +1,0 @@
-Fixed issue where ARecord model would accept IPv6 addresses.
-Fixed issue where AAAARecords model would accept IPv4 addresses.
