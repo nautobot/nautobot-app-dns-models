@@ -9,15 +9,15 @@ from nautobot.core.views.utils import get_obj_from_context
 from netutils.ip import ipaddress_address
 
 from nautobot_dns_models.models import (
-    AAAARecordModel,
-    ARecordModel,
-    DNSZoneModel,
-    PTRRecordModel,
+    AAAARecord,
+    ARecord,
+    DNSZone,
+    PTRRecord,
 )
 from nautobot_dns_models.tables import (
-    AAAARecordModelTable,
-    ARecordModelTable,
-    PTRRecordModelTable,
+    AAAARecordTable,
+    ARecordTable,
+    PTRRecordTable,
 )
 
 
@@ -32,9 +32,9 @@ class ForwardDNSRecordsTablePanel(ObjectsTablePanel):
         if show_panel == "if_present":
             ip_address = get_obj_from_context(context)
             if ip_address.ip_version == 4:
-                return ARecordModel.objects.filter(address=ip_address).exists()
+                return ARecord.objects.filter(address=ip_address).exists()
             if ip_address.ip_version == 6:
-                return AAAARecordModel.objects.filter(address=ip_address).exists()
+                return AAAARecord.objects.filter(address=ip_address).exists()
         return True
 
     def get_extra_context(self, context):
@@ -42,14 +42,14 @@ class ForwardDNSRecordsTablePanel(ObjectsTablePanel):
         # Get the IP address from the context.
         ip_address = get_obj_from_context(context)
 
-        # Use ARecordModelTable for IPv4 and AAAARecordModelTable for IPv6.
+        # Use ARecordTable for IPv4 and AAAARecordTable for IPv6.
         url = ""
         if ip_address.ip_version == 4:
-            self.table_class = ARecordModelTable
-            url = reverse("plugins:nautobot_dns_models:arecordmodel_add")
+            self.table_class = ARecordTable
+            url = reverse("plugins:nautobot_dns_models:arecord_add")
         elif ip_address.ip_version == 6:
-            self.table_class = AAAARecordModelTable
-            url = reverse("plugins:nautobot_dns_models:aaaarecordmodel_add")
+            self.table_class = AAAARecordTable
+            url = reverse("plugins:nautobot_dns_models:aaaarecord_add")
 
         # Construct the URL query to auto-populate fields when adding a new record.
         autopop_fields = {"address": ip_address.id}
@@ -57,9 +57,9 @@ class ForwardDNSRecordsTablePanel(ObjectsTablePanel):
             name, zone = ip_address.dns_name.split(".", 1)
         except ValueError:
             name = zone = ""
-        if DNSZoneModel.objects.filter(name=zone).exists():
+        if DNSZone.objects.filter(name=zone).exists():
             autopop_fields["name"] = name
-            autopop_fields["zone"] = DNSZoneModel.objects.get(name=zone).id
+            autopop_fields["zone"] = DNSZone.objects.get(name=zone).id
 
         # Tweak returned ctx
         ctx = super().get_extra_context(context)
@@ -79,7 +79,7 @@ class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
         if show_panel == "if_present":
             ip_address = get_obj_from_context(context)
             ptrdname = ipaddress_address(ip_address.host, "reverse_pointer")
-            return PTRRecordModel.objects.filter(ptrdname=ptrdname).exists()
+            return PTRRecord.objects.filter(ptrdname=ptrdname).exists()
         return True
 
     def get_extra_context(self, context):
@@ -89,9 +89,9 @@ class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
         ptrdname = ipaddress_address(ip_address.host, "reverse_pointer")
 
         # Construct the table with the filtered PTR records, apply permissions.
-        queryset = PTRRecordModel.objects.filter(ptrdname=ptrdname)
+        queryset = PTRRecord.objects.filter(ptrdname=ptrdname)
         queryset = queryset.restrict(context.get("request").user, "view")
-        ptrdtable = PTRRecordModelTable(queryset)
+        ptrdtable = PTRRecordTable(queryset)
 
         # Inject the table into the context.
         context["ptrdtable"] = ptrdtable
@@ -107,11 +107,11 @@ class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
             zone = ptrdname.split(".", 1)[1]
         except ValueError:
             zone = ""
-        if DNSZoneModel.objects.filter(name=zone).exists():
-            autopop_fields["zone"] = DNSZoneModel.objects.get(name=zone).id
+        if DNSZone.objects.filter(name=zone).exists():
+            autopop_fields["zone"] = DNSZone.objects.get(name=zone).id
 
         # Tweak returned ctx
-        url = reverse("plugins:nautobot_dns_models:ptrrecordmodel_add")
+        url = reverse("plugins:nautobot_dns_models:ptrrecord_add")
         return_url = reverse("ipam:ipaddress", kwargs={"pk": ip_address.pk})
         ctx = super().get_extra_context(context)
         ctx["body_content_table_add_url"] = f"{url}?{urlencode(autopop_fields)}&return_url={return_url}"
@@ -127,14 +127,14 @@ class IPAddressDNSRecords(TemplateExtension):  # pylint: disable=abstract-method
         ForwardDNSRecordsTablePanel(
             weight=100,
             section=SectionChoices.RIGHT_HALF,
-            table_class=ARecordModelTable,
+            table_class=ARecordTable,
             table_filter="address",
             include_columns=["name", "zone", "ttl", "actions"],
         ),
         ReverseDNSRecordsTablePanel(
             weight=110,
             section=SectionChoices.RIGHT_HALF,
-            table_class=PTRRecordModelTable,
+            table_class=PTRRecordTable,
             table_filter="ptrdname",
             include_columns=["name", "zone", "ttl", "actions"],
         ),

@@ -6,135 +6,135 @@ from rest_framework import serializers
 from nautobot_dns_models import models
 
 
-class DNSZoneModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
+class DNSZoneSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
     """DnsZoneModel Serializer."""
 
-    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnszonemodel-detail")
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnszone-detail")
 
     class Meta:
         """Meta attributes."""
 
-        model = models.DNSZoneModel
+        model = models.DNSZone
         fields = "__all__"
 
         # Option for disabling write for certain fields:
         # read_only_fields = []
 
 
-class NSRecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
-    """NSRecordModel Serializer."""
+class NSRecordSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
+    """NSRecord Serializer."""
 
-    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:nsrecordmodel-detail")
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:nsrecord-detail")
 
     class Meta:
         """Meta attributes."""
 
-        model = models.NSRecordModel
+        model = models.NSRecord
         fields = "__all__"
 
         # Option for disabling write for certain fields:
         # read_only_fields = []
 
 
-class ARecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
-    """ARecordModel Serializer."""
+class ARecordSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
+    """ARecord Serializer."""
 
-    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:arecordmodel-detail")
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:arecord-detail")
 
     class Meta:
         """Meta attributes."""
 
-        model = models.ARecordModel
+        model = models.ARecord
         fields = "__all__"
 
         # Option for disabling write for certain fields:
         # read_only_fields = []
 
 
-class AAAARecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
-    """AAAARecordModel Serializer."""
+class AAAARecordSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
+    """AAAARecord Serializer."""
 
-    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:aaaarecordmodel-detail")
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:aaaarecord-detail")
 
     class Meta:
         """Meta attributes."""
 
-        model = models.AAAARecordModel
+        model = models.AAAARecord
         fields = "__all__"
 
         # Option for disabling write for certain fields:
         # read_only_fields = []
 
 
-class CNAMERecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
-    """CNAMERecordModel Serializer."""
+class CNAMERecordSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
+    """CNAMERecord Serializer."""
 
-    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:cnamerecordmodel-detail")
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:cnamerecord-detail")
 
     class Meta:
         """Meta attributes."""
 
-        model = models.CNAMERecordModel
+        model = models.CNAMERecord
         fields = "__all__"
 
         # Option for disabling write for certain fields:
         # read_only_fields = []
 
 
-class MXRecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
-    """MXRecordModel Serializer."""
+class MXRecordSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
+    """MXRecord Serializer."""
 
-    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:mxrecordmodel-detail")
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:mxrecord-detail")
 
     class Meta:
         """Meta attributes."""
 
-        model = models.MXRecordModel
+        model = models.MXRecord
         fields = "__all__"
 
         # Option for disabling write for certain fields:
         # read_only_fields = []
 
 
-class TXTRecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
-    """TXTRecordModel Serializer."""
+class TXTRecordSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
+    """TXTRecord Serializer."""
 
-    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:txtrecordmodel-detail")
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:txtrecord-detail")
 
     class Meta:
         """Meta attributes."""
 
-        model = models.TXTRecordModel
+        model = models.TXTRecord
         fields = "__all__"
 
         # Option for disabling write for certain fields:
         # read_only_fields = []
 
 
-class PTRRecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
-    """PTRRecordModel Serializer."""
+class PTRRecordSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
+    """PTRRecord Serializer."""
 
-    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:ptrrecordmodel-detail")
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:ptrrecord-detail")
 
     class Meta:
         """Meta attributes."""
 
-        model = models.PTRRecordModel
+        model = models.PTRRecord
         fields = "__all__"
 
         # Option for disabling write for certain fields:
         # read_only_fields = []
 
 
-class SRVRecordModelSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
-    """SRVRecordModel Serializer."""
+class SRVRecordSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
+    """SRVRecord Serializer."""
 
-    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:srvrecordmodel-detail")
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:srvrecord-detail")
 
     class Meta:
         """Meta attributes."""
 
-        model = models.SRVRecordModel
+        model = models.SRVRecord
         fields = "__all__"
 
         # Option for disabling write for certain fields:

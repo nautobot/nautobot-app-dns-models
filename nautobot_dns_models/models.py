@@ -76,7 +76,7 @@ class DNSModel(PrimaryModel):
     "relationships",
     "webhooks",
 )
-class DNSZoneModel(DNSModel):
+class DNSZone(DNSModel):
     """Model for DNS SOA Records. An SOA Record defines a DNS Zone."""
 
     name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD. e.g example.com", unique=True)
@@ -133,11 +133,11 @@ class DNSZoneModel(DNSModel):
         verbose_name_plural = "DNS Zones"
 
 
-class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
+class DNSRecord(DNSModel):  # pylint: disable=too-many-ancestors
     """Primary Dns Record model for plugin."""
 
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
-    zone = ForeignKeyWithAutoRelatedName(DNSZoneModel, on_delete=models.PROTECT)
+    zone = ForeignKeyWithAutoRelatedName(DNSZone, on_delete=models.PROTECT)
     _ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
         help_text="Time To Live (if no value is given, the Zone TTL will be used).",
@@ -179,7 +179,7 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
                 )
 
     class Meta:
-        """Meta attributes for DnsRecordModel."""
+        """Meta attributes for DnsRecord."""
 
         abstract = True
 
@@ -205,13 +205,13 @@ class DNSRecordModel(DNSModel):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class NSRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
+class NSRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     """NS Record model."""
 
     server = models.CharField(max_length=200, help_text="FQDN of an authoritative Name Server.")
 
     class Meta:
-        """Meta attributes for NSRecordModel."""
+        """Meta attributes for NSRecord."""
 
         unique_together = [["name", "server", "zone"]]
         verbose_name = "NS Record"
@@ -227,7 +227,7 @@ class NSRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class ARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
+class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     """A Record model."""
 
     address = models.ForeignKey(
@@ -238,7 +238,7 @@ class ARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     )
 
     class Meta:
-        """Meta attributes for ARecordModel."""
+        """Meta attributes for ARecord."""
 
         unique_together = [["name", "address", "zone"]]
         verbose_name = "A Record"
@@ -254,7 +254,7 @@ class ARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class AAAARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
+class AAAARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     """AAAA Record model."""
 
     address = models.ForeignKey(
@@ -265,7 +265,7 @@ class AAAARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     )
 
     class Meta:
-        """Meta attributes for AAAARecordModel."""
+        """Meta attributes for AAAARecord."""
 
         unique_together = [["name", "address", "zone"]]
         verbose_name = "AAAA Record"
@@ -281,13 +281,13 @@ class AAAARecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class CNAMERecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
+class CNAMERecord(DNSRecord):  # pylint: disable=too-many-ancestors
     """CNAME Record model."""
 
     alias = models.CharField(max_length=200, help_text="FQDN of the Alias.")
 
     class Meta:
-        """Meta attributes for CNAMERecordModel."""
+        """Meta attributes for CNAMERecord."""
 
         unique_together = [["name", "alias", "zone"]]
         verbose_name = "CNAME Record"
@@ -303,7 +303,7 @@ class CNAMERecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class MXRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
+class MXRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     """MX Record model."""
 
     preference = models.IntegerField(
@@ -314,7 +314,7 @@ class MXRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     mail_server = models.CharField(max_length=200, help_text="FQDN of the Mail Server.")
 
     class Meta:
-        """Meta attributes for MXRecordModel."""
+        """Meta attributes for MXRecord."""
 
         unique_together = [["name", "mail_server", "zone"]]
         verbose_name = "MX Record"
@@ -330,13 +330,13 @@ class MXRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class TXTRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
+class TXTRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     """TXT Record model."""
 
     text = models.CharField(max_length=256, help_text="Text for the TXT Record.")
 
     class Meta:
-        """Meta attributes for TXTRecordModel."""
+        """Meta attributes for TXTRecord."""
 
         unique_together = [["name", "text", "zone"]]
         verbose_name = "TXT Record"
@@ -352,7 +352,7 @@ class TXTRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class PTRRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
+class PTRRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     """PTR Record model."""
 
     ptrdname = models.CharField(
@@ -360,14 +360,14 @@ class PTRRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     )
 
     class Meta:
-        """Meta attributes for PTRRecordModel."""
+        """Meta attributes for PTRRecord."""
 
         unique_together = [["name", "ptrdname", "zone"]]
         verbose_name = "PTR Record"
         verbose_name_plural = "PTR Records"
 
     def __str__(self):
-        """String representation of PTRRecordModel."""
+        """String representation of PTRRecord."""
         return self.ptrdname
 
 
@@ -380,7 +380,7 @@ class PTRRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class SRVRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
+class SRVRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     """SRV Record model."""
 
     priority = models.IntegerField(
@@ -403,7 +403,7 @@ class SRVRecordModel(DNSRecordModel):  # pylint: disable=too-many-ancestors
     )
 
     class Meta:
-        """Meta attributes for SRVRecordModel."""
+        """Meta attributes for SRVRecord."""
 
         unique_together = [["name", "target", "port", "zone"]]
         verbose_name = "SRV Record"

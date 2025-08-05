@@ -5,91 +5,91 @@ from nautobot.extras.filters import NautobotFilterSet
 from nautobot_dns_models import models
 
 
-class DNSZoneModelFilterSet(NautobotFilterSet):
+class DNSZoneFilterSet(NautobotFilterSet):
     """Filter for DNSZoneModel."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.DNSZoneModel
+        model = models.DNSZone
         fields = "__all__"
 
 
-class NSRecordModelFilterSet(NautobotFilterSet):
-    """Filter for NSRecordModel."""
+class NSRecordFilterSet(NautobotFilterSet):
+    """Filter for NSRecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.NSRecordModel
+        model = models.NSRecord
         fields = "__all__"
 
 
-class ARecordModelFilterSet(NautobotFilterSet):
-    """Filter for ARecordModel."""
+class ARecordFilterSet(NautobotFilterSet):
+    """Filter for ARecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.ARecordModel
+        model = models.ARecord
         fields = "__all__"
 
 
-class AAAARecordModelFilterSet(NautobotFilterSet):
-    """Filter for AAAARecordModel."""
+class AAAARecordFilterSet(NautobotFilterSet):
+    """Filter for AAAARecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.AAAARecordModel
+        model = models.AAAARecord
         fields = "__all__"
 
 
-class CNAMERecordModelFilterSet(NautobotFilterSet):
-    """Filter for CNAMERecordModel."""
+class CNAMERecordFilterSet(NautobotFilterSet):
+    """Filter for CNAMERecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.CNAMERecordModel
+        model = models.CNAMERecord
         fields = "__all__"
 
 
-class MXRecordModelFilterSet(NautobotFilterSet):
-    """Filter for MXRecordModel."""
+class MXRecordFilterSet(NautobotFilterSet):
+    """Filter for MXRecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.MXRecordModel
+        model = models.MXRecord
         fields = "__all__"
 
 
-class TXTRecordModelFilterSet(NautobotFilterSet):
-    """Filter for TXTRecordModel."""
+class TXTRecordFilterSet(NautobotFilterSet):
+    """Filter for TXTRecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.TXTRecordModel
+        model = models.TXTRecord
         fields = "__all__"
 
 
-class PTRRecordModelFilterSet(NautobotFilterSet):
-    """Filter for PTRRecordModel."""
+class PTRRecordFilterSet(NautobotFilterSet):
+    """Filter for PTRRecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.PTRRecordModel
+        model = models.PTRRecord
         fields = "__all__"
 
 
-class SRVRecordModelFilterSet(NautobotFilterSet):
-    """Filter for SRVRecordModel."""
+class SRVRecordFilterSet(NautobotFilterSet):
+    """Filter for SRVRecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.SRVRecordModel
+        model = models.SRVRecord
         fields = "__all__"
