@@ -87,7 +87,7 @@ from nautobot_dns_models.tables import (
 
 
 class DNSZoneUIViewSet(views.NautobotUIViewSet):
-    """DnsZoneModel UI ViewSet."""
+    """DNSZone UI ViewSet."""
 
     form_class = DNSZoneForm
     bulk_update_form_class = DNSZoneBulkEditForm
@@ -201,7 +201,7 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                 color=ButtonColorChoices.BLUE,
                 label="Add Records",
                 icon="mdi-plus-thick",
-                required_permissions=["nautobot_dns_models.change_dnszonemodel"],
+                required_permissions=["nautobot_dns_models.change_dnszone"],
                 children=(
                     object_detail.Button(
                         weight=100,

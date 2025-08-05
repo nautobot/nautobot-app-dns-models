@@ -1,4 +1,4 @@
-"""Test DnsZoneModel."""
+"""Test DNSZone."""
 
 from constance.test import override_config
 from django.core.exceptions import ValidationError
@@ -45,20 +45,20 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
         """Create test data for DnsZoneModel Model."""
         super().setUpTestData()
         # Create 3 objects for the model test cases.
-        fixtures.create_dnszonemodel()
+        fixtures.create_dnszone()
 
-    def test_create_dnszonemodel_only_required(self):
+    def test_create_dnszone_only_required(self):
         """Create with only required fields, and validate null description and __str__."""
-        dnszonemodel = DNSZone.objects.create(name="Development")
-        self.assertEqual(dnszonemodel.name, "Development")
-        self.assertEqual(dnszonemodel.description, "")
-        self.assertEqual(str(dnszonemodel), "Development")
+        dnszone = DNSZone.objects.create(name="Development")
+        self.assertEqual(dnszone.name, "Development")
+        self.assertEqual(dnszone.description, "")
+        self.assertEqual(str(dnszone), "Development")
 
-    def test_create_dnszonemodel_all_fields_success(self):
+    def test_create_dnszone_all_fields_success(self):
         """Create DnsZoneModel with all fields."""
-        dnszonemodel = DNSZone.objects.create(name="Development", description="Development Test")
-        self.assertEqual(dnszonemodel.name, "Development")
-        self.assertEqual(dnszonemodel.description, "Development Test")
+        dnszone = DNSZone.objects.create(name="Development", description="Development Test")
+        self.assertEqual(dnszone.name, "Development")
+        self.assertEqual(dnszone.description, "Development Test")
 
     def test_get_absolute_url(self):
         dns_zone_model = DNSZone(name="example.com")
@@ -275,7 +275,7 @@ class SRVRecordTestCase(TestCase):
         self.assertEqual(srv_record.weight, 5)
         self.assertEqual(srv_record.port, 5060)
         self.assertEqual(srv_record.target, "sip.example.com")
-        self.assertEqual(srv_record.ttl, 7200)  # Inherits from DNSZoneModel
+        self.assertEqual(srv_record.ttl, 7200)  # Inherits from DNSZone
         self.assertEqual(srv_record.description, "SIP server")
         self.assertEqual(srv_record.comment, "Primary SIP server")
         self.assertEqual(str(srv_record), srv_record.name)

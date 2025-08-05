@@ -1,4 +1,4 @@
-"""Test DnsZoneModel Filter."""
+"""Test DNSZone Filter."""
 
 from django.test import TestCase
 from nautobot.extras.models.statuses import Status
@@ -29,30 +29,30 @@ from nautobot_dns_models.models import (
 
 
 class DNSZoneFilterTestCase(TestCase):
-    """DnsZoneModel Filter Test Case."""
+    """DNSZone Filter Test Case."""
 
     queryset = DNSZone.objects.all()
     filterset = DNSZoneFilterSet
 
     @classmethod
     def setUpTestData(cls):
-        """Setup test data for DnsZoneModel Model."""
+        """Setup test data for DNSZone Model."""
         DNSZone.objects.create(name="Test One")
         DNSZone.objects.create(name="Test Two")
         DNSZone.objects.create(name="Test Three")
 
     def test_single_name(self):
-        """Test using Q search with name of DnsZoneModel."""
+        """Test using Q search with name of DNSZone."""
         params = {"name": "Test One"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
     def test_name(self):
-        """Test using Q search with name of DnsZoneModel."""
+        """Test using Q search with name of DNSZone."""
         params = {"name__in": "Test"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
     def test_name_invalid(self):
-        """Test using invalid Q search for DnsZoneModel."""
+        """Test using invalid Q search for DNSZone."""
         params = {"name": "wrong-name"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 

@@ -7,7 +7,7 @@ from nautobot_dns_models import models
 
 
 class DNSZoneSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
-    """DnsZoneModel Serializer."""
+    """DNSZone Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnszone-detail")
 

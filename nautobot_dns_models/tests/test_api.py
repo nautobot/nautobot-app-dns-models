@@ -24,7 +24,7 @@ User = get_user_model()
 
 
 class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
-    """Test the Nautobot DnsZoneModel API."""
+    """Test the Nautobot DNSZone API."""
 
     model = models.DNSZone
     view_namespace = "plugins-api:nautobot_dns_models"

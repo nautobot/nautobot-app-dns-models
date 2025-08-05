@@ -9,7 +9,7 @@ from nautobot_dns_models.models import DNSZone
 
 
 class DNSZoneTest(TestCase):
-    """Test DnsZoneModel forms."""
+    """Test DNSZone forms."""
 
     def test_specifying_all_fields_success(self):
         form = forms.DNSZoneForm(
@@ -48,7 +48,7 @@ class DNSZoneTest(TestCase):
         self.assertTrue(form.is_valid())
         self.assertTrue(form.save())
 
-    def test_validate_name_dnszonemodel_is_required(self):
+    def test_validate_name_dnszone_is_required(self):
         form = forms.DNSZoneForm(data={"ttl": "1010101"})
         self.assertFalse(form.is_valid())
         self.assertIn("This field is required.", form.errors["name"])

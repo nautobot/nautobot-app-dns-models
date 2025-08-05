@@ -38,7 +38,7 @@ from nautobot_dns_models.models import (
 
 
 class DNSZoneViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
-    """DnsZoneModel API ViewSet."""
+    """DNSZone API ViewSet."""
 
     queryset = DNSZone.objects.all()
     serializer_class = DNSZoneSerializer

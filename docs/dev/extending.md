@@ -13,7 +13,7 @@ erDiagram
     DNSModel {
     }
 
-    DNSZoneModel {
+    DNSZone {
         charfield name UK
         integer ttl
         charfied filename
@@ -29,7 +29,7 @@ erDiagram
 
     DNSRecord {
         charfield name UK
-        DNSZoneModel DNSZone
+        DNSZone DNSZone
         integer ttl
         textfield description
         charfied comment
@@ -73,7 +73,7 @@ erDiagram
         charfied target
     }
 
-    DNSModel ||--o{ DNSZoneModel : implements
+    DNSModel ||--o{ DNSZone : implements
     DNSModel ||--o{ DNSRecord : implements
     DNSRecord ||--o{ ARecord: implements
     DNSRecord ||--o{ AAAARecord: implements
@@ -84,7 +84,7 @@ erDiagram
     DNSRecord ||--o{ NSRecord: implements
     DNSRecord ||--o{ SRVRecord: implements
 
-    DNSRecord ||--o{ DNSZoneModel: "is inside of a"
+    DNSRecord ||--o{ DNSZone: "is inside of a"
 
     ARecord ||--|| ipam_IPaddressModel: "references"
     AAAARecord ||--|| ipam_IPaddressModel: "references"

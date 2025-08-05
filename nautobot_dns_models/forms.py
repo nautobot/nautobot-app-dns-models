@@ -12,7 +12,7 @@ from nautobot_dns_models import models
 
 
 class DNSZoneForm(NautobotModelForm):
-    """DnsZoneModel creation/edit form."""
+    """DNSZone creation/edit form."""
 
     class Meta:
         """Meta attributes."""
@@ -22,7 +22,7 @@ class DNSZoneForm(NautobotModelForm):
 
 
 class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
-    """DnsZoneModel bulk edit form."""
+    """DNSZone bulk edit form."""
 
     pk = forms.ModelMultipleChoiceField(queryset=models.DNSZone.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)

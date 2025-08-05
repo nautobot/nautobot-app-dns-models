@@ -127,7 +127,7 @@ class DNSZone(DNSModel):
     )
 
     class Meta:
-        """Meta attributes for DNSZoneModel."""
+        """Meta attributes for DNSZone."""
 
         verbose_name = "DNS Zone"
         verbose_name_plural = "DNS Zones"
