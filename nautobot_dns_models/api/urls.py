@@ -6,15 +6,15 @@ from nautobot_dns_models.api import views
 
 router = OrderedDefaultRouter()
 # add the name of your api endpoint, usually hyphenated model name in plural, e.g. "my-model-classes"
-router.register("dns-zones", views.DNSZoneModelViewSet)
-router.register("ns-records", views.NSRecordModelViewSet)
-router.register("a-records", views.ARecordModelViewSet)
-router.register("aaaa-records", views.AAAARecordModelViewSet)
-router.register("cname-records", views.CNameRecordModelViewSet)
-router.register("mx-records", views.MXRecordModelViewSet)
-router.register("txt-records", views.TXTRecordModelViewSet)
-router.register("ptr-records", views.PTRRecordModelViewSet)
-router.register("srv-records", views.SRVRecordModelViewSet)
+router.register("dns-zones", views.DNSZoneViewSet)
+router.register("ns-records", views.NSRecordViewSet)
+router.register("a-records", views.ARecordViewSet)
+router.register("aaaa-records", views.AAAARecordViewSet)
+router.register("cname-records", views.CNameRecordViewSet)
+router.register("mx-records", views.MXRecordViewSet)
+router.register("txt-records", views.TXTRecordViewSet)
+router.register("ptr-records", views.PTRRecordViewSet)
+router.register("srv-records", views.SRVRecordViewSet)
 
 app_name = "nautobot_dns_models-api"
 urlpatterns = router.urls
