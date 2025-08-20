@@ -23,6 +23,7 @@ from nautobot_dns_models.models import (
 User = get_user_model()
 
 
+<<<<<<< HEAD
 class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
     """Test the Nautobot DNSZone API."""
 
@@ -49,6 +50,24 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
             name="test.net", filename="test.net.zone", soa_mname="ns1.test.net", soa_rname="admin@test.net"
         )
 
+=======
+class DNSZoneAPIViewTest(APIViewTestCases.APIViewTestCase):
+    # pylint: disable=too-many-ancestors
+    """Test the API viewsets for DNSZone."""
+
+    model = models.DNSZone
+    # Any choice fields will require the choices_fields to be set
+    # to the field names in the model that are choice fields.
+    choices_fields = ()
+
+    @classmethod
+    def setUpTestData(cls):
+        """Create test data for DNSZone API viewset."""
+        super().setUpTestData()
+        # Create 3 objects for the generic API test cases.
+        fixtures.create_dnszone()
+        # Create 3 objects for the api test cases.
+>>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
         cls.create_data = [
             {
                 "name": "example.com",

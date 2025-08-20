@@ -5,13 +5,18 @@ from nautobot.extras.filters import NautobotFilterSet
 from nautobot_dns_models import models
 
 
+<<<<<<< HEAD
 class DNSZoneFilterSet(NautobotFilterSet):
+=======
+class DNSZoneFilterSet(NameSearchFilterSet, NautobotFilterSet):  # pylint: disable=too-many-ancestors
+>>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
     """Filter for DNSZone."""
 
     class Meta:
         """Meta attributes for filter."""
 
         model = models.DNSZone
+<<<<<<< HEAD
         fields = "__all__"
 
 
@@ -92,4 +97,8 @@ class SRVRecordFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = models.SRVRecord
+=======
+
+        # add any fields from the model that you would like to filter your searches by using those
+>>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
         fields = "__all__"

@@ -5,7 +5,11 @@ from nautobot.apps.ui import NavMenuAddButton, NavMenuGroup, NavMenuItem, NavMen
 items = [
     NavMenuItem(
         link="plugins:nautobot_dns_models:dnszone_list",
+<<<<<<< HEAD
         name="DNS Zones",
+=======
+        name="Nautobot DNS Models",
+>>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
         permissions=["nautobot_dns_models.view_dnszone"],
         buttons=(
             NavMenuAddButton(

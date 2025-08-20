@@ -6,15 +6,21 @@ from rest_framework import serializers
 from nautobot_dns_models import models
 
 
+<<<<<<< HEAD
 class DNSZoneSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
     """DNSZone Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnszone-detail")
+=======
+class DNSZoneSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):  # pylint: disable=too-many-ancestors
+    """DNSZone Serializer."""
+>>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
     class Meta:
         """Meta attributes."""
 
         model = models.DNSZone
+<<<<<<< HEAD
         fields = "__all__"
 
         # Option for disabling write for certain fields:
@@ -135,6 +141,8 @@ class SRVRecordSerializer(NautobotModelSerializer):  # pylint: disable=too-many-
         """Meta attributes."""
 
         model = models.SRVRecord
+=======
+>>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
         fields = "__all__"
 
         # Option for disabling write for certain fields:

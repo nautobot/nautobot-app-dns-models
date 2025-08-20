@@ -113,6 +113,7 @@ nav:
       - External Interactions: "user/external_interactions.md"
       - Data Models:
           - DNS Zone: "models/dnszone.md"
+<<<<<<< HEAD
           - DNS Record: "models/dnsrecord.md"
           - NS Record: "models/nsrecord.md"
           - A Record: "models/arecord.md"
@@ -122,6 +123,8 @@ nav:
           - PTR Record: "models/ptrrecord.md"
           - SRV Record: "models/srvrecord.md"
           - TXT Record: "models/txtrecord.md"
+=======
+>>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
   - Administrator Guide:
       - Install and Configure: "admin/install.md"
       - Upgrade: "admin/upgrade.md"

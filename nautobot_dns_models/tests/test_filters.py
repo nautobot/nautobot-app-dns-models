@@ -28,15 +28,30 @@ from nautobot_dns_models.models import (
 )
 
 
+<<<<<<< HEAD
 class DNSZoneFilterTestCase(TestCase):
     """DNSZone Filter Test Case."""
 
     queryset = DNSZone.objects.all()
     filterset = DNSZoneFilterSet
+=======
+class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase):
+    """DNSZone Filter Test Case."""
+
+    queryset = models.DNSZone.objects.all()
+    filterset = filters.DNSZoneFilterSet
+    generic_filter_tests = (
+        ("id",),
+        ("created",),
+        ("last_updated",),
+        ("name",),
+    )
+>>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
     @classmethod
     def setUpTestData(cls):
         """Setup test data for DNSZone Model."""
+<<<<<<< HEAD
         DNSZone.objects.create(name="Test One")
         DNSZone.objects.create(name="Test Two")
         DNSZone.objects.create(name="Test Three")
@@ -54,6 +69,18 @@ class DNSZoneFilterTestCase(TestCase):
     def test_name_invalid(self):
         """Test using invalid Q search for DNSZone."""
         params = {"name": "wrong-name"}
+=======
+        fixtures.create_dnszone()
+
+    def test_q_search_name(self):
+        """Test using Q search with name of DNSZone."""
+        params = {"q": "Test One"}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
+
+    def test_q_invalid(self):
+        """Test using invalid Q search for DNSZone."""
+        params = {"q": "test-five"}
+>>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 
 

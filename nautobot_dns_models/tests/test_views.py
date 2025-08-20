@@ -20,10 +20,15 @@ from nautobot_dns_models.models import (
 User = get_user_model()
 
 
+<<<<<<< HEAD
 class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+=======
+class DNSZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+>>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
     # pylint: disable=too-many-ancestors
-    """Test the DnsZoneModel views."""
+    """Test the DNSZone views."""
 
+<<<<<<< HEAD
     model = DNSZone
 
     @classmethod
@@ -456,3 +461,20 @@ class SRVRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}
+=======
+    model = models.DNSZone
+    bulk_edit_data = {"description": "Bulk edit views"}
+    form_data = {
+        "name": "Test 1",
+        "description": "Initial model",
+    }
+
+    update_data = {
+        "name": "Test 2",
+        "description": "Updated model",
+    }
+
+    @classmethod
+    def setUpTestData(cls):
+        fixtures.create_dnszone()
+>>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # DNS Zone Model
 
 The DNS zone model is used to represent a distinct DNS zone. It contains the zone name, TTL, and SOA record details.
@@ -22,3 +23,12 @@ When DNS validation is enabled (via the `DNS_VALIDATION_LEVEL` configuration), `
 - Empty labels (e.g., consecutive dots or leading/trailing dots) are not allowed
 
 See the [installation guide](../admin/install.md#app-configuration) for configuration options.
+=======
+# DNS Zone
+
+!!! warning "Developer Note - Remove Me!"
+    Provide a summary of this model and how it is to be used. Then provide a list of the fields, field_type and field_description.
+
+- `name` (string): Unique identifier for the dns zone.
+- `description`: (string): Description for the dns zone.
+>>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
