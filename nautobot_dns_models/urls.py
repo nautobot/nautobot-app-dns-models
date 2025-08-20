@@ -14,7 +14,7 @@ router = NautobotUIViewSetRouter()
 
 # The standard is for the route to be the hyphenated version of the model class name plural.
 # for example, ExampleModel would be example-models.
-router.register("dns-zone-models", views.DnsZoneModelUIViewSet)
+router.register("dns-zones", views.DNSZoneUIViewSet)
 
 
 urlpatterns = [

@@ -6,20 +6,20 @@ from nautobot.apps.forms import NautobotBulkEditForm, NautobotFilterForm, Nautob
 from nautobot_dns_models import models
 
 
-class DnsZoneModelForm(NautobotModelForm):  # pylint: disable=too-many-ancestors
-    """DnsZoneModel creation/edit form."""
+class DNSZoneForm(NautobotModelForm):  # pylint: disable=too-many-ancestors
+    """DNSZone creation/edit form."""
 
     class Meta:
         """Meta attributes."""
 
-        model = models.DnsZoneModel
+        model = models.DNSZone
         fields = "__all__"
 
 
-class DnsZoneModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):  # pylint: disable=too-many-ancestors
-    """DnsZoneModel bulk edit form."""
+class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):  # pylint: disable=too-many-ancestors
+    """DNSZone bulk edit form."""
 
-    pk = forms.ModelMultipleChoiceField(queryset=models.DnsZoneModel.objects.all(), widget=forms.MultipleHiddenInput)
+    pk = forms.ModelMultipleChoiceField(queryset=models.DNSZone.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
 
     class Meta:
@@ -30,10 +30,10 @@ class DnsZoneModelBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):  # 
         ]
 
 
-class DnsZoneModelFilterForm(NautobotFilterForm):
+class DNSZoneFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
-    model = models.DnsZoneModel
+    model = models.DNSZone
     field_order = ["q", "name"]
 
     q = forms.CharField(

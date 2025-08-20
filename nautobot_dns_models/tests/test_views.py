@@ -6,11 +6,11 @@ from nautobot_dns_models import models
 from nautobot_dns_models.tests import fixtures
 
 
-class DnsZoneModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+class DNSZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     # pylint: disable=too-many-ancestors
-    """Test the DnsZoneModel views."""
+    """Test the DNSZone views."""
 
-    model = models.DnsZoneModel
+    model = models.DNSZone
     bulk_edit_data = {"description": "Bulk edit views"}
     form_data = {
         "name": "Test 1",
@@ -24,4 +24,4 @@ class DnsZoneModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        fixtures.create_dnszonemodel()
+        fixtures.create_dnszone()

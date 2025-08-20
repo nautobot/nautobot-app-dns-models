@@ -6,21 +6,21 @@ from nautobot_dns_models import models
 from nautobot_dns_models.tests import fixtures
 
 
-class DnsZoneModelAPIViewTest(APIViewTestCases.APIViewTestCase):
+class DNSZoneAPIViewTest(APIViewTestCases.APIViewTestCase):
     # pylint: disable=too-many-ancestors
-    """Test the API viewsets for DnsZoneModel."""
+    """Test the API viewsets for DNSZone."""
 
-    model = models.DnsZoneModel
+    model = models.DNSZone
     # Any choice fields will require the choices_fields to be set
     # to the field names in the model that are choice fields.
     choices_fields = ()
 
     @classmethod
     def setUpTestData(cls):
-        """Create test data for DnsZoneModel API viewset."""
+        """Create test data for DNSZone API viewset."""
         super().setUpTestData()
         # Create 3 objects for the generic API test cases.
-        fixtures.create_dnszonemodel()
+        fixtures.create_dnszone()
         # Create 3 objects for the api test cases.
         cls.create_data = [
             {

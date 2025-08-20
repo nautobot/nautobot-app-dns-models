@@ -5,13 +5,13 @@ from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixi
 from nautobot_dns_models import models
 
 
-class DnsZoneModelSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):  # pylint: disable=too-many-ancestors
-    """DnsZoneModel Serializer."""
+class DNSZoneSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):  # pylint: disable=too-many-ancestors
+    """DNSZone Serializer."""
 
     class Meta:
         """Meta attributes."""
 
-        model = models.DnsZoneModel
+        model = models.DNSZone
         fields = "__all__"
 
         # Option for disabling write for certain fields:

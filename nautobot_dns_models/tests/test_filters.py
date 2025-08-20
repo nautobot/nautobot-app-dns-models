@@ -1,4 +1,4 @@
-"""Test DnsZoneModel Filter."""
+"""Test DNSZone Filter."""
 
 from nautobot.apps.testing import FilterTestCases
 
@@ -6,11 +6,11 @@ from nautobot_dns_models import filters, models
 from nautobot_dns_models.tests import fixtures
 
 
-class DnsZoneModelFilterTestCase(FilterTestCases.FilterTestCase):
-    """DnsZoneModel Filter Test Case."""
+class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase):
+    """DNSZone Filter Test Case."""
 
-    queryset = models.DnsZoneModel.objects.all()
-    filterset = filters.DnsZoneModelFilterSet
+    queryset = models.DNSZone.objects.all()
+    filterset = filters.DNSZoneFilterSet
     generic_filter_tests = (
         ("id",),
         ("created",),
@@ -20,15 +20,15 @@ class DnsZoneModelFilterTestCase(FilterTestCases.FilterTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        """Setup test data for DnsZoneModel Model."""
-        fixtures.create_dnszonemodel()
+        """Setup test data for DNSZone Model."""
+        fixtures.create_dnszone()
 
     def test_q_search_name(self):
-        """Test using Q search with name of DnsZoneModel."""
+        """Test using Q search with name of DNSZone."""
         params = {"q": "Test One"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
     def test_q_invalid(self):
-        """Test using invalid Q search for DnsZoneModel."""
+        """Test using invalid Q search for DNSZone."""
         params = {"q": "test-five"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)

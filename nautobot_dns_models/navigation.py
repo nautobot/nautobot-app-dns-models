@@ -4,13 +4,13 @@ from nautobot.apps.ui import NavMenuAddButton, NavMenuGroup, NavMenuItem, NavMen
 
 items = (
     NavMenuItem(
-        link="plugins:nautobot_dns_models:dnszonemodel_list",
+        link="plugins:nautobot_dns_models:dnszone_list",
         name="Nautobot DNS Models",
-        permissions=["nautobot_dns_models.view_dnszonemodel"],
+        permissions=["nautobot_dns_models.view_dnszone"],
         buttons=(
             NavMenuAddButton(
-                link="plugins:nautobot_dns_models:dnszonemodel_add",
-                permissions=["nautobot_dns_models.add_dnszonemodel"],
+                link="plugins:nautobot_dns_models:dnszone_add",
+                permissions=["nautobot_dns_models.add_dnszone"],
             ),
         ),
     ),

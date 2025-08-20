@@ -11,7 +11,7 @@ from nautobot.apps.models import PrimaryModel, extras_features
 # If you want to use the extras_features decorator please reference the following documentation
 # https://docs.nautobot.com/projects/core/en/stable/development/core/model-checklist/#extras-features
 @extras_features("custom_links", "custom_validators", "export_templates", "graphql", "webhooks")
-class DnsZoneModel(PrimaryModel):  # pylint: disable=too-many-ancestors
+class DNSZone(PrimaryModel):  # pylint: disable=too-many-ancestors
     """Base model for Nautobot DNS Models app."""
 
     name = models.CharField(max_length=100, unique=True)

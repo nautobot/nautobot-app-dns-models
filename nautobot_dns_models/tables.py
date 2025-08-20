@@ -6,14 +6,14 @@ from nautobot.apps.tables import BaseTable, ButtonsColumn, ToggleColumn
 from nautobot_dns_models import models
 
 
-class DnsZoneModelTable(BaseTable):
+class DNSZoneTable(BaseTable):
     # pylint: disable=R0903
     """Table for list view."""
 
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
     actions = ButtonsColumn(
-        models.DnsZoneModel,
+        models.DNSZone,
         # Option for modifying the default action buttons on each row:
         # buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
@@ -23,7 +23,7 @@ class DnsZoneModelTable(BaseTable):
     class Meta(BaseTable.Meta):
         """Meta attributes."""
 
-        model = models.DnsZoneModel
+        model = models.DNSZone
         fields = (
             "pk",
             "name",
