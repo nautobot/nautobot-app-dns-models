@@ -201,7 +201,6 @@ class DNSRecord(DNSModel):  # pylint: disable=too-many-ancestors
     "custom_links",
     "custom_validators",
     "export_templates",
-    "graphql",
     "relationships",
     "webhooks",
 )
@@ -223,7 +222,6 @@ class NSRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "custom_links",
     "custom_validators",
     "export_templates",
-    "graphql",
     "relationships",
     "webhooks",
 )
@@ -250,7 +248,6 @@ class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "custom_links",
     "custom_validators",
     "export_templates",
-    "graphql",
     "relationships",
     "webhooks",
 )
@@ -277,7 +274,6 @@ class AAAARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "custom_links",
     "custom_validators",
     "export_templates",
-    "graphql",
     "relationships",
     "webhooks",
 )
@@ -299,7 +295,6 @@ class CNAMERecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "custom_links",
     "custom_validators",
     "export_templates",
-    "graphql",
     "relationships",
     "webhooks",
 )
@@ -326,7 +321,6 @@ class MXRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "custom_links",
     "custom_validators",
     "export_templates",
-    "graphql",
     "relationships",
     "webhooks",
 )
@@ -348,7 +342,6 @@ class TXTRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "custom_links",
     "custom_validators",
     "export_templates",
-    "graphql",
     "relationships",
     "webhooks",
 )
@@ -376,7 +369,6 @@ class PTRRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "custom_links",
     "custom_validators",
     "export_templates",
-    "graphql",
     "relationships",
     "webhooks",
 )
