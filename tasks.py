@@ -52,11 +52,7 @@ namespace = Collection("nautobot_dns_models")
 namespace.configure(
     {
         "nautobot_dns_models": {
-<<<<<<< HEAD
             "nautobot_ver": "2.4.4",
-=======
-            "nautobot_ver": "2.4.2",
->>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
             "project_name": "nautobot-dns-models",
             "python_ver": "3.11",
             "local": False,

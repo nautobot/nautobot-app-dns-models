@@ -6,7 +6,6 @@ from nautobot.apps.tables import BaseTable, ButtonsColumn, ToggleColumn
 from nautobot_dns_models import models
 
 
-<<<<<<< HEAD
 class DNSRecordsTable(BaseTable):  # pylint: disable=nb-no-model-found
     """Base table for DNS records list view."""
 
@@ -18,11 +17,6 @@ class DNSRecordsTable(BaseTable):  # pylint: disable=nb-no-model-found
 
 class DNSZoneTable(BaseTable):
     """Table for DNS Zone list view."""
-=======
-class DNSZoneTable(BaseTable):
-    # pylint: disable=R0903
-    """Table for list view."""
->>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
     pk = ToggleColumn()
     name = tables.Column(linkify=True)

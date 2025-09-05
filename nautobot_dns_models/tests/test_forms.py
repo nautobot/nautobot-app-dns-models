@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 """Tests for nautobot_dns_models Form Classes."""
-=======
-"""Test dnszone forms."""
->>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
 from django.test import TestCase
 from nautobot.extras.models.statuses import Status
@@ -53,11 +49,7 @@ class DNSZoneTest(TestCase):
         self.assertTrue(form.save())
 
     def test_validate_name_dnszone_is_required(self):
-<<<<<<< HEAD
         form = forms.DNSZoneForm(data={"ttl": "1010101"})
-=======
-        form = forms.DNSZoneForm(data={"description": "Development Testing"})
->>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
         self.assertFalse(form.is_valid())
         self.assertIn("This field is required.", form.errors["name"])
 

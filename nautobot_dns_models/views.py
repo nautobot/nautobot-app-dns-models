@@ -86,7 +86,6 @@ from nautobot_dns_models.tables import (
 )
 
 
-<<<<<<< HEAD
 class DNSZoneUIViewSet(views.NautobotUIViewSet):
     """DNSZone UI ViewSet."""
 
@@ -432,16 +431,3 @@ class SRVRecordUIViewSet(views.NautobotUIViewSet):
             )
         ]
     )
-=======
-class DNSZoneUIViewSet(NautobotUIViewSet):
-    """ViewSet for DNSZone views."""
-
-    bulk_update_form_class = forms.DNSZoneBulkEditForm
-    filterset_class = filters.DNSZoneFilterSet
-    filterset_form_class = forms.DNSZoneFilterForm
-    form_class = forms.DNSZoneForm
-    lookup_field = "pk"
-    queryset = models.DNSZone.objects.all()
-    serializer_class = serializers.DNSZoneSerializer
-    table_class = tables.DNSZoneTable
->>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)

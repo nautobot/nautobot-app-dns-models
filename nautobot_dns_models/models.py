@@ -7,16 +7,6 @@ from django.db import models
 from nautobot.apps.models import PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 
-<<<<<<< HEAD
-=======
-# If you want to choose a specific model to overload in your class declaration, please reference the following documentation:
-# how to chose a database model: https://docs.nautobot.com/projects/core/en/stable/plugins/development/#database-models
-# If you want to use the extras_features decorator please reference the following documentation
-# https://docs.nautobot.com/projects/core/en/stable/development/core/model-checklist/#extras-features
-@extras_features("custom_links", "custom_validators", "export_templates", "graphql", "webhooks")
-class DNSZone(PrimaryModel):  # pylint: disable=too-many-ancestors
-    """Base model for Nautobot DNS Models app."""
->>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
 def dns_wire_label_length(label):
     """Return the wire-format (IDNA/Punycode) length of a DNS label."""

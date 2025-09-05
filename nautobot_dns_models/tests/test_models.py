@@ -22,7 +22,6 @@ from nautobot_dns_models.tests import fixtures
 
 # Helper for generating unicode labels of a specific IDNA-encoded length
 
-<<<<<<< HEAD
 
 def _make_unicode_label_with_idna_length(char, target_length):
     """Return a string of repeated `char` whose IDNA-encoded length is exactly `target_length` bytes."""
@@ -40,12 +39,6 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
     """Test DnsZoneModel."""
 
     model = DNSZone
-=======
-class TestDNSZone(ModelTestCases.BaseModelTestCase):
-    """Test DNSZone."""
-
-    model = models.DNSZone
->>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
     @classmethod
     def setUpTestData(cls):
@@ -56,17 +49,12 @@ class TestDNSZone(ModelTestCases.BaseModelTestCase):
 
     def test_create_dnszone_only_required(self):
         """Create with only required fields, and validate null description and __str__."""
-<<<<<<< HEAD
         dnszone = DNSZone.objects.create(name="Development")
-=======
-        dnszone = models.DNSZone.objects.create(name="Development")
->>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
         self.assertEqual(dnszone.name, "Development")
         self.assertEqual(dnszone.description, "")
         self.assertEqual(str(dnszone), "Development")
 
     def test_create_dnszone_all_fields_success(self):
-<<<<<<< HEAD
         """Create DnsZoneModel with all fields."""
         dnszone = DNSZone.objects.create(name="Development", description="Development Test")
         self.assertEqual(dnszone.name, "Development")
@@ -544,9 +532,3 @@ class DNSZoneNameLengthValidationTest(TestCase):
         with self.assertRaises(ValidationError) as context:
             zone.full_clean()
         self.assertIn("Empty labels are not allowed", str(context.exception))
-=======
-        """Create DNSZone with all fields."""
-        dnszone = models.DNSZone.objects.create(name="Development", description="Development Test")
-        self.assertEqual(dnszone.name, "Development")
-        self.assertEqual(dnszone.description, "Development Test")
->>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)

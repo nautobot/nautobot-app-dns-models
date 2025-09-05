@@ -38,19 +38,11 @@ from nautobot_dns_models.models import (
 
 
 class DNSZoneViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
-<<<<<<< HEAD
     """DNSZone API ViewSet."""
 
     queryset = DNSZone.objects.all()
     serializer_class = DNSZoneSerializer
     filterset_class = DNSZoneFilterSet
-=======
-    """DNSZone viewset."""
-
-    queryset = models.DNSZone.objects.all()
-    serializer_class = serializers.DNSZoneSerializer
-    filterset_class = filters.DNSZoneFilterSet
->>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
     lookup_field = "pk"
     # Option for modifying the default HTTP methods:

@@ -11,11 +11,7 @@ from nautobot.extras.forms import NautobotFilterForm
 from nautobot_dns_models import models
 
 
-<<<<<<< HEAD
 class DNSZoneForm(NautobotModelForm):
-=======
-class DNSZoneForm(NautobotModelForm):  # pylint: disable=too-many-ancestors
->>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
     """DNSZone creation/edit form."""
 
     class Meta:
@@ -25,11 +21,7 @@ class DNSZoneForm(NautobotModelForm):  # pylint: disable=too-many-ancestors
         fields = "__all__"
 
 
-<<<<<<< HEAD
 class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
-=======
-class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):  # pylint: disable=too-many-ancestors
->>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
     """DNSZone bulk edit form."""
 
     pk = forms.ModelMultipleChoiceField(queryset=models.DNSZone.objects.all(), widget=forms.MultipleHiddenInput)
@@ -46,12 +38,6 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):  # pylin
 class DNSZoneFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
-<<<<<<< HEAD
-=======
-    model = models.DNSZone
-    field_order = ["q", "name"]
-
->>>>>>> 443aa28 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
     q = forms.CharField(
         required=False,
         label="Search",
