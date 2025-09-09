@@ -1,5 +1,8 @@
 """Filtering for nautobot_dns_models."""
 
+import django_filters
+from django.db.models import F
+from django.db.models.functions import Coalesce
 from nautobot.extras.filters import NautobotFilterSet
 
 from nautobot_dns_models import models
@@ -15,7 +18,29 @@ class DNSZoneFilterSet(NautobotFilterSet):
         fields = "__all__"
 
 
-class NSRecordFilterSet(NautobotFilterSet):
+# pylint: disable=nb-no-model-found, nb-warn-dunder-filter-field
+class DNSRecordFilterSet(NautobotFilterSet):
+    """Base filter for all DNSRecord models, with support for effective TTL."""
+
+    ttl = django_filters.NumberFilter(method="filter_ttl", label="TTL")
+    ttl__ne = django_filters.NumberFilter(method="filter_ttl_ne")
+    ttl__gte = django_filters.NumberFilter(method="filter_ttl", lookup_expr="gte")
+    ttl__lte = django_filters.NumberFilter(method="filter_ttl", lookup_expr="lte")
+    ttl__gt = django_filters.NumberFilter(method="filter_ttl", lookup_expr="gt")
+    ttl__lt = django_filters.NumberFilter(method="filter_ttl", lookup_expr="lt")
+
+    def filter_ttl(self, queryset, name, value):
+        """Filter by effective TTL (use record's TTL if set, otherwise zone's TTL)."""
+        queryset = queryset.annotate(effective_ttl=Coalesce(F("_ttl"), F("zone__ttl")))
+        lookup = name.split("__")[-1] if "__" in name else "exact"
+        return queryset.filter(**{f"effective_ttl__{lookup}": value})
+
+    def filter_ttl_ne(self, queryset, name, value):
+        """Exclude effective TTL equal to value."""
+        queryset = queryset.annotate(effective_ttl=Coalesce(F("_ttl"), F("zone__ttl")))
+        return queryset.exclude(effective_ttl=value)
+
+class NSRecordFilterSet(DNSRecordFilterSet):
     """Filter for NSRecord."""
 
     class Meta:
@@ -25,7 +50,7 @@ class NSRecordFilterSet(NautobotFilterSet):
         fields = "__all__"
 
 
-class ARecordFilterSet(NautobotFilterSet):
+class ARecordFilterSet(DNSRecordFilterSet):
     """Filter for ARecord."""
 
     class Meta:
@@ -35,7 +60,7 @@ class ARecordFilterSet(NautobotFilterSet):
         fields = "__all__"
 
 
-class AAAARecordFilterSet(NautobotFilterSet):
+class AAAARecordFilterSet(DNSRecordFilterSet):
     """Filter for AAAARecord."""
 
     class Meta:
@@ -45,7 +70,7 @@ class AAAARecordFilterSet(NautobotFilterSet):
         fields = "__all__"
 
 
-class CNAMERecordFilterSet(NautobotFilterSet):
+class CNAMERecordFilterSet(DNSRecordFilterSet):
     """Filter for CNAMERecord."""
 
     class Meta:
@@ -55,7 +80,7 @@ class CNAMERecordFilterSet(NautobotFilterSet):
         fields = "__all__"
 
 
-class MXRecordFilterSet(NautobotFilterSet):
+class MXRecordFilterSet(DNSRecordFilterSet):
     """Filter for MXRecord."""
 
     class Meta:
@@ -65,7 +90,7 @@ class MXRecordFilterSet(NautobotFilterSet):
         fields = "__all__"
 
 
-class TXTRecordFilterSet(NautobotFilterSet):
+class TXTRecordFilterSet(DNSRecordFilterSet):
     """Filter for TXTRecord."""
 
     class Meta:
@@ -75,7 +100,7 @@ class TXTRecordFilterSet(NautobotFilterSet):
         fields = "__all__"
 
 
-class PTRRecordFilterSet(NautobotFilterSet):
+class PTRRecordFilterSet(DNSRecordFilterSet):
     """Filter for PTRRecord."""
 
     class Meta:
@@ -85,7 +110,7 @@ class PTRRecordFilterSet(NautobotFilterSet):
         fields = "__all__"
 
 
-class SRVRecordFilterSet(NautobotFilterSet):
+class SRVRecordFilterSet(DNSRecordFilterSet):
     """Filter for SRVRecord."""
 
     class Meta:

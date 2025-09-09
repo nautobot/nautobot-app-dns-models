@@ -26,6 +26,9 @@ class DNSRecordSerializer(NautobotModelSerializer):  # pylint: disable=too-many-
     """DNSRecord Serializer."""
 
     ttl = serializers.SerializerMethodField(read_only=True)
+    _ttl = serializers.IntegerField(
+        required=False, allow_null=True, min_value=300, max_value=2147483647, help_text="Record-specific TTL."
+    )
 
     class Meta:
         """Meta attributes."""
@@ -37,6 +40,12 @@ class DNSRecordSerializer(NautobotModelSerializer):  # pylint: disable=too-many-
     def get_ttl(self, instance):
         """Expose TTL property."""
         return instance.ttl
+
+    def validate(self, attrs):
+        """Map "ttl" in the payload to "_ttl"."""
+        if "ttl" in self.initial_data:
+            attrs["_ttl"] = self.initial_data["ttl"]
+        return super().validate(attrs)
 
 
 class NSRecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-ancestors
