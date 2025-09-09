@@ -35,10 +35,11 @@ class DNSRecordFilterSet(NautobotFilterSet):
         lookup = name.split("__")[-1] if "__" in name else "exact"
         return queryset.filter(**{f"effective_ttl__{lookup}": value})
 
-    def filter_ttl_ne(self, queryset, name, value):
+    def filter_ttl_ne(self, queryset, name, value):  # pylint: disable=unused-argument
         """Exclude effective TTL equal to value."""
         queryset = queryset.annotate(effective_ttl=Coalesce(F("_ttl"), F("zone__ttl")))
         return queryset.exclude(effective_ttl=value)
+
 
 class NSRecordFilterSet(DNSRecordFilterSet):
     """Filter for NSRecord."""
