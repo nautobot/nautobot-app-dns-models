@@ -1,5 +1,6 @@
 """Filtering for nautobot_dns_models."""
 
+from nautobot.core.filters import SearchFilter
 from nautobot.extras.filters import NautobotFilterSet
 
 from nautobot_dns_models import models
@@ -7,6 +8,16 @@ from nautobot_dns_models import models
 
 class DNSZoneFilterSet(NautobotFilterSet):
     """Filter for DNSZone."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "description": "icontains",
+            "filename": "icontains",
+            "soa_mname": "icontains",
+            "soa_rname": "icontains",
+        }
+    )
 
     class Meta:
         """Meta attributes for filter."""
