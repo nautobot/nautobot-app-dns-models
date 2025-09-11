@@ -22,7 +22,7 @@ User = get_user_model()
 
 class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     # pylint: disable=too-many-ancestors
-    """Test the DnsZoneModel views."""
+    """Test the DNSZone views."""
 
     model = DNSZone
 
