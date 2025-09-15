@@ -1,1 +1,0 @@
-Fixed TTL field missing from GraphQL DNS record's schemas.
