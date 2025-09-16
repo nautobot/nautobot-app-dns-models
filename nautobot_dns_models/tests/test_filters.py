@@ -69,7 +69,7 @@ class NSRecordFilterTestCase(TestCase):
         zone = DNSZone.objects.create(name="example.com")
         NSRecord.objects.create(name="ns-01", server="ns1.example.com", zone=zone)
         NSRecord.objects.create(name="ns-02", server="ns2.example.com", zone=zone)
-        NSRecord.objects.create(name="ns-02", server="ns3.example.com", zone=zone)
+        NSRecord.objects.create(name="ns-02", server="ns3.example.com", zone=zone, ttl=7200)
 
     def test_single_name(self):
         """Test using Q search with name of NSRecord."""
@@ -97,8 +97,40 @@ class NSRecordFilterTestCase(TestCase):
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
     def test_server_invalid(self):
+        """Test using invalid Q search for server of NSRecord."""
         params = {"server": "wrong-server"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
+
+    # Testing TTL filterset here. If it works in NSRecord, it should work in all other record types.
+    def test_ttl_equals(self):
+        """Test filter with TTL equal to value."""
+        params = {"ttl": 7200}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
+
+    def test_ttl_greater(self):
+        """Test filter with TTL greater than value."""
+        params = {"ttl__gt": 7000}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
+
+    def test_ttl_greater_or_equal(self):
+        """Test filter with TTL greater than or equal to value."""
+        params = {"ttl__gte": 3600}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+
+    def test_ttl_less(self):
+        """Test filter with TTL less than value."""
+        params = {"ttl__lt": 4000}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+
+    def test_ttl_less_or_equal(self):
+        """Test filter with TTL less than or equal to value."""
+        params = {"ttl__lte": 3600}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+
+    def test_ttl_not_equal(self):
+        """Test filter with TTL not equal to value."""
+        params = {"ttl__ne": 3600}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
 
 class ARecordFilterTestCase(TestCase):

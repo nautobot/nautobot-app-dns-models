@@ -5,7 +5,23 @@ This document describes all new features and changes in the release. The format 
 
 ## Release Overview
 
-This release makes DNS models globally searchable in Nautobot and added DNS name length validation per RFC 1035.
+- This release makes DNS models globally searchable in Nautobot and added DNS name length validation per RFC 1035.
+- Changes to compatibility with Nautobot and/or other apps, libraries etc.
+
+## [v1.2.1 (2025-09-16)](https://github.com/nautobot/nautobot-app-dns-models/releases/tag/v1.2.1)
+
+### Fixed
+
+- [#100](https://github.com/nautobot/nautobot-app-dns-models/issues/100) - Fixed TTL field missing from GraphQL DNS record's schemas.
+
+### Dependencies
+
+- [#108](https://github.com/nautobot/nautobot-app-dns-models/issues/108) - Pinned Django debug toolbar to <6.0.0.
+
+### Housekeeping
+
+- [#90](https://github.com/nautobot/nautobot-app-dns-models/issues/90) - Housekeeping removed `Model` suffix from models.
+- Rebaked from the cookie `nautobot-app-v2.5.1`.
 
 ## [v1.2.0 (2025-07-25)](https://github.com/nautobot/nautobot-app-dns-models/releases/tag/v1.2.0)
 

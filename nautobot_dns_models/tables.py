@@ -6,13 +6,13 @@ from nautobot.apps.tables import BaseTable, ButtonsColumn, ToggleColumn
 from nautobot_dns_models import models
 
 
-class DNSRecordsTable(BaseTable):  # pylint: disable=nb-no-model-found
+class DNSRecordTable(BaseTable):  # pylint: disable=nb-no-model-found
     """Base table for DNS records list view."""
 
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
     zone = tables.LinkColumn()
-    ttl = tables.Column(verbose_name="TTL")
+    ttl = tables.Column(accessor="ttl", verbose_name="TTL")
 
 
 class DNSZoneTable(BaseTable):
@@ -56,7 +56,7 @@ class DNSZoneTable(BaseTable):
         )
 
 
-class NSRecordTable(DNSRecordsTable):
+class NSRecordTable(DNSRecordTable):
     """Table for list view."""
 
     actions = ButtonsColumn(
@@ -92,7 +92,7 @@ class NSRecordTable(DNSRecordsTable):
         )
 
 
-class ARecordTable(DNSRecordsTable):
+class ARecordTable(DNSRecordTable):
     """Table for list view."""
 
     address = tables.LinkColumn()
@@ -130,7 +130,7 @@ class ARecordTable(DNSRecordsTable):
         )
 
 
-class AAAARecordTable(DNSRecordsTable):
+class AAAARecordTable(DNSRecordTable):
     """Table for list view."""
 
     address = tables.LinkColumn()
@@ -168,7 +168,7 @@ class AAAARecordTable(DNSRecordsTable):
         )
 
 
-class CNAMERecordTable(DNSRecordsTable):
+class CNAMERecordTable(DNSRecordTable):
     """Table for list view."""
 
     actions = ButtonsColumn(
@@ -205,7 +205,7 @@ class CNAMERecordTable(DNSRecordsTable):
         )
 
 
-class MXRecordTable(DNSRecordsTable):
+class MXRecordTable(DNSRecordTable):
     """Table for list view."""
 
     actions = ButtonsColumn(
@@ -242,7 +242,7 @@ class MXRecordTable(DNSRecordsTable):
         )
 
 
-class TXTRecordTable(DNSRecordsTable):
+class TXTRecordTable(DNSRecordTable):
     """Table for list view."""
 
     actions = ButtonsColumn(
@@ -279,7 +279,7 @@ class TXTRecordTable(DNSRecordsTable):
         )
 
 
-class PTRRecordTable(DNSRecordsTable):
+class PTRRecordTable(DNSRecordTable):
     """Table for list view."""
 
     actions = ButtonsColumn(
@@ -316,7 +316,7 @@ class PTRRecordTable(DNSRecordsTable):
         )
 
 
-class SRVRecordTable(DNSRecordsTable):
+class SRVRecordTable(DNSRecordTable):
     """Table for list view."""
 
     actions = ButtonsColumn(

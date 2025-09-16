@@ -154,7 +154,7 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                 section=SectionChoices.RIGHT_HALF,
                 table_filter="zone",
                 table_class=CNAMERecordTable,
-                table_title="CName Records",
+                table_title="CNAME Records",
                 exclude_columns=["zone"],
                 max_display_count=5,
             ),

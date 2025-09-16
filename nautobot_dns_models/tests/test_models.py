@@ -42,7 +42,7 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        """Create test data for DnsZoneModel Model."""
+        """Create test data for DNSZone Model."""
         super().setUpTestData()
         # Create 3 objects for the model test cases.
         fixtures.create_dnszone()
