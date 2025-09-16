@@ -4,10 +4,17 @@ from constance import config as constance_config
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+<<<<<<< HEAD
+=======
+
+# Nautobot imports
+from nautobot.apps.constants import CHARFIELD_MAX_LENGTH
+>>>>>>> 7c31976 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 from nautobot.apps.models import PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 
 
+<<<<<<< HEAD
 def dns_wire_label_length(label):
     """Return the wire-format (IDNA/Punycode) length of a DNS label."""
     if label.isascii():
@@ -26,6 +33,11 @@ class DNSModel(PrimaryModel):
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
+=======
+    name = models.CharField(max_length=CHARFIELD_MAX_LENGTH, unique=True)
+    description = models.CharField(max_length=CHARFIELD_MAX_LENGTH, blank=True)
+    # additional model fields
+>>>>>>> 7c31976 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
     class Meta:
         """Meta class."""

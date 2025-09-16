@@ -1,5 +1,6 @@
 """DNS Plugin Views."""
 
+<<<<<<< HEAD
 from nautobot.apps import views
 from nautobot.apps.ui import (
     ButtonColorChoices,
@@ -10,6 +11,11 @@ from nautobot.apps.ui import (
     StatsPanel,
 )
 from nautobot.core.ui import object_detail
+=======
+from nautobot.apps.views import NautobotUIViewSet
+from nautobot.apps.ui import ObjectDetailContent, ObjectFieldsPanel, ObjectTablePanel, SectionChoices
+from nautobot.core.templatetags import helpers
+>>>>>>> 7c31976 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
 from nautobot_dns_models.api.serializers import (
     AAAARecordSerializer,
@@ -95,16 +101,29 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
     filterset_form_class = DNSZoneFilterForm
     serializer_class = DNSZoneSerializer
     lookup_field = "pk"
+<<<<<<< HEAD
     queryset = DNSZone.objects.all()
     table_class = DNSZoneTable
 
     object_detail_content = ObjectDetailContent(
         panels=[
             # Left pane
+=======
+    queryset = models.DNSZone.objects.all()
+    serializer_class = serializers.DNSZoneSerializer
+    table_class = tables.DNSZoneTable
+
+    # Here is an example of using the UI  Component Framework for the detail view.
+    # More information can be found in the Nautobot documentation:
+    # https://docs.nautobot.com/projects/core/en/stable/development/core/ui-component-framework/
+    object_detail_content = ObjectDetailContent(
+        panels=[
+>>>>>>> 7c31976 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
             ObjectFieldsPanel(
                 weight=100,
                 section=SectionChoices.LEFT_HALF,
                 fields="__all__",
+<<<<<<< HEAD
             ),
             ObjectsTablePanel(
                 weight=200,
@@ -431,3 +450,26 @@ class SRVRecordUIViewSet(views.NautobotUIViewSet):
             )
         ]
     )
+=======
+                # Alternatively, you can specify a list of field names:
+                # fields=[
+                #     "name",
+                #     "description",
+                # ],
+                # Some fields may require additional configuration, we can use value_transforms
+                # value_transforms={
+                #     "name": [helpers.bettertitle]
+                # },
+            ),
+            # If there is a ForeignKey or M2M with this model we can use ObjectTablePanel
+            # to display them in a table format.
+            # ObjectTablePanel(
+                # weight=200,
+                # section=SectionChoices.RIGHT_HALF,
+                # table_class=tables.DNSZoneTable,
+                # You will want to filter the table using the related_name
+                # filter="dnszones",
+            # ),
+        ],
+    )
+>>>>>>> 7c31976 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
