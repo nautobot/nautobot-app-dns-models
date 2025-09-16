@@ -10,15 +10,15 @@ from nautobot_dns_models import views
 app_name = "nautobot_dns_models"
 router = NautobotUIViewSetRouter()
 
-router.register("dns-zones", views.DNSZoneModelUIViewSet)
-router.register("a-records", views.ARecordModelUIViewSet)
-router.register("aaaa-records", views.AAAARecordModelUIViewSet)
-router.register("ns-records", views.NSRecordModelUIViewSet)
-router.register("cname-records", views.CNAMERecordModelUIViewSet)
-router.register("mx-records", views.MXRecordModelUIViewSet)
-router.register("txt-records", views.TXTRecordModelUIViewSet)
-router.register("ptr-records", views.PTRRecordModelUIViewSet)
-router.register("srv-records", views.SRVRecordModelUIViewSet)
+router.register("dns-zones", views.DNSZoneUIViewSet)
+router.register("a-records", views.ARecordUIViewSet)
+router.register("aaaa-records", views.AAAARecordUIViewSet)
+router.register("ns-records", views.NSRecordUIViewSet)
+router.register("cname-records", views.CNAMERecordUIViewSet)
+router.register("mx-records", views.MXRecordUIViewSet)
+router.register("txt-records", views.TXTRecordUIViewSet)
+router.register("ptr-records", views.PTRRecordUIViewSet)
+router.register("srv-records", views.SRVRecordUIViewSet)
 
 urlpatterns = [
     path("docs/", RedirectView.as_view(url=static("nautobot_dns_models/docs/index.html")), name="docs"),

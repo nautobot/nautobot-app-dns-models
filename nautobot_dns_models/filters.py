@@ -1,95 +1,121 @@
 """Filtering for nautobot_dns_models."""
 
+import django_filters
+from django.db.models import F
+from django.db.models.functions import Coalesce
 from nautobot.extras.filters import NautobotFilterSet
 
 from nautobot_dns_models import models
 
 
-class DNSZoneModelFilterSet(NautobotFilterSet):
-    """Filter for DNSZoneModel."""
+class DNSZoneFilterSet(NautobotFilterSet):
+    """Filter for DNSZone."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.DNSZoneModel
+        model = models.DNSZone
         fields = "__all__"
 
 
-class NSRecordModelFilterSet(NautobotFilterSet):
-    """Filter for NSRecordModel."""
+# pylint: disable=nb-no-model-found, nb-warn-dunder-filter-field
+class DNSRecordFilterSet(NautobotFilterSet):
+    """Base filter for all DNSRecord models, with support for effective TTL."""
+
+    ttl = django_filters.NumberFilter(method="filter_ttl", label="TTL")
+    ttl__ne = django_filters.NumberFilter(method="filter_ttl_ne")
+    ttl__gte = django_filters.NumberFilter(method="filter_ttl", lookup_expr="gte")
+    ttl__lte = django_filters.NumberFilter(method="filter_ttl", lookup_expr="lte")
+    ttl__gt = django_filters.NumberFilter(method="filter_ttl", lookup_expr="gt")
+    ttl__lt = django_filters.NumberFilter(method="filter_ttl", lookup_expr="lt")
+
+    def filter_ttl(self, queryset, name, value):
+        """Filter by effective TTL (use record's TTL if set, otherwise zone's TTL)."""
+        queryset = queryset.annotate(effective_ttl=Coalesce(F("_ttl"), F("zone__ttl")))
+        lookup = name.split("__")[-1] if "__" in name else "exact"
+        return queryset.filter(**{f"effective_ttl__{lookup}": value})
+
+    def filter_ttl_ne(self, queryset, name, value):  # pylint: disable=unused-argument
+        """Exclude effective TTL equal to value."""
+        queryset = queryset.annotate(effective_ttl=Coalesce(F("_ttl"), F("zone__ttl")))
+        return queryset.exclude(effective_ttl=value)
+
+
+class NSRecordFilterSet(DNSRecordFilterSet):
+    """Filter for NSRecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.NSRecordModel
+        model = models.NSRecord
         fields = "__all__"
 
 
-class ARecordModelFilterSet(NautobotFilterSet):
-    """Filter for ARecordModel."""
+class ARecordFilterSet(DNSRecordFilterSet):
+    """Filter for ARecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.ARecordModel
+        model = models.ARecord
         fields = "__all__"
 
 
-class AAAARecordModelFilterSet(NautobotFilterSet):
-    """Filter for AAAARecordModel."""
+class AAAARecordFilterSet(DNSRecordFilterSet):
+    """Filter for AAAARecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.AAAARecordModel
+        model = models.AAAARecord
         fields = "__all__"
 
 
-class CNAMERecordModelFilterSet(NautobotFilterSet):
-    """Filter for CNAMERecordModel."""
+class CNAMERecordFilterSet(DNSRecordFilterSet):
+    """Filter for CNAMERecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.CNAMERecordModel
+        model = models.CNAMERecord
         fields = "__all__"
 
 
-class MXRecordModelFilterSet(NautobotFilterSet):
-    """Filter for MXRecordModel."""
+class MXRecordFilterSet(DNSRecordFilterSet):
+    """Filter for MXRecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.MXRecordModel
+        model = models.MXRecord
         fields = "__all__"
 
 
-class TXTRecordModelFilterSet(NautobotFilterSet):
-    """Filter for TXTRecordModel."""
+class TXTRecordFilterSet(DNSRecordFilterSet):
+    """Filter for TXTRecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.TXTRecordModel
+        model = models.TXTRecord
         fields = "__all__"
 
 
-class PTRRecordModelFilterSet(NautobotFilterSet):
-    """Filter for PTRRecordModel."""
+class PTRRecordFilterSet(DNSRecordFilterSet):
+    """Filter for PTRRecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.PTRRecordModel
+        model = models.PTRRecord
         fields = "__all__"
 
 
-class SRVRecordModelFilterSet(NautobotFilterSet):
-    """Filter for SRVRecordModel."""
+class SRVRecordFilterSet(DNSRecordFilterSet):
+    """Filter for SRVRecord."""
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.SRVRecordModel
+        model = models.SRVRecord
         fields = "__all__"

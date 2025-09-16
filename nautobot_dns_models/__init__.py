@@ -70,15 +70,15 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
     }
 
     searchable_models = [
-        "DNSZoneModel",
-        "ARecordModel",
-        "AAAARecordModel",
-        "PTRRecordModel",
-        "CNAMERecordModel",
-        "NSRecordModel",
-        "MXRecordModel",
-        "SRVRecordModel",
-        "TXTRecordModel",
+        "DNSZone",
+        "ARecord",
+        "AAAARecord",
+        "PTRRecord",
+        "CNAMERecord",
+        "NSRecord",
+        "MXRecord",
+        "SRVRecord",
+        "TXTRecord",
     ]
 
 
