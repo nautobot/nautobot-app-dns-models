@@ -107,11 +107,7 @@ jobs:
       fail-fast: true
       matrix:
         python-version: ["3.11"]
-<<<<<<< HEAD
         nautobot-version: ["2.4.4"]
-=======
-        nautobot-version: ["2.4.2"]
->>>>>>> 7c31976 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
     env:
       INVOKE_NAUTOBOT_DNS_MODELS_PYTHON_VER: "${{ matrix.python-version }}"
       INVOKE_NAUTOBOT_DNS_MODELS_NAUTOBOT_VER: "${{ matrix.nautobot-version }}"
@@ -163,11 +159,7 @@ jobs:
         include:
           - python-version: "3.11"
             db-backend: "postgresql"
-<<<<<<< HEAD
             nautobot-version: "2.4.4"
-=======
-            nautobot-version: "2.4.2"
->>>>>>> 7c31976 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
           - python-version: "3.12"
             db-backend: "mysql"
             nautobot-version: "stable"
@@ -340,15 +332,11 @@ jobs:
       - "unittest"
       - "unittest_report"
     name: "Push Package to PyPI"
-<<<<<<< HEAD
-    runs-on: "ubuntu-22.04"
+    runs-on: "ubuntu-latest"
     environment: "pypi"  # PyPI Trusted Publishing
     permissions:
       contents: "read"  # Allow cloning the repo
       id-token: "write"  # PyPI Trusted Publishing
-=======
-    runs-on: "ubuntu-latest"
->>>>>>> 7c31976 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
     if: "startsWith(github.ref, 'refs/tags/v')"
     env:
       INVOKE_NAUTOBOT_DNS_MODELS_LOCAL: "True"

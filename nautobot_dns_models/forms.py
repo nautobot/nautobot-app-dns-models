@@ -1,17 +1,12 @@
 """Forms for nautobot_dns_models."""
 
 from django import forms
-<<<<<<< HEAD
 from nautobot.apps.forms import (
     NautobotBulkEditForm,
     NautobotModelForm,
     TagsBulkEditFormMixin,
 )
 from nautobot.extras.forms import NautobotFilterForm
-=======
-from nautobot.apps.constants import CHARFIELD_MAX_LENGTH
-from nautobot.apps.forms import NautobotBulkEditForm, NautobotFilterForm, NautobotModelForm, TagsBulkEditFormMixin
->>>>>>> 7c31976 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
 from nautobot_dns_models import models
 
@@ -30,7 +25,7 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     """DNSZone bulk edit form."""
 
     pk = forms.ModelMultipleChoiceField(queryset=models.DNSZone.objects.all(), widget=forms.MultipleHiddenInput)
-    description = forms.CharField(required=False, max_length=CHARFIELD_MAX_LENGTH)
+    description = forms.CharField(required=False)
 
     class Meta:
         """Meta attributes."""
