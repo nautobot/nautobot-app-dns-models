@@ -321,6 +321,7 @@ class NSRecordUIViewSet(views.NautobotUIViewSet):
                 weight=100,
                 section=SectionChoices.LEFT_HALF,
                 fields="__all__",
+                additional_fields=["ttl"]
             )
         ],
     )
@@ -366,6 +367,7 @@ class AAAARecordUIViewSet(views.NautobotUIViewSet):
                 weight=100,
                 section=SectionChoices.LEFT_HALF,
                 fields="__all__",
+                additional_fields=["ttl"]
             )
         ]
     )
@@ -388,6 +390,7 @@ class CNAMERecordUIViewSet(views.NautobotUIViewSet):
                 weight=100,
                 section=SectionChoices.LEFT_HALF,
                 fields="__all__",
+                additional_fields=["ttl"]
             )
         ]
     )
@@ -410,6 +413,7 @@ class MXRecordUIViewSet(views.NautobotUIViewSet):
                 weight=100,
                 section=SectionChoices.LEFT_HALF,
                 fields="__all__",
+                additional_fields=["ttl"]
             )
         ]
     )
@@ -432,6 +436,7 @@ class TXTRecordUIViewSet(views.NautobotUIViewSet):
                 weight=100,
                 section=SectionChoices.LEFT_HALF,
                 fields="__all__",
+                additional_fields=["ttl"]
             )
         ]
     )
@@ -454,6 +459,7 @@ class PTRRecordUIViewSet(views.NautobotUIViewSet):
                 weight=100,
                 section=SectionChoices.LEFT_HALF,
                 fields="__all__",
+                additional_fields=["ttl"]
             )
         ]
     )
@@ -476,6 +482,7 @@ class SRVRecordUIViewSet(views.NautobotUIViewSet):
                 weight=100,
                 section=SectionChoices.LEFT_HALF,
                 fields="__all__",
+                additional_fields=["ttl"]
             )
         ]
     )
