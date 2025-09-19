@@ -343,6 +343,7 @@ class ARecordUIViewSet(views.NautobotUIViewSet):
                 weight=100,
                 section=SectionChoices.LEFT_HALF,
                 fields="__all__",
+                additional_fields=["ttl"]
             )
         ]
     )

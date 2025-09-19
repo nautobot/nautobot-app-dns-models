@@ -52,7 +52,7 @@ namespace = Collection("nautobot_dns_models")
 namespace.configure(
     {
         "nautobot_dns_models": {
-            "nautobot_ver": "2.4.4",
+            "nautobot_ver": "2.4.18",
             "project_name": "nautobot-dns-models",
             "python_ver": "3.11",
             "local": False,
