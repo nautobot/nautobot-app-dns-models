@@ -317,12 +317,7 @@ class NSRecordUIViewSet(views.NautobotUIViewSet):
     table_class = NSRecordTable
     object_detail_content = ObjectDetailContent(
         panels=[
-            ObjectFieldsPanel(
-                weight=100,
-                section=SectionChoices.LEFT_HALF,
-                fields="__all__",
-                additional_fields=["ttl"]
-            )
+            ObjectFieldsPanel(weight=100, section=SectionChoices.LEFT_HALF, fields="__all__", additional_fields=["ttl"])
         ],
     )
 
@@ -340,12 +335,7 @@ class ARecordUIViewSet(views.NautobotUIViewSet):
     table_class = ARecordTable
     object_detail_content = ObjectDetailContent(
         panels=[
-            ObjectFieldsPanel(
-                weight=100,
-                section=SectionChoices.LEFT_HALF,
-                fields="__all__",
-                additional_fields=["ttl"]
-            )
+            ObjectFieldsPanel(weight=100, section=SectionChoices.LEFT_HALF, fields="__all__", additional_fields=["ttl"])
         ]
     )
 
@@ -363,12 +353,7 @@ class AAAARecordUIViewSet(views.NautobotUIViewSet):
     table_class = AAAARecordTable
     object_detail_content = ObjectDetailContent(
         panels=[
-            ObjectFieldsPanel(
-                weight=100,
-                section=SectionChoices.LEFT_HALF,
-                fields="__all__",
-                additional_fields=["ttl"]
-            )
+            ObjectFieldsPanel(weight=100, section=SectionChoices.LEFT_HALF, fields="__all__", additional_fields=["ttl"])
         ]
     )
 
@@ -386,12 +371,7 @@ class CNAMERecordUIViewSet(views.NautobotUIViewSet):
     table_class = CNAMERecordTable
     object_detail_content = ObjectDetailContent(
         panels=[
-            ObjectFieldsPanel(
-                weight=100,
-                section=SectionChoices.LEFT_HALF,
-                fields="__all__",
-                additional_fields=["ttl"]
-            )
+            ObjectFieldsPanel(weight=100, section=SectionChoices.LEFT_HALF, fields="__all__", additional_fields=["ttl"])
         ]
     )
 
@@ -409,12 +389,7 @@ class MXRecordUIViewSet(views.NautobotUIViewSet):
     table_class = MXRecordTable
     object_detail_content = ObjectDetailContent(
         panels=[
-            ObjectFieldsPanel(
-                weight=100,
-                section=SectionChoices.LEFT_HALF,
-                fields="__all__",
-                additional_fields=["ttl"]
-            )
+            ObjectFieldsPanel(weight=100, section=SectionChoices.LEFT_HALF, fields="__all__", additional_fields=["ttl"])
         ]
     )
 
@@ -432,12 +407,7 @@ class TXTRecordUIViewSet(views.NautobotUIViewSet):
     table_class = TXTRecordTable
     object_detail_content = ObjectDetailContent(
         panels=[
-            ObjectFieldsPanel(
-                weight=100,
-                section=SectionChoices.LEFT_HALF,
-                fields="__all__",
-                additional_fields=["ttl"]
-            )
+            ObjectFieldsPanel(weight=100, section=SectionChoices.LEFT_HALF, fields="__all__", additional_fields=["ttl"])
         ]
     )
 
@@ -455,12 +425,7 @@ class PTRRecordUIViewSet(views.NautobotUIViewSet):
     table_class = PTRRecordTable
     object_detail_content = ObjectDetailContent(
         panels=[
-            ObjectFieldsPanel(
-                weight=100,
-                section=SectionChoices.LEFT_HALF,
-                fields="__all__",
-                additional_fields=["ttl"]
-            )
+            ObjectFieldsPanel(weight=100, section=SectionChoices.LEFT_HALF, fields="__all__", additional_fields=["ttl"])
         ]
     )
 
@@ -478,11 +443,6 @@ class SRVRecordUIViewSet(views.NautobotUIViewSet):
     table_class = SRVRecordTable
     object_detail_content = ObjectDetailContent(
         panels=[
-            ObjectFieldsPanel(
-                weight=100,
-                section=SectionChoices.LEFT_HALF,
-                fields="__all__",
-                additional_fields=["ttl"]
-            )
+            ObjectFieldsPanel(weight=100, section=SectionChoices.LEFT_HALF, fields="__all__", additional_fields=["ttl"])
         ]
     )
