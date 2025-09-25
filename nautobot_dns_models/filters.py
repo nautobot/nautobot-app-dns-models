@@ -4,6 +4,7 @@ import django_filters
 from django.db.models import F
 from django.db.models.functions import Coalesce
 from nautobot.apps.filters import NautobotFilterSet, SearchFilter
+from netaddr import IPAddress as NetIPAddress
 
 from nautobot_dns_models import models
 
@@ -54,6 +55,14 @@ class DNSRecordFilterSet(NautobotFilterSet):
 class NSRecordFilterSet(DNSRecordFilterSet):
     """Filter for NSRecord."""
 
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "server": "icontains",
+        }
+    )
+
     class Meta:
         """Meta attributes for filter."""
 
@@ -61,8 +70,25 @@ class NSRecordFilterSet(DNSRecordFilterSet):
         fields = "__all__"
 
 
-class ARecordFilterSet(DNSRecordFilterSet):
+def ip_address_preprocessor(value):
+    """Validate IP address input."""
+    try:
+        NetIPAddress(value)
+    except Exception:
+        raise ValueError("Invalid IP address")
+    return value
+
+
+class ARecordFilterSet(NautobotFilterSet):
     """Filter for ARecord."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
+        }
+    )
 
     class Meta:
         """Meta attributes for filter."""
@@ -74,6 +100,14 @@ class ARecordFilterSet(DNSRecordFilterSet):
 class AAAARecordFilterSet(DNSRecordFilterSet):
     """Filter for AAAARecord."""
 
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
+        }
+    )
+
     class Meta:
         """Meta attributes for filter."""
 
@@ -83,6 +117,14 @@ class AAAARecordFilterSet(DNSRecordFilterSet):
 
 class CNAMERecordFilterSet(DNSRecordFilterSet):
     """Filter for CNAMERecord."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "alias": "icontains",
+        }
+    )
 
     class Meta:
         """Meta attributes for filter."""
@@ -94,6 +136,14 @@ class CNAMERecordFilterSet(DNSRecordFilterSet):
 class MXRecordFilterSet(DNSRecordFilterSet):
     """Filter for MXRecord."""
 
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "mail_server": "icontains",
+        }
+    )
+
     class Meta:
         """Meta attributes for filter."""
 
@@ -103,6 +153,14 @@ class MXRecordFilterSet(DNSRecordFilterSet):
 
 class TXTRecordFilterSet(DNSRecordFilterSet):
     """Filter for TXTRecord."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "text": "icontains",
+        }
+    )
 
     class Meta:
         """Meta attributes for filter."""
@@ -114,6 +172,14 @@ class TXTRecordFilterSet(DNSRecordFilterSet):
 class PTRRecordFilterSet(DNSRecordFilterSet):
     """Filter for PTRRecord."""
 
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "ptrdname": "icontains",
+        }
+    )
+
     class Meta:
         """Meta attributes for filter."""
 
@@ -123,6 +189,14 @@ class PTRRecordFilterSet(DNSRecordFilterSet):
 
 class SRVRecordFilterSet(DNSRecordFilterSet):
     """Filter for SRVRecord."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "target": "icontains",
+        }
+    )
 
     class Meta:
         """Meta attributes for filter."""
