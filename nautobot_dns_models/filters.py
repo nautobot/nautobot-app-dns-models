@@ -3,13 +3,23 @@
 import django_filters
 from django.db.models import F
 from django.db.models.functions import Coalesce
-from nautobot.extras.filters import NautobotFilterSet
+from nautobot.apps.filters import NautobotFilterSet, SearchFilter
 
 from nautobot_dns_models import models
 
 
 class DNSZoneFilterSet(NautobotFilterSet):
     """Filter for DNSZone."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "description": "icontains",
+            "filename": "icontains",
+            "soa_mname": "icontains",
+            "soa_rname": "icontains",
+        }
+    )
 
     class Meta:
         """Meta attributes for filter."""
