@@ -37,9 +37,9 @@ class DNSZoneFilterTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         """Setup test data for DNSZone Model."""
-        DNSZone.objects.create(name="Test One")
-        DNSZone.objects.create(name="Test Two")
-        DNSZone.objects.create(name="Test Three")
+        DNSZone.objects.create(name="Test One", filename="zone1.conf")
+        DNSZone.objects.create(name="Test Two", filename="zone2.conf")
+        DNSZone.objects.create(name="Test Three", filename="zone3.conf")
 
     def test_single_name(self):
         """Test using Q search with name of DNSZone."""
@@ -55,6 +55,13 @@ class DNSZoneFilterTestCase(TestCase):
         """Test using invalid Q search for DNSZone."""
         params = {"name": "wrong-name"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
+
+    def test_search(self):
+        """Test filtering by Q search value."""
+        self.assertEqual(self.filterset({"q": "Test One"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "Test"}, self.queryset).qs.count(), 3)
+        self.assertEqual(self.filterset({"q": "zone1"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "zone"}, self.queryset).qs.count(), 3)
 
 
 class NSRecordFilterTestCase(TestCase):
@@ -100,6 +107,13 @@ class NSRecordFilterTestCase(TestCase):
         """Test using invalid Q search for server of NSRecord."""
         params = {"server": "wrong-server"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
+
+    def test_search(self):
+        """Test filtering by Q search value."""
+        self.assertEqual(self.filterset({"q": "ns-01"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "ns-"}, self.queryset).qs.count(), 3)
+        self.assertEqual(self.filterset({"q": "ns1"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 3)
 
     # Testing TTL filterset here. If it works in NSRecord, it should work in all other record types.
     def test_ttl_equals(self):
@@ -185,6 +199,13 @@ class ARecordFilterTestCase(TestCase):
         params = {"zone": self.zone}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
+    def test_search(self):
+        """Test filtering by Q search value."""
+        self.assertEqual(self.filterset({"q": "a-record-01"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "a-record"}, self.queryset).qs.count(), 3)
+        self.assertEqual(self.filterset({"q": self.ip_addresses[0].host}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 3)
+
 
 class AAAARecordFilterTestCase(TestCase):
     """AAAARecord Filter Test Case."""
@@ -234,6 +255,13 @@ class AAAARecordFilterTestCase(TestCase):
         params = {"address__in": "2001:db8:abcd:12::"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
+    def test_search(self):
+        """Test filtering by Q search value."""
+        self.assertEqual(self.filterset({"q": "aaaa-record-01"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "aaaa-record"}, self.queryset).qs.count(), 3)
+        self.assertEqual(self.filterset({"q": self.ip_addresses[0].host}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 3)
+
 
 class CNAMERecordFilterTestCase(TestCase):
     """CNAMERecord Filter Test Case."""
@@ -275,6 +303,13 @@ class CNAMERecordFilterTestCase(TestCase):
     def test_alias_invalid(self):
         params = {"alias": "wrong-alias"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
+
+    def test_search(self):
+        """Test filtering by Q search value."""
+        self.assertEqual(self.filterset({"q": "cname-record-01"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "cname-record"}, self.queryset).qs.count(), 2)
+        self.assertEqual(self.filterset({"q": "site"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 2)
 
 
 class MXRecordFilterTestCase(TestCase):
@@ -318,6 +353,13 @@ class MXRecordFilterTestCase(TestCase):
         params = {"mail_server": "wrong-mail-server"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 
+    def test_search(self):
+        """Test filtering by Q search value."""
+        self.assertEqual(self.filterset({"q": "mx-record-01"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "mx-record"}, self.queryset).qs.count(), 2)
+        self.assertEqual(self.filterset({"q": "mail-02"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 2)
+
 
 class TXTRecordFilterTestCase(TestCase):
     """TXTRecord Filter Test Case."""
@@ -360,6 +402,13 @@ class TXTRecordFilterTestCase(TestCase):
         params = {"text": "wrong-text"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 
+    def test_search(self):
+        """Test filtering by Q search value."""
+        self.assertEqual(self.filterset({"q": "txt-record-01"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "txt-record"}, self.queryset).qs.count(), 2)
+        self.assertEqual(self.filterset({"q": "spf-record"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 2)
+
 
 class PTRRecordFilterTestCase(TestCase):
     """PTRRecord Filter Test Case."""
@@ -401,6 +450,12 @@ class PTRRecordFilterTestCase(TestCase):
     def test_ptrdname_invalid(self):
         params = {"ptrdname": "wrong-ptrdname"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
+
+    def test_search(self):
+        """Test filtering by Q search value."""
+        self.assertEqual(self.filterset({"q": "ptr-record-01"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "ptr-record"}, self.queryset).qs.count(), 2)
+        self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 2)
 
 
 class SRVRecordFilterTestCase(TestCase):
@@ -492,3 +547,9 @@ class SRVRecordFilterTestCase(TestCase):
         """Test filter with exact target match of SRVRecord."""
         params = {"target": "sip.example.com"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
+
+    def test_search(self):
+        """Test filtering by Q search value."""
+        self.assertEqual(self.filterset({"q": "_sip._tcp"}, self.queryset).qs.count(), 2)
+        self.assertEqual(self.filterset({"q": "sip2"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 3)
