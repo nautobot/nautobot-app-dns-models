@@ -8,6 +8,13 @@ This document describes all new features and changes in the release. The format 
 - This release makes DNS models globally searchable in Nautobot and added DNS name length validation per RFC 1035.
 - Changes to compatibility with Nautobot and/or other apps, libraries etc.
 
+## [v1.2.2 (2025-09-26)](https://github.com/nautobot/nautobot-app-dns-models/releases/tag/v1.2.2)
+
+### Added
+
+- [#113](https://github.com/nautobot/nautobot-app-dns-models/issues/113) - Add q SearchFilter to DNSZoneFilterSet to enable API q= search.
+- [#122](https://github.com/nautobot/nautobot-app-dns-models/issues/122) - Added q SearchFilter for models to enable global search.
+
 ## [v1.2.1 (2025-09-16)](https://github.com/nautobot/nautobot-app-dns-models/releases/tag/v1.2.1)
 
 ### Fixed
