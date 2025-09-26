@@ -74,8 +74,8 @@ def ip_address_preprocessor(value):
     """Validate IP address input."""
     try:
         NetIPAddress(value)
-    except Exception:
-        raise ValueError("Invalid IP address")
+    except Exception as error:
+        raise ValueError("Invalid IP address") from error
     return value
 
 
