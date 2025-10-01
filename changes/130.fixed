@@ -1,0 +1,1 @@
+Fixed GraphQL SRVRecord type registration so `srv_record` and `srv_records` are available.
