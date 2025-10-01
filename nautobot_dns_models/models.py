@@ -4,8 +4,9 @@ from constance import config as constance_config
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from nautobot.apps.models import PrimaryModel, extras_features
+from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
+from nautobot.ipam.models import Namespace
 
 
 def dns_wire_label_length(label):
@@ -76,10 +77,100 @@ class DNSModel(PrimaryModel):
     "relationships",
     "webhooks",
 )
+class DNSView(PrimaryModel):
+    """Model for DNS Views."""
+
+    name = models.CharField(max_length=200, help_text="Name of the View.", unique=True)
+    description = models.TextField(help_text="Description of the View.", blank=True)
+    # namespace = models.ForeignKey(
+    #     "ipam.Namespace",
+    #     on_delete=models.PROTECT,
+    #     related_name="views",
+    #     default=Namespace.objects.get(name="Global").pk,
+    #     blank=True,
+    #     help_text="The Namespace this View belongs to.",
+    # )
+    prefixes = models.ManyToManyField(
+        to="ipam.Prefix",
+        related_name="views",
+        through="DNSViewPrefixAssignment",
+        through_fields=("view", "prefix"),
+        blank=True,
+        help_text="IP Prefixes that define the View.",
+    )
+
+    class Meta:
+        """Meta attributes for DNSView."""
+
+        verbose_name = "DNS View"
+        verbose_name_plural = "DNS Views"
+
+    def __str__(self):
+        """Stringify instance."""
+        return self.name
+
+
+@extras_features("graphql")
+class DNSViewPrefixAssignment(BaseModel):
+    """Through model for DNSView and Prefix many-to-many relationship."""
+
+    view = ForeignKeyWithAutoRelatedName(
+        DNSView,
+        on_delete=models.CASCADE,
+    )
+    prefix = ForeignKeyWithAutoRelatedName(to="ipam.Prefix", on_delete=models.CASCADE)
+
+    class Meta:
+        """Meta attributes for DNSViewPrefixAssignment."""
+
+        unique_together = [["view", "prefix"]]
+        verbose_name = "DNS View Prefix Assignment"
+        verbose_name_plural = "DNS View Prefix Assignments"
+
+    def __str__(self):
+        """Stringify instance."""
+        return f"{self.view}: {self.prefix}"
+
+    # def clean(self):
+    #     """Ensure that the Prefix and View belong to the same Namespace."""
+    #     super().clean()
+    #     if self.view.namespace != self.prefix.namespace:
+    #         raise ValidationError(
+    #             {
+    #                 "prefix": "Prefix (namespace {self.prefix.namespace}) must be in the same namespace as "
+    #                 "View (namespace {self.view.namespace})."
+    #             }
+    #         )
+
+
+def get_default_view_pk():
+    """Return the default DNSView ID, creating it if necessary."""
+    default_view, _ = DNSView.objects.get_or_create(
+        name="Default", defaults={"description": "Default DNS view. Created by Nautobot DNS Models app."}
+    )
+    return default_view.pk
+
+
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
 class DNSZone(DNSModel):
     """Model for DNS SOA Records. An SOA Record defines a DNS Zone."""
 
-    name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD. e.g example.com", unique=True)
+    name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD. e.g example.com")
+    dns_view = ForeignKeyWithAutoRelatedName(
+        DNSView,
+        on_delete=models.PROTECT,
+        help_text="The View this Zone belongs to.",
+        verbose_name="View",
+        default=get_default_view_pk,
+    )
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
         default=3600,
@@ -129,6 +220,7 @@ class DNSZone(DNSModel):
     class Meta:
         """Meta attributes for DNSZone."""
 
+        unique_together = [["name", "dns_view"]]
         verbose_name = "DNS Zone"
         verbose_name_plural = "DNS Zones"
 

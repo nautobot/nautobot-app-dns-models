@@ -2,13 +2,62 @@
 
 from django import forms
 from nautobot.apps.forms import (
+    DynamicModelChoiceField,
+    DynamicModelMultipleChoiceField,
     NautobotBulkEditForm,
     NautobotModelForm,
     TagsBulkEditFormMixin,
 )
 from nautobot.extras.forms import NautobotFilterForm
+from nautobot.ipam.models import Namespace, Prefix
 
 from nautobot_dns_models import models
+
+
+class DNSViewForm(NautobotModelForm):
+    """DNSView creation/edit form."""
+
+    prefixes = DynamicModelMultipleChoiceField(
+        queryset=Prefix.objects.all(),
+        required=False,
+    )
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSView
+        fields = "__all__"
+
+
+class DNSViewBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
+    """DNSView bulk edit form."""
+
+    pk = forms.ModelMultipleChoiceField(queryset=models.DNSView.objects.all(), widget=forms.MultipleHiddenInput)
+    description = forms.CharField(required=False)
+
+    class Meta:
+        """Meta attributes."""
+
+        nullable_fields = [
+            "description",
+        ]
+
+
+class DNSViewFilterForm(NautobotFilterForm):
+    """Filter form to filter searches."""
+
+    q = forms.CharField(
+        required=False,
+        label="Search",
+        help_text="Search within Name and Description.",
+    )
+    name = forms.CharField(required=False, label="Name")
+    model = models.DNSView
+    # Define the fields above for ordering and widget purposes
+    fields = [
+        "q",
+        "name",
+    ]
 
 
 class DNSZoneForm(NautobotModelForm):

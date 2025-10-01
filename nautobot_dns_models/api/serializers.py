@@ -7,6 +7,21 @@ from rest_framework import serializers
 from nautobot_dns_models import models
 
 
+class DNSViewSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
+    """DNSView Serializer."""
+
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnsview-detail")
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSView
+        fields = "__all__"
+
+        # Option for disabling write for certain fields:
+        # read_only_fields = []
+
+
 class DNSZoneSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
     """DNSZone Serializer."""
 
@@ -17,9 +32,6 @@ class DNSZoneSerializer(NautobotModelSerializer):  # pylint: disable=too-many-an
 
         model = models.DNSZone
         fields = "__all__"
-
-        # Option for disabling write for certain fields:
-        # read_only_fields = []
 
 
 class DNSRecordSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors

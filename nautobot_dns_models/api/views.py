@@ -6,6 +6,7 @@ from nautobot_dns_models.api.serializers import (
     AAAARecordSerializer,
     ARecordSerializer,
     CNAMERecordSerializer,
+    DNSViewSerializer,
     DNSZoneSerializer,
     MXRecordSerializer,
     NSRecordSerializer,
@@ -17,6 +18,7 @@ from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSViewFilterSet,
     DNSZoneFilterSet,
     MXRecordFilterSet,
     NSRecordFilterSet,
@@ -28,6 +30,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSView,
     DNSZone,
     MXRecord,
     NSRecord,
@@ -35,6 +38,18 @@ from nautobot_dns_models.models import (
     SRVRecord,
     TXTRecord,
 )
+
+
+class DNSViewViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+    """DNSView API ViewSet."""
+
+    queryset = DNSView.objects.all()
+    serializer_class = DNSViewSerializer
+    filterset_class = DNSViewFilterSet
+
+    lookup_field = "pk"
+    # Option for modifying the default HTTP methods:
+    # http_method_names = ["get", "post", "put", "patch", "delete", "head", "options", "trace"]
 
 
 class DNSZoneViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
