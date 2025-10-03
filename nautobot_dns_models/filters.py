@@ -25,6 +25,22 @@ class DNSViewFilterSet(NautobotFilterSet):
         fields = "__all__"
 
 
+class DNSViewPrefixAssignmentFilterSet(NautobotFilterSet):
+    """Filter for DNSViewPrefixAssignment."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "dns_view__name": "icontains",
+        }
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSViewPrefixAssignment
+        fields = "__all__"
+
+
 class DNSZoneFilterSet(NautobotFilterSet):
     """Filter for DNSZone."""
 

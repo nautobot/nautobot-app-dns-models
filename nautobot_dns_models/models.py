@@ -81,19 +81,11 @@ class DNSView(PrimaryModel):
 
     name = models.CharField(max_length=200, help_text="Name of the View.", unique=True)
     description = models.TextField(help_text="Description of the View.", blank=True)
-    # namespace = models.ForeignKey(
-    #     "ipam.Namespace",
-    #     on_delete=models.PROTECT,
-    #     related_name="views",
-    #     default=Namespace.objects.get(name="Global").pk,
-    #     blank=True,
-    #     help_text="The Namespace this View belongs to.",
-    # )
     prefixes = models.ManyToManyField(
         to="ipam.Prefix",
-        related_name="views",
+        related_name="dns_views",
         through="DNSViewPrefixAssignment",
-        through_fields=("view", "prefix"),
+        through_fields=("dns_view", "prefix"),
         blank=True,
         help_text="IP Prefixes that define the View.",
     )
@@ -113,7 +105,7 @@ class DNSView(PrimaryModel):
 class DNSViewPrefixAssignment(BaseModel):
     """Through model for DNSView and Prefix many-to-many relationship."""
 
-    view = ForeignKeyWithAutoRelatedName(
+    dns_view = ForeignKeyWithAutoRelatedName(
         DNSView,
         on_delete=models.CASCADE,
     )
@@ -122,24 +114,13 @@ class DNSViewPrefixAssignment(BaseModel):
     class Meta:
         """Meta attributes for DNSViewPrefixAssignment."""
 
-        unique_together = [["view", "prefix"]]
+        unique_together = [["dns_view", "prefix"]]
         verbose_name = "DNS View Prefix Assignment"
         verbose_name_plural = "DNS View Prefix Assignments"
 
     def __str__(self):
         """Stringify instance."""
-        return f"{self.view}: {self.prefix}"
-
-    # def clean(self):
-    #     """Ensure that the Prefix and View belong to the same Namespace."""
-    #     super().clean()
-    #     if self.view.namespace != self.prefix.namespace:
-    #         raise ValidationError(
-    #             {
-    #                 "prefix": "Prefix (namespace {self.prefix.namespace}) must be in the same namespace as "
-    #                 "View (namespace {self.view.namespace})."
-    #             }
-    #         )
+        return f"{self.dns_view}: {self.prefix}"
 
 
 def get_default_view_pk():
@@ -224,7 +205,7 @@ class DNSZone(DNSModel):
         verbose_name_plural = "DNS Zones"
 
 
-class DNSRecord(DNSModel):  # pylint: disable=too-many-ancestors
+class DNSRecord(DNSModel):
     """Primary Dns Record model for plugin."""
 
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
@@ -295,7 +276,7 @@ class DNSRecord(DNSModel):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class NSRecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class NSRecord(DNSRecord):
     """NS Record model."""
 
     server = models.CharField(max_length=200, help_text="FQDN of an authoritative Name Server.")
@@ -316,7 +297,7 @@ class NSRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class ARecord(DNSRecord):
     """A Record model."""
 
     address = models.ForeignKey(
@@ -342,7 +323,7 @@ class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class AAAARecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class AAAARecord(DNSRecord):
     """AAAA Record model."""
 
     address = models.ForeignKey(
@@ -368,7 +349,7 @@ class AAAARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class CNAMERecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class CNAMERecord(DNSRecord):
     """CNAME Record model."""
 
     alias = models.CharField(max_length=200, help_text="FQDN of the Alias.")
@@ -389,7 +370,7 @@ class CNAMERecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class MXRecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class MXRecord(DNSRecord):
     """MX Record model."""
 
     preference = models.IntegerField(
@@ -415,7 +396,7 @@ class MXRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class TXTRecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class TXTRecord(DNSRecord):
     """TXT Record model."""
 
     text = models.CharField(max_length=256, help_text="Text for the TXT Record.")
@@ -436,7 +417,7 @@ class TXTRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class PTRRecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class PTRRecord(DNSRecord):
     """PTR Record model."""
 
     ptrdname = models.CharField(
@@ -463,7 +444,7 @@ class PTRRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class SRVRecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class SRVRecord(DNSRecord):
     """SRV Record model."""
 
     priority = models.IntegerField(

@@ -14,6 +14,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSView,
     DNSZone,
     MXRecord,
     NSRecord,
@@ -61,8 +62,40 @@ class SidePanelTestsMixin:
                 self.assertInHTML(component, content, 1)
 
 
+class DNSViewViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+    """Test the DNSView views."""
+
+    model = DNSView
+
+    @classmethod
+    def setUpTestData(cls):
+        DNSView.objects.create(
+            name="View 1",
+            description="Test Description",
+        )
+        DNSView.objects.create(
+            name="View 2",
+            description="Test Description",
+        )
+        DNSView.objects.create(
+            name="View 3",
+            description="Test Description",
+        )
+
+        cls.form_data = {
+            "name": "Test 1",
+            "description": "Initial model",
+        }
+
+        cls.csv_data = (
+            "name,description",
+            "Test 3,Description 3",
+        )
+
+        cls.bulk_edit_data = {"description": "Bulk edit views"}
+
+
 class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
-    # pylint: disable=too-many-ancestors
     """Test the DNSZone views."""
 
     model = DNSZone
@@ -126,7 +159,6 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
 
 class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
-    # pylint: disable=too-many-ancestors
     """Test the NSRecord views."""
 
     model = NSRecord
@@ -373,7 +405,6 @@ class AAAARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTests
 
 
 class CNAMERecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
-    # pylint: disable=too-many-ancestors
     """Test the CNAMERecord views."""
 
     model = CNAMERecord
@@ -416,7 +447,6 @@ class CNAMERecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
 
 class MXRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
-    # pylint: disable=too-many-ancestors
     """Test the MXRecord views."""
 
     model = MXRecord
@@ -460,7 +490,6 @@ class MXRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
 
 class TXTRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
-    # pylint: disable=too-many-ancestors
     """Test the TXTRecord views."""
 
     model = TXTRecord
@@ -608,7 +637,6 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsM
 
 
 class SRVRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
-    # pylint: disable=too-many-ancestors
     """Test the SRVRecord views."""
 
     model = SRVRecord

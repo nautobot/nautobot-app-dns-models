@@ -6,6 +6,7 @@ from nautobot_dns_models.api.serializers import (
     AAAARecordSerializer,
     ARecordSerializer,
     CNAMERecordSerializer,
+    DNSViewPrefixAssignmentSerializer,
     DNSViewSerializer,
     DNSZoneSerializer,
     MXRecordSerializer,
@@ -19,6 +20,7 @@ from nautobot_dns_models.filters import (
     ARecordFilterSet,
     CNAMERecordFilterSet,
     DNSViewFilterSet,
+    DNSViewPrefixAssignmentFilterSet,
     DNSZoneFilterSet,
     MXRecordFilterSet,
     NSRecordFilterSet,
@@ -31,6 +33,7 @@ from nautobot_dns_models.models import (
     ARecord,
     CNAMERecord,
     DNSView,
+    DNSViewPrefixAssignment,
     DNSZone,
     MXRecord,
     NSRecord,
@@ -40,7 +43,7 @@ from nautobot_dns_models.models import (
 )
 
 
-class DNSViewViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+class DNSViewViewSet(NautobotModelViewSet):
     """DNSView API ViewSet."""
 
     queryset = DNSView.objects.all()
@@ -52,7 +55,15 @@ class DNSViewViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestor
     # http_method_names = ["get", "post", "put", "patch", "delete", "head", "options", "trace"]
 
 
-class DNSZoneViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+class DNSViewPrefixAssignmentViewSet(NautobotModelViewSet):
+    """DNSViewPrefixAssignment API ViewSet."""
+
+    queryset = DNSViewPrefixAssignment.objects.all()
+    serializer_class = DNSViewPrefixAssignmentSerializer
+    filterset_class = DNSViewPrefixAssignmentFilterSet
+
+
+class DNSZoneViewSet(NautobotModelViewSet):
     """DNSZone API ViewSet."""
 
     queryset = DNSZone.objects.all()
@@ -60,11 +71,9 @@ class DNSZoneViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestor
     filterset_class = DNSZoneFilterSet
 
     lookup_field = "pk"
-    # Option for modifying the default HTTP methods:
-    # http_method_names = ["get", "post", "put", "patch", "delete", "head", "options", "trace"]
 
 
-class NSRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+class NSRecordViewSet(NautobotModelViewSet):
     """NSRecord API ViewSet."""
 
     queryset = NSRecord.objects.all()
@@ -74,7 +83,7 @@ class NSRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancesto
     lookup_field = "pk"
 
 
-class ARecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+class ARecordViewSet(NautobotModelViewSet):
     """ARecord API ViewSet."""
 
     queryset = ARecord.objects.all()
@@ -84,7 +93,7 @@ class ARecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestor
     lookup_field = "pk"
 
 
-class AAAARecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+class AAAARecordViewSet(NautobotModelViewSet):
     """AAAARecord API ViewSet."""
 
     queryset = AAAARecord.objects.all()
@@ -94,7 +103,7 @@ class AAAARecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ances
     lookup_field = "pk"
 
 
-class CNameRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+class CNameRecordViewSet(NautobotModelViewSet):
     """CNameRecord API ViewSet."""
 
     queryset = CNAMERecord.objects.all()
@@ -104,7 +113,7 @@ class CNameRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ance
     lookup_field = "pk"
 
 
-class MXRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+class MXRecordViewSet(NautobotModelViewSet):
     """MXRecord API ViewSet."""
 
     queryset = MXRecord.objects.all()
@@ -114,7 +123,7 @@ class MXRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancesto
     lookup_field = "pk"
 
 
-class TXTRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+class TXTRecordViewSet(NautobotModelViewSet):
     """TXTRecord API ViewSet."""
 
     queryset = TXTRecord.objects.all()
@@ -124,7 +133,7 @@ class TXTRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancest
     lookup_field = "pk"
 
 
-class PTRRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+class PTRRecordViewSet(NautobotModelViewSet):
     """PTRRecord API ViewSet."""
 
     queryset = PTRRecord.objects.all()
@@ -134,7 +143,7 @@ class PTRRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancest
     lookup_field = "pk"
 
 
-class SRVRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+class SRVRecordViewSet(NautobotModelViewSet):
     """SRVRecord API ViewSet."""
 
     queryset = SRVRecord.objects.all()

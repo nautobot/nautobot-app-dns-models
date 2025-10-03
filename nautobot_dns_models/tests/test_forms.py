@@ -8,6 +8,35 @@ from nautobot_dns_models import forms
 from nautobot_dns_models.models import DNSZone
 
 
+class DNSViewFormTestCase(TestCase):
+    """Test DNSView forms."""
+
+    form_class = forms.DNSViewForm
+
+    @classmethod
+    def setUpTestData(cls):
+        active_status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        cls.prefix = Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, status=active_status)
+
+    def test_specifying_all_fields_success(self):
+        form = self.form_class(
+            data={"name": "Test View", "description": "Test Description", "prefixes": [self.prefix.pk]}
+        )
+        self.assertTrue(form.is_valid())
+        self.assertTrue(form.save())
+
+    def test_specifying_only_required_success(self):
+        form = self.form_class(data={"name": "Test View"})
+        self.assertTrue(form.is_valid())
+        self.assertTrue(form.save())
+
+    def test_validate_name_dnsview_is_required(self):
+        form = self.form_class(data={"description": "Test Description"})
+        self.assertFalse(form.is_valid())
+        self.assertIn("This field is required.", form.errors["name"])
+
+
 class DNSZoneTest(TestCase):
     """Test DNSZone forms."""
 
