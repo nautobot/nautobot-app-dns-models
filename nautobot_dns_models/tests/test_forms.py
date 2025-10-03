@@ -5,7 +5,7 @@ from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 
 from nautobot_dns_models import forms
-from nautobot_dns_models.models import DNSZone
+from nautobot_dns_models.models import DNSView, DNSZone
 
 
 class DNSViewFormTestCase(TestCase):
@@ -44,6 +44,7 @@ class DNSZoneTest(TestCase):
         form = forms.DNSZoneForm(
             data={
                 "name": "Development",
+                "dns_view": DNSView.objects.get(name="Default").id,
                 "description": "Development Testing",
                 "ttl": 1010101,
                 "filename": "development.zone",
@@ -63,6 +64,7 @@ class DNSZoneTest(TestCase):
         form = forms.DNSZoneForm(
             data={
                 "name": "Development",
+                "dns_view": DNSView.objects.get(name="Default").id,
                 "ttl": 1010101,
                 "filename": "development.zone",
                 "soa_mname": "ns1.example.com",

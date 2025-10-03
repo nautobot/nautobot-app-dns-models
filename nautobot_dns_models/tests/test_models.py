@@ -20,11 +20,9 @@ from nautobot_dns_models.models import (
     TXTRecord,
     dns_wire_label_length,
 )
-from nautobot_dns_models.tests import fixtures
+
 
 # Helper for generating unicode labels of a specific IDNA-encoded length
-
-
 def _make_unicode_label_with_idna_length(char, target_length):
     """Return a string of repeated `char` whose IDNA-encoded length is exactly `target_length` bytes."""
     label = ""
@@ -111,7 +109,9 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
         """Create test data for DNSZone Model."""
         super().setUpTestData()
         # Create 3 objects for the model test cases.
-        fixtures.create_dnszone()
+        DNSZone.objects.create(name="Test One")
+        DNSZone.objects.create(name="Test Two")
+        DNSZone.objects.create(name="Test Three")
 
     def test_create_dnszone_only_required(self):
         """Create with only required fields, and validate null description and __str__."""
@@ -127,7 +127,7 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
         self.assertEqual(dnszone.description, "Development Test")
 
     def test_get_absolute_url(self):
-        dns_zone_model = DNSZone.objects.get(name="example.com")
+        dns_zone_model = DNSZone.objects.create(name="example.com")
         self.assertEqual(dns_zone_model.get_absolute_url(), f"/plugins/dns/dns-zones/{dns_zone_model.id}/")
 
 

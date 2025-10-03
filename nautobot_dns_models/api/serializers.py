@@ -1,7 +1,7 @@
 """API serializers for nautobot_dns_models."""
 
 from drf_spectacular.utils import extend_schema_field
-from nautobot.apps.api import NautobotModelSerializer
+from nautobot.apps.api import NautobotModelSerializer, ValidatedModelSerializer
 from rest_framework import serializers
 
 from nautobot_dns_models import models
@@ -22,7 +22,7 @@ class DNSViewSerializer(NautobotModelSerializer):
         # read_only_fields = []
 
 
-class DNSViewPrefixAssignmentSerializer(NautobotModelSerializer):
+class DNSViewPrefixAssignmentSerializer(ValidatedModelSerializer):
     """DNSViewPrefixAssignment Serializer."""
 
     class Meta:

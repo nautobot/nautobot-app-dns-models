@@ -64,7 +64,6 @@ class DNSViewPrefixAssignmentAPITestCase(APIViewTestCases.APIViewTestCase):
     model = DNSViewPrefixAssignment
     view_namespace = "plugins-api:nautobot_dns_models"
 
-    # bulk_update_data = {}
     brief_fields = [
         "dns_view",
         "prefix",
@@ -74,25 +73,30 @@ class DNSViewPrefixAssignmentAPITestCase(APIViewTestCases.APIViewTestCase):
     def setUpTestData(cls):
         namespace = Namespace.objects.get(name="Global")
         active_status = Status.objects.get(name="Active")
-        prefix_1 = Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, status=active_status)
-        prefix_2 = Prefix.objects.create(prefix="192.0.2.0/25", namespace=namespace, status=active_status)
-        prefix_3 = Prefix.objects.create(prefix="192.0.3.0/24", namespace=namespace, status=active_status)
+        prefixes = (
+            Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, status=active_status),
+            Prefix.objects.create(prefix="192.0.2.0/25", namespace=namespace, status=active_status),
+            Prefix.objects.create(prefix="192.0.3.0/24", namespace=namespace, status=active_status),
+        )
 
-        dns_view_1 = DNSView.objects.create(name="View 1", description="First DNS View")
-        dns_view_2 = DNSView.objects.create(name="View 2", description="Second DNS View")
-        # dns_view_3 = DNSView.objects.create(name="View 3", description="Third DNS View")
+        dns_views = (
+            DNSView.objects.create(name="View 1", description="First DNS View"),
+            DNSView.objects.create(name="View 2", description="Second DNS View"),
+            DNSView.objects.create(name="View 3", description="Third DNS View"),
+        )
 
-        DNSViewPrefixAssignment.objects.create(dns_view=dns_view_1, prefix=prefix_1)
-        DNSViewPrefixAssignment.objects.create(dns_view=dns_view_1, prefix=prefix_2)
+        DNSViewPrefixAssignment.objects.create(dns_view=dns_views[0], prefix=prefixes[0])
+        DNSViewPrefixAssignment.objects.create(dns_view=dns_views[0], prefix=prefixes[1])
+        DNSViewPrefixAssignment.objects.create(dns_view=dns_views[2], prefix=prefixes[1])
 
         cls.create_data = [
             {
-                "dns_view": dns_view_2.pk,
-                "prefix": prefix_1.pk,
+                "dns_view": dns_views[1].pk,
+                "prefix": prefixes[0].pk,
             },
             {
-                "dns_view": dns_view_2.pk,
-                "prefix": prefix_3.pk,
+                "dns_view": dns_views[1].pk,
+                "prefix": prefixes[2].pk,
             },
         ]
 
@@ -113,19 +117,33 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
+        dns_view = DNSView.objects.get(name="Default")
         DNSZone.objects.create(
-            name="test.com", filename="test.com.zone", soa_mname="ns1.test.com", soa_rname="admin@test.com"
+            name="test.com",
+            dns_view=dns_view,
+            filename="test.com.zone",
+            soa_mname="ns1.test.com",
+            soa_rname="admin@test.com",
         )
         DNSZone.objects.create(
-            name="test.org", filename="test.org.zone", soa_mname="ns1.test.org", soa_rname="admin@test.org"
+            name="test.org",
+            dns_view=dns_view,
+            filename="test.org.zone",
+            soa_mname="ns1.test.org",
+            soa_rname="admin@test.org",
         )
         DNSZone.objects.create(
-            name="test.net", filename="test.net.zone", soa_mname="ns1.test.net", soa_rname="admin@test.net"
+            name="test.net",
+            dns_view=dns_view,
+            filename="test.net.zone",
+            soa_mname="ns1.test.net",
+            soa_rname="admin@test.net",
         )
 
         cls.create_data = [
             {
                 "name": "example.com",
+                "dns_view": dns_view.id,
                 "filename": "example.com.zone",
                 "soa_mname": "ns1.example.com",
                 "soa_rname": "admin@example.com",
@@ -134,12 +152,14 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
             },
             {
                 "name": "example.org",
+                "dns_view": dns_view.id,
                 "filename": "example.org.zone",
                 "soa_mname": "ns1.example.org",
                 "soa_rname": "admin@example.org",
             },
             {
                 "name": "example.net",
+                "dns_view": dns_view.id,
                 "filename": "example.net.zone",
                 "soa_mname": "ns1.example.net",
                 "soa_rname": "admin@example.net",
