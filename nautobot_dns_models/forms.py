@@ -2,14 +2,13 @@
 
 from django import forms
 from nautobot.apps.forms import (
-    DynamicModelChoiceField,
     DynamicModelMultipleChoiceField,
     NautobotBulkEditForm,
     NautobotModelForm,
     TagsBulkEditFormMixin,
 )
 from nautobot.extras.forms import NautobotFilterForm
-from nautobot.ipam.models import Namespace, Prefix
+from nautobot.ipam.models import Prefix
 
 from nautobot_dns_models import models
 
