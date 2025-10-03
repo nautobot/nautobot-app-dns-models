@@ -147,7 +147,7 @@ class DNSZone(DNSModel):
     dns_view = ForeignKeyWithAutoRelatedName(
         DNSView,
         on_delete=models.PROTECT,
-        help_text="The View this Zone belongs to.",
+        help_text="The DNS View this Zone belongs to.",
         verbose_name="View",
         default=get_default_view_pk,
     )
