@@ -12,6 +12,7 @@ import nautobot_dns_models.models
 
 
 class Migration(migrations.Migration):
+    # pylint: disable=new-db-field-with-default
     dependencies = [
         ("ipam", "0051_added_optional_vrf_relationship_to_vdc"),
         ("extras", "0122_add_graphqlquery_owner_content_type"),
@@ -95,7 +96,6 @@ class Migration(migrations.Migration):
             name="tags",
             field=nautobot.core.models.fields.TagsField(through="extras.TaggedItem", to="extras.Tag"),
         ),
-        # pylint: disable=new-db-field-with-default
         migrations.AddField(
             model_name="dnszone",
             name="dns_view",
