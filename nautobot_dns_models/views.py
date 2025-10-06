@@ -84,7 +84,6 @@ from nautobot_dns_models.tables import (
     AAAARecordTable,
     ARecordTable,
     CNAMERecordTable,
-    # CustomPrefixTable,
     DNSViewTable,
     DNSZoneTable,
     MXRecordTable,
@@ -128,7 +127,7 @@ class DNSViewUIViewSet(views.NautobotUIViewSet):
                 table_filter="dns_views",
                 table_class=PrefixTable,
                 table_title="Assigned Prefixes",
-                include_columns=["prefix", "status", "locations", "namespace"],
+                include_columns=["prefix", "status", "location_count", "namespace"],
             ),
         ],
     )
