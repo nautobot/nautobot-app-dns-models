@@ -45,11 +45,10 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
     description = "Nautobot DNS Models."
     base_url = "dns"
     required_settings = []
-    min_version = "2.4.0"
-    max_version = "2.9999"
     default_settings = {}
     caching_config = {}
     docs_view_name = "plugins:nautobot_dns_models:docs"
+    searchable_models = ["dnszone"]
 
     constance_config = {
         "SHOW_FORWARD_PANEL": ConstanceConfigItem(
