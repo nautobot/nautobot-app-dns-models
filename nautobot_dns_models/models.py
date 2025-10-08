@@ -242,6 +242,17 @@ class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
         verbose_name = "A Record"
         verbose_name_plural = "A Records"
 
+    def clean(self):
+        """Validate that the referenced IP address is IPv4."""
+        super().clean()
+        if getattr(self, "address", None) and getattr(self.address, "ip_version", None) != 4:
+            raise ValidationError({"address": "ARecord must reference an IPv4 address."})
+
+    def save(self, *args, **kwargs):
+        """Ensure model validation runs on direct ORM writes."""
+        self.clean()
+        return super().save(*args, **kwargs)
+
 
 @extras_features(
     "custom_fields",
@@ -267,6 +278,17 @@ class AAAARecord(DNSRecord):  # pylint: disable=too-many-ancestors
         unique_together = [["name", "address", "zone"]]
         verbose_name = "AAAA Record"
         verbose_name_plural = "AAAA Records"
+
+    def clean(self):
+        """Validate that the referenced IP address is IPv6."""
+        super().clean()
+        if getattr(self, "address", None) and getattr(self.address, "ip_version", None) != 6:
+            raise ValidationError({"address": "AAAARecord must reference an IPv6 address."})
+
+    def save(self, *args, **kwargs):
+        """Ensure model validation runs on direct ORM writes."""
+        self.clean()
+        return super().save(*args, **kwargs)
 
 
 @extras_features(
