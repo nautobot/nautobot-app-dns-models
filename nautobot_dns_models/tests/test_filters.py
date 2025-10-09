@@ -166,9 +166,9 @@ class ARecordFilterTestCase(TestCase):
             IPAddress.objects.create(address="10.0.0.3/32", namespace=namespace, status=status),
         )
 
-        ARecord.objects.create(name="a-record-01", address=cls.ip_addresses[0], zone=cls.zone)
-        ARecord.objects.create(name="a-record-02", address=cls.ip_addresses[1], zone=cls.zone)
-        ARecord.objects.create(name="a-record-03", address=cls.ip_addresses[2], zone=cls.zone)
+        ARecord.objects.create(name="a-record-01", ipaddress=cls.ip_addresses[0], zone=cls.zone)
+        ARecord.objects.create(name="a-record-02", ipaddress=cls.ip_addresses[1], zone=cls.zone)
+        ARecord.objects.create(name="a-record-03", ipaddress=cls.ip_addresses[2], zone=cls.zone)
 
     def test_single_name(self):
         """Test filter with name of ARecord."""
@@ -185,14 +185,14 @@ class ARecordFilterTestCase(TestCase):
         params = {"name": "wrong-name"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 
-    def test_address(self):
+    def test_ipaddress(self):
         """Test search with IP address of ARecord."""
-        params = {"address": self.ip_addresses[0]}
+        params = {"ipaddress": [self.ip_addresses[0]]}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
-    def test_address_in(self):
-        """Test address in ARecord."""
-        params = {"address__in": "10.0.0."}
+    def test_ipaddress_in(self):
+        """Test ipaddress in ARecord."""
+        params = {"ipaddress__in": "10.0.0."}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
     def test_zone(self):
@@ -226,9 +226,9 @@ class AAAARecordFilterTestCase(TestCase):
             IPAddress.objects.create(address="2001:db8:abcd:12::3/128", namespace=namespace, status=status),
         )
 
-        AAAARecord.objects.create(name="aaaa-record-01", address=cls.ip_addresses[0], zone=zone)
-        AAAARecord.objects.create(name="aaaa-record-02", address=cls.ip_addresses[1], zone=zone)
-        AAAARecord.objects.create(name="aaaa-record-03", address=cls.ip_addresses[2], zone=zone)
+        AAAARecord.objects.create(name="aaaa-record-01", ipaddress=cls.ip_addresses[0], zone=zone)
+        AAAARecord.objects.create(name="aaaa-record-02", ipaddress=cls.ip_addresses[1], zone=zone)
+        AAAARecord.objects.create(name="aaaa-record-03", ipaddress=cls.ip_addresses[2], zone=zone)
 
     def test_single_name(self):
         """Test filter with name of AAAARecord."""
@@ -245,14 +245,14 @@ class AAAARecordFilterTestCase(TestCase):
         params = {"name": "wrong-name"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 
-    def test_address(self):
+    def test_ipaddress(self):
         """Test search with IP address of AAAARecord."""
-        params = {"address": self.ip_addresses[0]}
+        params = {"ipaddress": [self.ip_addresses[0]]}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
-    def test_address_in(self):
-        """Test address in AAAARecord."""
-        params = {"address__in": "2001:db8:abcd:12::"}
+    def test_ipaddress_in(self):
+        """Test ipaddress in AAAARecord."""
+        params = {"ipaddress__in": "2001:db8:abcd:12::"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
     def test_search(self):

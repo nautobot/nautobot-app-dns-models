@@ -95,7 +95,7 @@ class NSRecordTable(DNSRecordTable):
 class ARecordTable(DNSRecordTable):
     """Table for list view."""
 
-    address = tables.LinkColumn()
+    ipaddress = tables.LinkColumn()
     actions = ButtonsColumn(
         models.ARecord,
         # Option for modifying the default action buttons on each row:
@@ -110,7 +110,7 @@ class ARecordTable(DNSRecordTable):
         fields = (
             "pk",
             "name",
-            "address",
+            "ipaddress",
             "zone",
             "comment",
             "ttl",
@@ -122,7 +122,7 @@ class ARecordTable(DNSRecordTable):
         default_columns = (
             "pk",
             "name",
-            "address",
+            "ipaddress",
             "zone",
             "comment",
             "ttl",
@@ -133,7 +133,7 @@ class ARecordTable(DNSRecordTable):
 class AAAARecordTable(DNSRecordTable):
     """Table for list view."""
 
-    address = tables.LinkColumn()
+    ipaddress = tables.LinkColumn()
     actions = ButtonsColumn(
         models.AAAARecord,
         # Option for modifying the default action buttons on each row:
@@ -148,7 +148,7 @@ class AAAARecordTable(DNSRecordTable):
         fields = (
             "pk",
             "name",
-            "address",
+            "ipaddress",
             "zone",
             "comment",
             "ttl",
@@ -160,7 +160,7 @@ class AAAARecordTable(DNSRecordTable):
         default_columns = (
             "pk",
             "name",
-            "address",
+            "ipaddress",
             "zone",
             "comment",
             "ttl",

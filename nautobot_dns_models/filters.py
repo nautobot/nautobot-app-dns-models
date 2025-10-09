@@ -86,7 +86,7 @@ class ARecordFilterSet(NautobotFilterSet):
         filter_predicates={
             "name": "icontains",
             "zone__name": "icontains",
-            "address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
+            "ipaddress__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
         }
     )
 
@@ -104,7 +104,7 @@ class AAAARecordFilterSet(DNSRecordFilterSet):
         filter_predicates={
             "name": "icontains",
             "zone__name": "icontains",
-            "address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
+            "ipaddress__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
         }
     )
 

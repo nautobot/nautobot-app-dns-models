@@ -50,7 +50,7 @@ curl -X 'POST' \
   "zone": {
     "name": "nautobot.com2"
   },
-  "address": {
+  "ipaddress": {
     "id": "185fb1e5-ac1f-40d2-9813-ca4a44df36c4"
   }
 }'

@@ -139,7 +139,7 @@ class ARecordAPITestCase(APIViewTestCases.APIViewTestCase):
     }
     brief_fields = [
         "name",
-        "address",
+        "ipaddress",
     ]
 
     @classmethod
@@ -163,24 +163,24 @@ class ARecordAPITestCase(APIViewTestCases.APIViewTestCase):
             address="2001:db8::1/128", namespace=namespace, status=active_status
         )
 
-        ARecord.objects.create(name="example.com", address=ip_addresses[0], zone=dns_zone)
-        ARecord.objects.create(name="www.example.com", address=ip_addresses[0], zone=dns_zone)
-        ARecord.objects.create(name="site.example.com", address=ip_addresses[0], zone=dns_zone)
+        ARecord.objects.create(name="example.com", ipaddress=ip_addresses[0], zone=dns_zone)
+        ARecord.objects.create(name="www.example.com", ipaddress=ip_addresses[0], zone=dns_zone)
+        ARecord.objects.create(name="site.example.com", ipaddress=ip_addresses[0], zone=dns_zone)
 
         cls.create_data = [
             {
                 "name": "example.com",
-                "address": ip_addresses[1].id,
+                "ipaddress": ip_addresses[1].id,
                 "zone": dns_zone.id,
             },
             {
                 "name": "www.example.com",
-                "address": ip_addresses[1].id,
+                "ipaddress": ip_addresses[1].id,
                 "zone": dns_zone.id,
             },
             {
                 "name": "site.example.com",
-                "address": ip_addresses[1].id,
+                "ipaddress": ip_addresses[1].id,
                 "zone": dns_zone.id,
             },
         ]
@@ -192,7 +192,7 @@ class ARecordAPITestCase(APIViewTestCases.APIViewTestCase):
         url = reverse("plugins-api:nautobot_dns_models-api:arecord-list")
         data = {
             "name": "invalid.example.com",
-            "address": str(self.invalid_ipv6.id),
+            "ipaddress": str(self.invalid_ipv6.id),
             "zone": str(self.ipv6_zone.id),
             "ttl": 3600,
         }
@@ -212,7 +212,7 @@ class AAAARecordAPITestCase(APIViewTestCases.APIViewTestCase):
     }
     brief_fields = [
         "name",
-        "address",
+        "ipaddress",
     ]
 
     @classmethod
@@ -234,24 +234,24 @@ class AAAARecordAPITestCase(APIViewTestCases.APIViewTestCase):
         Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=active_status)
         cls.invalid_ipv4 = IPAddress.objects.create(address="10.0.0.1/32", namespace=namespace, status=active_status)
 
-        AAAARecord.objects.create(name="example.com", address=ip_addresses[0], zone=dns_zone)
-        AAAARecord.objects.create(name="www.example.com", address=ip_addresses[0], zone=dns_zone)
-        AAAARecord.objects.create(name="site.example.com", address=ip_addresses[0], zone=dns_zone)
+        AAAARecord.objects.create(name="example.com", ipaddress=ip_addresses[0], zone=dns_zone)
+        AAAARecord.objects.create(name="www.example.com", ipaddress=ip_addresses[0], zone=dns_zone)
+        AAAARecord.objects.create(name="site.example.com", ipaddress=ip_addresses[0], zone=dns_zone)
 
         cls.create_data = [
             {
                 "name": "example.com",
-                "address": ip_addresses[1].id,
+                "ipaddress": ip_addresses[1].id,
                 "zone": dns_zone.id,
             },
             {
                 "name": "www.example.com",
-                "address": ip_addresses[1].id,
+                "ipaddress": ip_addresses[1].id,
                 "zone": dns_zone.id,
             },
             {
                 "name": "site.example.com",
-                "address": ip_addresses[1].id,
+                "ipaddress": ip_addresses[1].id,
                 "zone": dns_zone.id,
             },
         ]
@@ -263,7 +263,7 @@ class AAAARecordAPITestCase(APIViewTestCases.APIViewTestCase):
         url = reverse("plugins-api:nautobot_dns_models-api:aaaarecord-list")
         data = {
             "name": "invalid.example.com",
-            "address": str(self.invalid_ipv4.id),
+            "ipaddress": str(self.invalid_ipv4.id),
             "zone": str(self.zone.id),
             "ttl": 3600,
         }
