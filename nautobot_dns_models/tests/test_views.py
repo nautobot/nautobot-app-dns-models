@@ -1,9 +1,15 @@
 """Unit tests for views."""
 
+from constance import config as constance_config
 from django.contrib.auth import get_user_model
+from django.test import override_settings
+from django.urls import reverse
 from nautobot.apps.testing import ViewTestCases
+from nautobot.core.testing.utils import extract_page_body
 from nautobot.extras.models import Status
+from nautobot.ipam.choices import PrefixTypeChoices
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
+from netutils.ip import ipaddress_address
 
 from nautobot_dns_models.models import (
     AAAARecord,
@@ -128,7 +134,7 @@ class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
 
 class ARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
-    # pylint: disable=too-many-ancestors
+    # pylint: disable=too-many-ancestors, too-many-locals
     """Test the ARecord views."""
 
     model = ARecord
@@ -177,9 +183,64 @@ class ARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
+    def helper_for_ipaddress_detail_view_side_panel(self, show_panel: str, when_not_present: bool, when_present: bool):
+        """Test IP Address side panel for A Records."""
+        namespace = Namespace.objects.get(name="Global")
+        status = Status.objects.get(name="Active")
+        address = IPAddress.objects.create(address="10.0.0.251/29", status=status, namespace=namespace)
+        other_address = IPAddress.objects.create(address="10.0.0.252/29", status=status, namespace=namespace)
+        zone = DNSZone.objects.get(name="example_one.com")
+        constance_config.nautobot_dns_models__SHOW_FORWARD_PANEL = show_panel
+
+        # Base HTTP test to IP detail view
+        url = reverse("ipam:ipaddress", args=(address.pk,))
+        response = self.client.get(url)
+        self.assertHttpStatus(response, 200)
+        content = extract_page_body(response.content.decode(response.charset))
+
+        # Assert A Record pane when A Record is not present
+        self.assertInHTML("<strong>A Records</strong>", content, int(when_not_present))
+        component = "— No A Records found —"
+        self.assertInHTML(component, content, int(when_not_present))
+
+        # Create A Record and refresh page content
+        a_record = ARecord.objects.create(name="one", zone=zone, address=address)
+        response = self.client.get(url)
+        self.assertHttpStatus(response, 200)
+        content = extract_page_body(response.content.decode(response.charset))
+
+        # Assert A Record pane when A Record is present
+        self.assertInHTML("<strong>A Records</strong>", content, int(when_present))
+        arecord_url = reverse("plugins:nautobot_dns_models:arecord", args=(a_record.pk,))
+        component = f'<a href="{arecord_url}">{a_record.name}</a>'
+        self.assertInHTML(component, content, int(when_present))
+
+        # Create irrelevant A Record and verify it is not shown
+        other_a_record = ARecord.objects.create(name="other", zone=zone, address=other_address)
+        other_arecord_url = reverse("plugins:nautobot_dns_models:arecord", args=(other_a_record.pk,))
+        other_component = f'<a href="{other_arecord_url}">{other_a_record.name}</a>'
+        self.assertInHTML(other_component, content, 0)
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_always(self):
+        """Test IP Address side panel for A Records when set to 'Always'."""
+        self.helper_for_ipaddress_detail_view_side_panel(show_panel="always", when_not_present=True, when_present=True)
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_present(self):
+        """Test IP Address side panel for A Records when set to 'If present'."""
+        self.helper_for_ipaddress_detail_view_side_panel(
+            show_panel="if_present", when_not_present=False, when_present=True
+        )
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_never(self):
+        """Test IP Address side panel for A Records when set to 'Never'."""
+        self.helper_for_ipaddress_detail_view_side_panel(show_panel="never", when_not_present=False, when_present=False)
+
 
 class AAAARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
-    # pylint: disable=too-many-ancestors
+    # pylint: disable=too-many-ancestors, too-many-locals
     """Test the AAAARecord views."""
 
     model = AAAARecord
@@ -227,6 +288,61 @@ class AAAARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}
+
+    def helper_for_ipaddress_detail_view_side_panel(self, show_panel: str, when_not_present: bool, when_present: bool):
+        """Test IP Address side panel for AAAA Records."""
+        namespace = Namespace.objects.get(name="Global")
+        status = Status.objects.get(name="Active")
+        address = IPAddress.objects.create(address="2001:db8:abcd:12::251/64", status=status, namespace=namespace)
+        other_address = IPAddress.objects.create(address="2001:db8:abcd:12::252/64", status=status, namespace=namespace)
+        zone = DNSZone.objects.get(name="example_one.com")
+        constance_config.nautobot_dns_models__SHOW_FORWARD_PANEL = show_panel
+
+        # Base HTTP test to IP detail view
+        url = reverse("ipam:ipaddress", args=(address.pk,))
+        response = self.client.get(url)
+        self.assertHttpStatus(response, 200)
+        content = extract_page_body(response.content.decode(response.charset))
+
+        # Assert AAAA Record pane when AAAA Record is not present
+        self.assertInHTML("<strong>AAAA Records</strong>", content, int(when_not_present))
+        component = "— No AAAA Records found —"
+        self.assertInHTML(component, content, int(when_not_present))
+
+        # Create AAAA Record and refresh page content
+        aaaa_record = AAAARecord.objects.create(name="one", zone=zone, address=address)
+        response = self.client.get(url)
+        self.assertHttpStatus(response, 200)
+        content = extract_page_body(response.content.decode(response.charset))
+
+        # Assert AAAA Record pane when AAAA Record is present
+        self.assertInHTML("<strong>AAAA Records</strong>", content, int(when_present))
+        aaaarecord_url = reverse("plugins:nautobot_dns_models:aaaarecord", args=(aaaa_record.pk,))
+        component = f'<a href="{aaaarecord_url}">{aaaa_record.name}</a>'
+        self.assertInHTML(component, content, int(when_present))
+
+        # Create irrelevant AAAA Record and verify it is not shown
+        other_aaaa_record = AAAARecord.objects.create(name="other", zone=zone, address=other_address)
+        other_aaaarecord_url = reverse("plugins:nautobot_dns_models:aaaarecord", args=(other_aaaa_record.pk,))
+        other_component = f'<a href="{other_aaaarecord_url}">{other_aaaa_record.name}</a>'
+        self.assertInHTML(other_component, content, 0)
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_always(self):
+        """Test IP Address side panel for AAAA Records when set to 'Always'."""
+        self.helper_for_ipaddress_detail_view_side_panel(show_panel="always", when_not_present=True, when_present=True)
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_present(self):
+        """Test IP Address side panel for AAAA Records when set to 'If present'."""
+        self.helper_for_ipaddress_detail_view_side_panel(
+            show_panel="if_present", when_not_present=False, when_present=True
+        )
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_never(self):
+        """Test IP Address side panel for AAAA Records when set to 'Never'."""
+        self.helper_for_ipaddress_detail_view_side_panel(show_panel="never", when_not_present=False, when_present=False)
 
 
 class CNAMERecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
@@ -361,7 +477,7 @@ class TXTRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
 
 class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
-    # pylint: disable=too-many-ancestors
+    # pylint: disable=too-many-ancestors, too-many-locals
     """Test the PTRRecord views."""
 
     model = PTRRecord
@@ -401,6 +517,67 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}
+
+    def helper_for_ipaddress_detail_view_side_panel(self, show_panel: str, when_not_present: bool, when_present: bool):
+        """Test IP Address side panel for PTR Records."""
+        namespace = Namespace.objects.get(name="Global")
+        type_ = PrefixTypeChoices.TYPE_POOL
+        status = Status.objects.get(name="Active")
+        Prefix.objects.create(prefix="192.0.2.240/29", namespace=namespace, type=type_, status=status)
+        address = IPAddress.objects.create(address="192.0.2.241/29", status=status, namespace=namespace)
+        other_address = IPAddress.objects.create(address="192.0.2.242/29", status=status, namespace=namespace)
+        zone = DNSZone.objects.get(name="example.com")
+        constance_config.nautobot_dns_models__SHOW_REVERSE_PANEL = show_panel
+
+        # Base HTTP test to IP detail view
+        url = reverse("ipam:ipaddress", args=(address.pk,))
+        response = self.client.get(url)
+        self.assertHttpStatus(response, 200)
+        content = extract_page_body(response.content.decode(response.charset))
+
+        # Assert PTR Record pane when PTR Record is not present
+        self.assertInHTML("<strong>PTR Records</strong>", content, int(when_not_present))
+        component = "— No PTR Records found —"
+        self.assertInHTML(component, content, int(when_not_present))
+
+        # Create PTR Record and refresh page content
+        ptr_record = PTRRecord.objects.create(
+            name="one.example.com", zone=zone, ptrdname=ipaddress_address(address.host, "reverse_pointer")
+        )
+        response = self.client.get(url)
+        self.assertHttpStatus(response, 200)
+        content = extract_page_body(response.content.decode(response.charset))
+
+        # Assert PTR Record pane when PTR Record is present
+        self.assertInHTML("<strong>PTR Records</strong>", content, int(when_present))
+        ptrrecord_url = reverse("plugins:nautobot_dns_models:ptrrecord", args=(ptr_record.pk,))
+        component = f'<a href="{ptrrecord_url}">{ptr_record.name}</a>'
+        self.assertInHTML(component, content, int(when_present))
+
+        # Create irrelevant PTR Record and verify it is not shown
+        other_ptr_record = PTRRecord.objects.create(
+            name="other.example.com", zone=zone, ptrdname=ipaddress_address(other_address.host, "reverse_pointer")
+        )
+        other_ptrrecord_url = reverse("plugins:nautobot_dns_models:ptrrecord", args=(other_ptr_record.pk,))
+        other_component = f'<a href="{other_ptrrecord_url}">{other_ptr_record.name}</a>'
+        self.assertInHTML(other_component, content, 0)
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_always(self):
+        """Test IP Address side panel for PTR Records when set to 'Always'."""
+        self.helper_for_ipaddress_detail_view_side_panel(show_panel="always", when_not_present=True, when_present=True)
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_present(self):
+        """Test IP Address side panel for PTR Records when set to 'If present'."""
+        self.helper_for_ipaddress_detail_view_side_panel(
+            show_panel="if_present", when_not_present=False, when_present=True
+        )
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_never(self):
+        """Test IP Address side panel for PTR Records when set to 'Never'."""
+        self.helper_for_ipaddress_detail_view_side_panel(show_panel="never", when_not_present=False, when_present=False)
 
 
 class SRVRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
