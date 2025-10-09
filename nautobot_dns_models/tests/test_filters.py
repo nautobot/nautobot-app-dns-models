@@ -187,7 +187,7 @@ class ARecordFilterTestCase(TestCase):
 
     def test_address(self):
         """Test search with IP address of ARecord."""
-        params = {"address": self.ip_addresses[0]}
+        params = {"address": [self.ip_addresses[0]]}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
     def test_address_in(self):
@@ -247,7 +247,7 @@ class AAAARecordFilterTestCase(TestCase):
 
     def test_address(self):
         """Test search with IP address of AAAARecord."""
-        params = {"address": self.ip_addresses[0]}
+        params = {"address": [self.ip_addresses[0]]}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
     def test_address_in(self):
