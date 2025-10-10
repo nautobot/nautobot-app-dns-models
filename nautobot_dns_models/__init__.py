@@ -48,8 +48,17 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
     default_settings = {}
     caching_config = {}
     docs_view_name = "plugins:nautobot_dns_models:docs"
-    searchable_models = ["dnszone"]
-
+    searchable_models = [
+        "DNSZone",
+        "ARecord",
+        "AAAARecord",
+        "PTRRecord",
+        "CNAMERecord",
+        "NSRecord",
+        "MXRecord",
+        "SRVRecord",
+        "TXTRecord",
+    ]
     constance_config = {
         "SHOW_FORWARD_PANEL": ConstanceConfigItem(
             default="Always",
@@ -67,18 +76,6 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
             field_type="dns_validation_level",
         ),
     }
-
-    searchable_models = [
-        "DNSZone",
-        "ARecord",
-        "AAAARecord",
-        "PTRRecord",
-        "CNAMERecord",
-        "NSRecord",
-        "MXRecord",
-        "SRVRecord",
-        "TXTRecord",
-    ]
 
 
 config = NautobotDnsModelsConfig  # pylint:disable=invalid-name
