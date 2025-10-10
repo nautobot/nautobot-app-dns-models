@@ -1,8 +1,10 @@
 """Test DNSZone Filter."""
 
 from django.test import TestCase
+from nautobot.apps.testing import FilterTestCases
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
+from nautobot.tenancy.models import Tenant, TenantGroup
 
 from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
@@ -28,18 +30,43 @@ from nautobot_dns_models.models import (
 )
 
 
-class DNSZoneFilterTestCase(TestCase):
+class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.TenancyFilterTestCaseMixin):
     """DNSZone Filter Test Case."""
 
     queryset = DNSZone.objects.all()
     filterset = DNSZoneFilterSet
+    tenancy_related_name = "dnszones"
+
+    generic_filter_tests = (
+        ("id",),
+        ("created",),
+        ("last_updated",),
+        ("name",),
+        ("ttl",),
+        ("filename",),
+        ("description",),
+        ("soa_expire",),
+        ("soa_mname",),
+        ("soa_rname",),
+        ("soa_refresh",),
+        ("soa_retry",),
+        ("soa_serial",),
+        ("soa_minimum",),
+    )
 
     @classmethod
     def setUpTestData(cls):
         """Setup test data for DNSZone Model."""
-        DNSZone.objects.create(name="Test One", filename="zone1.conf")
-        DNSZone.objects.create(name="Test Two", filename="zone2.conf")
-        DNSZone.objects.create(name="Test Three", filename="zone3.conf")
+        super().setUpTestData()
+
+        cls.tenant_group1 = TenantGroup.objects.create(name="Test Tenant Group 1")
+        cls.tenant_group2 = TenantGroup.objects.create(name="Test Tenant Group 2")
+        cls.tenant1 = Tenant.objects.create(name="Test DNS Zone Tenant 1", group=cls.tenant_group1)
+        cls.tenant2 = Tenant.objects.create(name="Test DNS Zone Tenant 2", group=cls.tenant_group2)
+
+        DNSZone.objects.create(name="Test One", filename="zone1.conf", tenant=cls.tenant1, ttl=7200, description="Test zone one")
+        DNSZone.objects.create(name="Test Two", filename="zone2.conf", tenant=cls.tenant2, ttl=7200, soa_mname="ns1.example.com", description="Test zone two")
+        DNSZone.objects.create(name="Test Three", filename="zone3.conf", tenant=cls.tenant1, description="Test zone three")
 
     def test_single_name(self):
         """Test using Q search with name of DNSZone."""

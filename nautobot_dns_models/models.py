@@ -26,6 +26,13 @@ class DNSModel(PrimaryModel):
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
+    tenant = models.ForeignKey(
+        to="tenancy.Tenant",
+        on_delete=models.PROTECT,
+        related_name="%(class)ss",
+        blank=True,
+        null=True,
+    )
 
     class Meta:
         """Meta class."""

@@ -6,10 +6,12 @@ from django.db.models.functions import Coalesce
 from nautobot.apps.filters import NautobotFilterSet, SearchFilter
 from netaddr import IPAddress as NetIPAddress
 
+from nautobot.apps.filters import TenancyModelFilterSetMixin
+
 from nautobot_dns_models import models
 
 
-class DNSZoneFilterSet(NautobotFilterSet):
+class DNSZoneFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
     """Filter for DNSZone."""
 
     q = SearchFilter(
@@ -30,7 +32,7 @@ class DNSZoneFilterSet(NautobotFilterSet):
 
 
 # pylint: disable=nb-no-model-found, nb-warn-dunder-filter-field
-class DNSRecordFilterSet(NautobotFilterSet):
+class DNSRecordFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
     """Base filter for all DNSRecord models, with support for effective TTL."""
 
     ttl = django_filters.NumberFilter(method="filter_ttl", label="TTL")
@@ -79,7 +81,7 @@ def ip_address_preprocessor(value):
     return value
 
 
-class ARecordFilterSet(NautobotFilterSet):
+class ARecordFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
     """Filter for ARecord."""
 
     q = SearchFilter(

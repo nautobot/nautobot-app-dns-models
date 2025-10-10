@@ -2,6 +2,7 @@
 
 import django_tables2 as tables
 from nautobot.apps.tables import BaseTable, ButtonsColumn, ToggleColumn
+from nautobot.tenancy.tables import TenantColumn
 
 from nautobot_dns_models import models
 
@@ -13,6 +14,7 @@ class DNSRecordTable(BaseTable):  # pylint: disable=nb-no-model-found
     name = tables.Column(linkify=True)
     zone = tables.LinkColumn()
     ttl = tables.Column(accessor="ttl", verbose_name="TTL")
+    tenant = TenantColumn()
 
 
 class DNSZoneTable(BaseTable):
@@ -20,6 +22,7 @@ class DNSZoneTable(BaseTable):
 
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
+    tenant = TenantColumn()
     actions = ButtonsColumn(
         models.DNSZone,
         # Option for modifying the default action buttons on each row:
@@ -44,6 +47,7 @@ class DNSZoneTable(BaseTable):
             "soa_retry",
             "soa_serial",
             "soa_minimum",
+            "tenant",
         )
 
         default_columns = (
@@ -79,6 +83,7 @@ class NSRecordTable(DNSRecordTable):
             "description",
             "comment",
             "ttl",
+            "tenant",
             "actions",
         )
 
@@ -115,6 +120,7 @@ class ARecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
+            "tenant",
             "actions",
         )
 
@@ -153,6 +159,7 @@ class AAAARecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
+            "tenant",
             "actions",
         )
 
@@ -190,6 +197,7 @@ class CNAMERecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
+            "tenant",
             "actions",
         )
 
@@ -227,6 +235,7 @@ class MXRecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
+            "tenant",
             "actions",
         )
 
@@ -264,6 +273,7 @@ class TXTRecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
+            "tenant",
             "actions",
         )
 
@@ -301,6 +311,7 @@ class PTRRecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
+            "tenant",
             "actions",
         )
 
@@ -338,6 +349,7 @@ class SRVRecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
+            "tenant",
             "actions",
         )
 
