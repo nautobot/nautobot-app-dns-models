@@ -6,21 +6,22 @@ from nautobot.apps.tables import BaseTable, ButtonsColumn, ToggleColumn
 from nautobot_dns_models import models
 
 
-class DNSRecordsTable(BaseTable):
+class DNSRecordTable(BaseTable):  # pylint: disable=nb-no-model-found
     """Base table for DNS records list view."""
 
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
     zone = tables.LinkColumn()
+    ttl = tables.Column(accessor="ttl", verbose_name="TTL")
 
 
-class DNSZoneModelTable(BaseTable):
+class DNSZoneTable(BaseTable):
     """Table for DNS Zone list view."""
 
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
     actions = ButtonsColumn(
-        models.DNSZoneModel,
+        models.DNSZone,
         # Option for modifying the default action buttons on each row:
         # buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
@@ -30,7 +31,7 @@ class DNSZoneModelTable(BaseTable):
     class Meta(BaseTable.Meta):
         """Meta attributes."""
 
-        model = models.DNSZoneModel
+        model = models.DNSZone
         fields = (
             "pk",
             "name",
@@ -55,11 +56,11 @@ class DNSZoneModelTable(BaseTable):
         )
 
 
-class NSRecordModelTable(DNSRecordsTable):
+class NSRecordTable(DNSRecordTable):
     """Table for list view."""
 
     actions = ButtonsColumn(
-        models.NSRecordModel,
+        models.NSRecord,
         buttons=("changelog", "edit", "delete"),
         # Option for modifying the default action buttons on each row:
         # buttons=("changelog", "edit", "delete"),
@@ -69,7 +70,7 @@ class NSRecordModelTable(DNSRecordsTable):
     class Meta(BaseTable.Meta):
         """Meta attributes."""
 
-        model = models.NSRecordModel
+        model = models.NSRecord
         fields = (
             "pk",
             "name",
@@ -91,12 +92,12 @@ class NSRecordModelTable(DNSRecordsTable):
         )
 
 
-class ARecordModelTable(DNSRecordsTable):
+class ARecordTable(DNSRecordTable):
     """Table for list view."""
 
     address = tables.LinkColumn()
     actions = ButtonsColumn(
-        models.ARecordModel,
+        models.ARecord,
         # Option for modifying the default action buttons on each row:
         buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
@@ -105,7 +106,7 @@ class ARecordModelTable(DNSRecordsTable):
     class Meta(BaseTable.Meta):
         """Meta attributes."""
 
-        model = models.ARecordModel
+        model = models.ARecord
         fields = (
             "pk",
             "name",
@@ -129,12 +130,12 @@ class ARecordModelTable(DNSRecordsTable):
         )
 
 
-class AAAARecordModelTable(DNSRecordsTable):
+class AAAARecordTable(DNSRecordTable):
     """Table for list view."""
 
     address = tables.LinkColumn()
     actions = ButtonsColumn(
-        models.AAAARecordModel,
+        models.AAAARecord,
         # Option for modifying the default action buttons on each row:
         buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
@@ -143,7 +144,7 @@ class AAAARecordModelTable(DNSRecordsTable):
     class Meta(BaseTable.Meta):
         """Meta attributes."""
 
-        model = models.AAAARecordModel
+        model = models.AAAARecord
         fields = (
             "pk",
             "name",
@@ -167,11 +168,11 @@ class AAAARecordModelTable(DNSRecordsTable):
         )
 
 
-class CNAMERecordModelTable(DNSRecordsTable):
+class CNAMERecordTable(DNSRecordTable):
     """Table for list view."""
 
     actions = ButtonsColumn(
-        models.CNAMERecordModel,
+        models.CNAMERecord,
         # Option for modifying the default action buttons on each row:
         buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
@@ -180,7 +181,7 @@ class CNAMERecordModelTable(DNSRecordsTable):
     class Meta(BaseTable.Meta):
         """Meta attributes."""
 
-        model = models.CNAMERecordModel
+        model = models.CNAMERecord
         fields = (
             "pk",
             "name",
@@ -204,11 +205,11 @@ class CNAMERecordModelTable(DNSRecordsTable):
         )
 
 
-class MXRecordModelTable(DNSRecordsTable):
+class MXRecordTable(DNSRecordTable):
     """Table for list view."""
 
     actions = ButtonsColumn(
-        models.MXRecordModel,
+        models.MXRecord,
         # Option for modifying the default action buttons on each row:
         buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
@@ -217,7 +218,7 @@ class MXRecordModelTable(DNSRecordsTable):
     class Meta(BaseTable.Meta):
         """Meta attributes."""
 
-        model = models.MXRecordModel
+        model = models.MXRecord
         fields = (
             "pk",
             "name",
@@ -241,11 +242,11 @@ class MXRecordModelTable(DNSRecordsTable):
         )
 
 
-class TXTRecordModelTable(DNSRecordsTable):
+class TXTRecordTable(DNSRecordTable):
     """Table for list view."""
 
     actions = ButtonsColumn(
-        models.TXTRecordModel,
+        models.TXTRecord,
         # Option for modifying the default action buttons on each row:
         buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
@@ -254,7 +255,7 @@ class TXTRecordModelTable(DNSRecordsTable):
     class Meta(BaseTable.Meta):
         """Meta attributes."""
 
-        model = models.TXTRecordModel
+        model = models.TXTRecord
         fields = (
             "pk",
             "name",
@@ -278,11 +279,11 @@ class TXTRecordModelTable(DNSRecordsTable):
         )
 
 
-class PTRRecordModelTable(DNSRecordsTable):
+class PTRRecordTable(DNSRecordTable):
     """Table for list view."""
 
     actions = ButtonsColumn(
-        models.PTRRecordModel,
+        models.PTRRecord,
         # Option for modifying the default action buttons on each row:
         buttons=("changelog", "edit", "delete"),
         # Option for modifying the pk for the action buttons:
@@ -291,7 +292,7 @@ class PTRRecordModelTable(DNSRecordsTable):
     class Meta(BaseTable.Meta):
         """Meta attributes."""
 
-        model = models.PTRRecordModel
+        model = models.PTRRecord
         fields = (
             "pk",
             "name",
@@ -311,5 +312,43 @@ class PTRRecordModelTable(DNSRecordsTable):
             "zone",
             "comment",
             "ttl",
+            "actions",
+        )
+
+
+class SRVRecordTable(DNSRecordTable):
+    """Table for list view."""
+
+    actions = ButtonsColumn(
+        models.SRVRecord,
+    )
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.SRVRecord
+        fields = (
+            "pk",
+            "name",
+            "priority",
+            "weight",
+            "port",
+            "target",
+            "zone",
+            "comment",
+            "ttl",
+            "description",
+            "actions",
+        )
+
+        # Option for modifying the columns that show up in the list view by default:
+        default_columns = (
+            "pk",
+            "name",
+            "priority",
+            "weight",
+            "port",
+            "target",
+            "zone",
             "actions",
         )

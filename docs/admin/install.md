@@ -4,7 +4,7 @@ Here you will find detailed instructions on how to **install** and **configure**
 
 ## Prerequisites
 
-- The app is compatible with Nautobot 2.x and higher.
+- The app is compatible with Nautobot 2.4.4 and higher.
 - Databases supported: PostgreSQL, MySQL
 
 !!! note
@@ -17,7 +17,7 @@ No access to other systems is required to use this app.
 ## Install Guide
 
 !!! note
-    Apps can be installed manually or using Python's `pip`. See the [nautobot documentation](https://nautobot.readthedocs.io/en/latest/plugins/#install-the-package) for more details. The pip package name for this app is [`nautobot-dns-models`](https://pypi.org/project/nautobot-dns-models/).
+    Apps can be installed from the [Python Package Index](https://pypi.org/) or locally. See the [Nautobot documentation](https://docs.nautobot.com/projects/core/en/stable/user-guide/administration/installation/app-install/) for more details. The pip package name for this app is [`nautobot-dns-models`](https://pypi.org/project/nautobot-dns-models/).
 
 The app is available as a Python package via PyPI and can be installed with `pip`:
 
@@ -65,4 +65,14 @@ sudo systemctl restart nautobot nautobot-worker nautobot-scheduler
 
 ## App Configuration
 
-There are no specific options to add to `nautobot_config.py` at this time.
+This option is configured via the Admin GUI.
+
+`DNS_VALIDATION_LEVEL` (default: "Wire format")
+
+This setting controls the DNS validation level applied to zones and records:
+
+- **Disabled** - No DNS validation is performed
+- **Wire format** - Enforces DNS label and name length rules as specified in [RFC 1035 §3.1](https://datatracker.ietf.org/doc/html/rfc1035#section-3.1):
+    - Each label (the parts of the name separated by dots) must be no more than 63 bytes in wire format
+    - Empty labels (e.g., consecutive dots or leading/trailing dots) are not allowed
+    - The total length of the fully qualified DNS name (including all dots, in wire format) must not exceed 255 bytes

@@ -1,15 +1,38 @@
 """Plugin declaration for nautobot_dns_models."""
 
-# Metadata is inherited from Nautobot. If not including Nautobot in the environment, this should be added
-try:
-    from importlib import metadata
-except ImportError:
-    # Python version < 3.8
-    import importlib_metadata as metadata
+from importlib import metadata
+
+from django.conf import settings
+from nautobot.apps import ConstanceConfigItem, NautobotAppConfig
 
 __version__ = metadata.version(__name__)
 
-from nautobot.apps import NautobotAppConfig
+constance_additional_fields = {
+    "show_dns_panel": [
+        "django.forms.fields.ChoiceField",
+        {
+            "widget": "django.forms.Select",
+            "choices": [
+                ("always", "Always"),
+                ("if_present", "If records are present"),
+                ("never", "Never"),
+            ],
+        },
+    ],
+    "dns_validation_level": [
+        "django.forms.fields.ChoiceField",
+        {
+            "widget": "django.forms.Select",
+            "choices": [
+                ("none", "Disabled"),
+                ("wire-format", "Wire format"),
+            ],
+        },
+    ],
+}
+
+# pylint:disable=no-member
+settings.CONSTANCE_ADDITIONAL_FIELDS |= constance_additional_fields
 
 
 class NautobotDnsModelsConfig(NautobotAppConfig):
@@ -22,11 +45,37 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
     description = "Nautobot DNS Models."
     base_url = "dns"
     required_settings = []
-    min_version = "3.0.0a1"  # TODO: Update to 3.0.0 when Nautobot v3.0.0 is released
-    max_version = "3.9999"
     default_settings = {}
     caching_config = {}
     docs_view_name = "plugins:nautobot_dns_models:docs"
+    searchable_models = [
+        "DNSZone",
+        "ARecord",
+        "AAAARecord",
+        "PTRRecord",
+        "CNAMERecord",
+        "NSRecord",
+        "MXRecord",
+        "SRVRecord",
+        "TXTRecord",
+    ]
+    constance_config = {
+        "SHOW_FORWARD_PANEL": ConstanceConfigItem(
+            default="Always",
+            help_text="Show A/AAAA Records panel in IP Address detailed view.",
+            field_type="show_dns_panel",
+        ),
+        "SHOW_REVERSE_PANEL": ConstanceConfigItem(
+            default="Always",
+            help_text="Show PTR Records panel in IP Address detailed view.",
+            field_type="show_dns_panel",
+        ),
+        "DNS_VALIDATION_LEVEL": ConstanceConfigItem(
+            default="wire-format",
+            help_text="DNS validation level for zones and records.",
+            field_type="dns_validation_level",
+        ),
+    }
 
 
 config = NautobotDnsModelsConfig  # pylint:disable=invalid-name

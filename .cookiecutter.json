@@ -10,24 +10,22 @@
         "project_slug": "nautobot-app-dns-models",
         "repo_url": "https://github.com/nautobot/nautobot-app-dns-models",
         "base_url": "dns",
-        "min_nautobot_version": "3.0.0",
-        "max_nautobot_version": "3.9999",
         "camel_name": "NautobotDnsModels",
         "project_short_description": "Nautobot DNS Models",
-        "model_class_name": "DnsZoneModel",
+        "model_class_name": "DNSZone",
         "open_source_license": "Apache-2.0",
         "docs_base_url": "https://docs.nautobot.com",
         "docs_app_url": "https://docs.nautobot.com/projects/nautobot-dns-models/en/latest",
         "_drift_manager": {
             "template": "https://github.com/nautobot/cookiecutter-nautobot-app.git",
             "template_dir": "nautobot-app",
-            "template_ref": "refs/tags/nautobot-app-v2.4.0",
+            "template_ref": "nautobot-app-v2.6.0",
             "cookie_dir": "",
             "branch_prefix": "drift-manager",
-            "pull_request_strategy": "create",
+            "pull_request_strategy": "update-or-create",
             "post_actions": [],
             "draft": false,
-            "baked_commit_ref": ""
+            "baked_commit_ref": "ccfbca669f533ab58f2fd504cafd7254e760717a"
         }
     }
 }

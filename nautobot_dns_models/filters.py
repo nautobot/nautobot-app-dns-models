@@ -1,85 +1,205 @@
 """Filtering for nautobot_dns_models."""
 
-from nautobot.extras.filters import NautobotFilterSet
+import django_filters
+from django.db.models import F
+from django.db.models.functions import Coalesce
+from nautobot.apps.filters import NautobotFilterSet, SearchFilter
+from netaddr import IPAddress as NetIPAddress
 
 from nautobot_dns_models import models
 
 
-class DNSZoneModelFilterSet(NautobotFilterSet):
-    """Filter for DNSZoneModel."""
+class DNSZoneFilterSet(NautobotFilterSet):
+    """Filter for DNSZone."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "description": "icontains",
+            "filename": "icontains",
+            "soa_mname": "icontains",
+            "soa_rname": "icontains",
+        }
+    )
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.DNSZoneModel
+        model = models.DNSZone
         fields = "__all__"
 
 
-class NSRecordModelFilterSet(NautobotFilterSet):
-    """Filter for NSRecordModel."""
+# pylint: disable=nb-no-model-found, nb-warn-dunder-filter-field
+class DNSRecordFilterSet(NautobotFilterSet):
+    """Base filter for all DNSRecord models, with support for effective TTL."""
+
+    ttl = django_filters.NumberFilter(method="filter_ttl", label="TTL")
+    ttl__ne = django_filters.NumberFilter(method="filter_ttl_ne")
+    ttl__gte = django_filters.NumberFilter(method="filter_ttl", lookup_expr="gte")
+    ttl__lte = django_filters.NumberFilter(method="filter_ttl", lookup_expr="lte")
+    ttl__gt = django_filters.NumberFilter(method="filter_ttl", lookup_expr="gt")
+    ttl__lt = django_filters.NumberFilter(method="filter_ttl", lookup_expr="lt")
+
+    def filter_ttl(self, queryset, name, value):
+        """Filter by effective TTL (use record's TTL if set, otherwise zone's TTL)."""
+        queryset = queryset.annotate(effective_ttl=Coalesce(F("_ttl"), F("zone__ttl")))
+        lookup = name.split("__")[-1] if "__" in name else "exact"
+        return queryset.filter(**{f"effective_ttl__{lookup}": value})
+
+    def filter_ttl_ne(self, queryset, name, value):  # pylint: disable=unused-argument
+        """Exclude effective TTL equal to value."""
+        queryset = queryset.annotate(effective_ttl=Coalesce(F("_ttl"), F("zone__ttl")))
+        return queryset.exclude(effective_ttl=value)
+
+
+class NSRecordFilterSet(DNSRecordFilterSet):
+    """Filter for NSRecord."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "server": "icontains",
+        }
+    )
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.NSRecordModel
+        model = models.NSRecord
         fields = "__all__"
 
 
-class ARecordModelFilterSet(NautobotFilterSet):
-    """Filter for ARecordModel."""
+def ip_address_preprocessor(value):
+    """Validate IP address input."""
+    try:
+        NetIPAddress(value)
+    except Exception as error:
+        raise ValueError("Invalid IP address") from error
+    return value
+
+
+class ARecordFilterSet(NautobotFilterSet):
+    """Filter for ARecord."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
+        }
+    )
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.ARecordModel
+        model = models.ARecord
         fields = "__all__"
 
 
-class AAAARecordModelFilterSet(NautobotFilterSet):
-    """Filter for AAAARecordModel."""
+class AAAARecordFilterSet(DNSRecordFilterSet):
+    """Filter for AAAARecord."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
+        }
+    )
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.AAAARecordModel
+        model = models.AAAARecord
         fields = "__all__"
 
 
-class CNAMERecordModelFilterSet(NautobotFilterSet):
-    """Filter for CNAMERecordModel."""
+class CNAMERecordFilterSet(DNSRecordFilterSet):
+    """Filter for CNAMERecord."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "alias": "icontains",
+        }
+    )
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.CNAMERecordModel
+        model = models.CNAMERecord
         fields = "__all__"
 
 
-class MXRecordModelFilterSet(NautobotFilterSet):
-    """Filter for MXRecordModel."""
+class MXRecordFilterSet(DNSRecordFilterSet):
+    """Filter for MXRecord."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "mail_server": "icontains",
+        }
+    )
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.MXRecordModel
+        model = models.MXRecord
         fields = "__all__"
 
 
-class TXTRecordModelFilterSet(NautobotFilterSet):
-    """Filter for TXTRecordModel."""
+class TXTRecordFilterSet(DNSRecordFilterSet):
+    """Filter for TXTRecord."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "text": "icontains",
+        }
+    )
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.TXTRecordModel
+        model = models.TXTRecord
         fields = "__all__"
 
 
-class PTRRecordModelFilterSet(NautobotFilterSet):
-    """Filter for PTRRecordModel."""
+class PTRRecordFilterSet(DNSRecordFilterSet):
+    """Filter for PTRRecord."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "ptrdname": "icontains",
+        }
+    )
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = models.PTRRecordModel
+        model = models.PTRRecord
+        fields = "__all__"
+
+
+class SRVRecordFilterSet(DNSRecordFilterSet):
+    """Filter for SRVRecord."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "target": "icontains",
+        }
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.SRVRecord
         fields = "__all__"

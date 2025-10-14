@@ -73,6 +73,7 @@ markdown_extensions:
       permalink: true
   - "attr_list"
   - "md_in_html"
+  - "pymdownx.details"
   - "pymdownx.highlight":
       anchor_linenums: true
   - "pymdownx.inlinehilite"
@@ -83,6 +84,7 @@ markdown_extensions:
           class: "mermaid"
           format: !!python/name:pymdownx.superfences.fence_code_format
   - "pymdownx.blocks.caption"
+  - "pymdownx.details"
   - "footnotes"
 plugins:
   - "search"
@@ -96,6 +98,12 @@ plugins:
 watch:
   - "README.md"
 
+validation:
+  omitted_files: "warn"
+  absolute_links: "warn"
+  unrecognized_links: "warn"
+  anchors: "warn"
+
 nav:
   - Overview: "index.md"
   - User Guide:
@@ -104,6 +112,17 @@ nav:
       - Using the App: "user/app_use_cases.md"
       - Frequently Asked Questions: "user/faq.md"
       - External Interactions: "user/external_interactions.md"
+      - Data Models:
+          - DNS Zone: "models/dnszone.md"
+          - DNS Record: "models/dnsrecord.md"
+          - NS Record: "models/nsrecord.md"
+          - A Record: "models/arecord.md"
+          - AAAA Record: "models/aaaarecord.md"
+          - CNAME Record: "models/cnamerecord.md"
+          - MX Record: "models/mxrecord.md"
+          - PTR Record: "models/ptrrecord.md"
+          - SRV Record: "models/srvrecord.md"
+          - TXT Record: "models/txtrecord.md"
   - Administrator Guide:
       - Install and Configure: "admin/install.md"
       - Upgrade: "admin/upgrade.md"
@@ -111,6 +130,8 @@ nav:
       - Compatibility Matrix: "admin/compatibility_matrix.md"
       - Release Notes:
           - "admin/release_notes/index.md"
+          - v1.2: "admin/release_notes/version_1.2.md"
+          - v1.1: "admin/release_notes/version_1.1.md"
           - v1.0: "admin/release_notes/version_1.0.md"
           - v0.2: "admin/release_notes/version_0.2.md"
   - Developer Guide:

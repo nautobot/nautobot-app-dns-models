@@ -6,28 +6,29 @@ from nautobot.extras.models import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 
 from nautobot_dns_models.models import (
-    AAAARecordModel,
-    ARecordModel,
-    CNAMERecordModel,
-    DNSZoneModel,
-    MXRecordModel,
-    NSRecordModel,
-    PTRRecordModel,
-    TXTRecordModel,
+    AAAARecord,
+    ARecord,
+    CNAMERecord,
+    DNSZone,
+    MXRecord,
+    NSRecord,
+    PTRRecord,
+    SRVRecord,
+    TXTRecord,
 )
 
 User = get_user_model()
 
 
-class DnsZoneModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     # pylint: disable=too-many-ancestors
-    """Test the DnsZoneModel views."""
+    """Test the DNSZone views."""
 
-    model = DNSZoneModel
+    model = DNSZone
 
     @classmethod
     def setUpTestData(cls):
-        DNSZoneModel.objects.create(
+        DNSZone.objects.create(
             name="example-one.com",
             filename="test one",
             soa_mname="auth-server",
@@ -38,7 +39,7 @@ class DnsZoneModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             soa_serial=0,
             soa_minimum=172800,
         )
-        DNSZoneModel.objects.create(
+        DNSZone.objects.create(
             name="example-two.com",
             filename="test two",
             soa_mname="auth-server",
@@ -49,7 +50,7 @@ class DnsZoneModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             soa_serial=0,
             soa_minimum=172800,
         )
-        DNSZoneModel.objects.create(
+        DNSZone.objects.create(
             name="example-three.com",
             filename="test three",
             soa_mname="auth-server",
@@ -83,29 +84,29 @@ class DnsZoneModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
 
-class NSRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     # pylint: disable=too-many-ancestors
-    """Test the NSRecordModel views."""
+    """Test the NSRecord views."""
 
-    model = NSRecordModel
+    model = NSRecord
 
     @classmethod
     def setUpTestData(cls):
-        zone = DNSZoneModel.objects.create(
+        zone = DNSZone.objects.create(
             name="example_one.com",
         )
 
-        NSRecordModel.objects.create(
+        NSRecord.objects.create(
             name="primary",
             server="example-server.com.",
             zone=zone,
         )
-        NSRecordModel.objects.create(
+        NSRecord.objects.create(
             name="secondary",
             server="example-server.com.",
             zone=zone,
         )
-        NSRecordModel.objects.create(
+        NSRecord.objects.create(
             name="tertiary",
             server="example-server.com.",
             zone=zone,
@@ -126,15 +127,15 @@ class NSRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
 
-class ARecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+class ARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     # pylint: disable=too-many-ancestors
-    """Test the ARecordModel views."""
+    """Test the ARecord views."""
 
-    model = ARecordModel
+    model = ARecord
 
     @classmethod
     def setUpTestData(cls):
-        zone = DNSZoneModel.objects.create(
+        zone = DNSZone.objects.create(
             name="example_one.com",
         )
         status = Status.objects.get(name="Active")
@@ -146,17 +147,17 @@ class ARecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             IPAddress.objects.create(address="10.0.0.3/32", namespace=namespace, status=status),
         )
 
-        ARecordModel.objects.create(
+        ARecord.objects.create(
             name="primary",
             address=ip_addresses[0],
             zone=zone,
         )
-        ARecordModel.objects.create(
+        ARecord.objects.create(
             name="primary",
             address=ip_addresses[1],
             zone=zone,
         )
-        ARecordModel.objects.create(
+        ARecord.objects.create(
             name="primary",
             address=ip_addresses[2],
             zone=zone,
@@ -177,15 +178,15 @@ class ARecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
 
-class AAAARecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+class AAAARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     # pylint: disable=too-many-ancestors
-    """Test the AAAARecordModel views."""
+    """Test the AAAARecord views."""
 
-    model = AAAARecordModel
+    model = AAAARecord
 
     @classmethod
     def setUpTestData(cls):
-        zone = DNSZoneModel.objects.create(
+        zone = DNSZone.objects.create(
             name="example_one.com",
         )
         status = Status.objects.get(name="Active")
@@ -197,17 +198,17 @@ class AAAARecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             IPAddress.objects.create(address="2001:db8:abcd:12::3/128", namespace=namespace, status=status),
         )
 
-        AAAARecordModel.objects.create(
+        AAAARecord.objects.create(
             name="primary",
             address=ip_addresses[0],
             zone=zone,
         )
-        AAAARecordModel.objects.create(
+        AAAARecord.objects.create(
             name="primary",
             address=ip_addresses[1],
             zone=zone,
         )
-        AAAARecordModel.objects.create(
+        AAAARecord.objects.create(
             name="primary",
             address=ip_addresses[2],
             zone=zone,
@@ -228,29 +229,29 @@ class AAAARecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
 
-class CNAMERecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+class CNAMERecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     # pylint: disable=too-many-ancestors
-    """Test the CNAMERecordModel views."""
+    """Test the CNAMERecord views."""
 
-    model = CNAMERecordModel
+    model = CNAMERecord
 
     @classmethod
     def setUpTestData(cls):
-        zone = DNSZoneModel.objects.create(
+        zone = DNSZone.objects.create(
             name="example.com",
         )
 
-        CNAMERecordModel.objects.create(
+        CNAMERecord.objects.create(
             name="www.example.com",
             alias="www.example.com",
             zone=zone,
         )
-        CNAMERecordModel.objects.create(
+        CNAMERecord.objects.create(
             name="mail.example.com",
             alias="mail.example.com",
             zone=zone,
         )
-        CNAMERecordModel.objects.create(
+        CNAMERecord.objects.create(
             name="blog.example.com",
             alias="blog.example.com",
             zone=zone,
@@ -271,29 +272,29 @@ class CNAMERecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
 
-class MXRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+class MXRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     # pylint: disable=too-many-ancestors
-    """Test the MXRecordModel views."""
+    """Test the MXRecord views."""
 
-    model = MXRecordModel
+    model = MXRecord
 
     @classmethod
     def setUpTestData(cls):
-        zone = DNSZoneModel.objects.create(
+        zone = DNSZone.objects.create(
             name="example.com",
         )
 
-        MXRecordModel.objects.create(
+        MXRecord.objects.create(
             name="mail-record-01",
             mail_server="mail01.example.com",
             zone=zone,
         )
-        MXRecordModel.objects.create(
+        MXRecord.objects.create(
             name="mail-record-02",
             mail_server="mail02.example.com",
             zone=zone,
         )
-        MXRecordModel.objects.create(
+        MXRecord.objects.create(
             name="mail-record-03",
             mail_server="mail03.example.com",
             zone=zone,
@@ -315,30 +316,30 @@ class MXRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
 
-class TXTRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+class TXTRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     # pylint: disable=too-many-ancestors
-    """Test the TXTRecordModel views."""
+    """Test the TXTRecord views."""
 
-    model = TXTRecordModel
+    model = TXTRecord
 
     @classmethod
     def setUpTestData(cls):
-        zone = DNSZoneModel.objects.create(
+        zone = DNSZone.objects.create(
             name="example.com",
         )
 
-        TXTRecordModel.objects.create(
+        TXTRecord.objects.create(
             name="txt-record-01",
             text="txt-record-01",
             zone=zone,
         )
 
-        TXTRecordModel.objects.create(
+        TXTRecord.objects.create(
             name="txt-record-02",
             text="txt-record-02",
             zone=zone,
         )
-        TXTRecordModel.objects.create(
+        TXTRecord.objects.create(
             name="txt-record-03",
             text="txt-record-03",
             zone=zone,
@@ -359,29 +360,29 @@ class TXTRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
 
-class PTRRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     # pylint: disable=too-many-ancestors
-    """Test the PTRRecordModel views."""
+    """Test the PTRRecord views."""
 
-    model = PTRRecordModel
+    model = PTRRecord
 
     @classmethod
     def setUpTestData(cls):
-        zone = DNSZoneModel.objects.create(
+        zone = DNSZone.objects.create(
             name="example.com",
         )
 
-        PTRRecordModel.objects.create(
+        PTRRecord.objects.create(
             name="ptr-record-01",
             ptrdname="ptr-record-01",
             zone=zone,
         )
-        PTRRecordModel.objects.create(
+        PTRRecord.objects.create(
             name="ptr-record-02",
             ptrdname="ptr-record-02",
             zone=zone,
         )
-        PTRRecordModel.objects.create(
+        PTRRecord.objects.create(
             name="ptr-record-03",
             ptrdname="ptr-record-03",
             zone=zone,
@@ -399,4 +400,59 @@ class PTRRecordModelViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             f"Test 3,ptr-test02-record,{zone.name}",
         )
 
-        cls.bulk_edit_data = {"description": "Bulk edit views", "ttl": 3600}
+        cls.bulk_edit_data = {"description": "Bulk edit views"}
+
+
+class SRVRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+    # pylint: disable=too-many-ancestors
+    """Test the SRVRecord views."""
+
+    model = SRVRecord
+
+    @classmethod
+    def setUpTestData(cls):
+        zone = DNSZone.objects.create(
+            name="example.com",
+        )
+
+        SRVRecord.objects.create(
+            name="_sip._tcp",
+            priority=10,
+            weight=5,
+            port=5060,
+            target="sip.example.com",
+            zone=zone,
+        )
+        SRVRecord.objects.create(
+            name="_sip._tcp",
+            priority=20,
+            weight=10,
+            port=5060,
+            target="sip2.example.com",
+            zone=zone,
+        )
+        SRVRecord.objects.create(
+            name="_sip._tcp",
+            priority=30,
+            weight=15,
+            port=5060,
+            target="sip3.example.com",
+            zone=zone,
+        )
+
+        cls.form_data = {
+            "name": "_xmpp._tcp",
+            "priority": 10,
+            "weight": 5,
+            "port": 5222,
+            "target": "xmpp.example.com",
+            "ttl": 3600,
+            "zone": zone.pk,
+        }
+
+        cls.csv_data = (
+            "name,priority,weight,port,target,zone",
+            f"_ldap._tcp,20,10,389,ldap.example.com,{zone.name}",
+        )
+
+        cls.bulk_edit_data = {"description": "Bulk edit views"}

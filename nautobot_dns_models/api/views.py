@@ -3,114 +3,127 @@
 from nautobot.apps.api import NautobotModelViewSet
 
 from nautobot_dns_models.api.serializers import (
-    AAAARecordModelSerializer,
-    ARecordModelSerializer,
-    CNAMERecordModelSerializer,
-    DNSZoneModelSerializer,
-    MXRecordModelSerializer,
-    NSRecordModelSerializer,
-    PTRRecordModelSerializer,
-    TXTRecordModelSerializer,
+    AAAARecordSerializer,
+    ARecordSerializer,
+    CNAMERecordSerializer,
+    DNSZoneSerializer,
+    MXRecordSerializer,
+    NSRecordSerializer,
+    PTRRecordSerializer,
+    SRVRecordSerializer,
+    TXTRecordSerializer,
 )
 from nautobot_dns_models.filters import (
-    AAAARecordModelFilterSet,
-    ARecordModelFilterSet,
-    CNAMERecordModelFilterSet,
-    DNSZoneModelFilterSet,
-    MXRecordModelFilterSet,
-    NSRecordModelFilterSet,
-    PTRRecordModelFilterSet,
-    TXTRecordModelFilterSet,
+    AAAARecordFilterSet,
+    ARecordFilterSet,
+    CNAMERecordFilterSet,
+    DNSZoneFilterSet,
+    MXRecordFilterSet,
+    NSRecordFilterSet,
+    PTRRecordFilterSet,
+    SRVRecordFilterSet,
+    TXTRecordFilterSet,
 )
 from nautobot_dns_models.models import (
-    AAAARecordModel,
-    ARecordModel,
-    CNAMERecordModel,
-    DNSZoneModel,
-    MXRecordModel,
-    NSRecordModel,
-    PTRRecordModel,
-    TXTRecordModel,
+    AAAARecord,
+    ARecord,
+    CNAMERecord,
+    DNSZone,
+    MXRecord,
+    NSRecord,
+    PTRRecord,
+    SRVRecord,
+    TXTRecord,
 )
 
 
-class DNSZoneModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
-    """DnsZoneModel API ViewSet."""
+class DNSZoneViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+    """DNSZone API ViewSet."""
 
-    queryset = DNSZoneModel.objects.all()
-    serializer_class = DNSZoneModelSerializer
-    filterset_class = DNSZoneModelFilterSet
+    queryset = DNSZone.objects.all()
+    serializer_class = DNSZoneSerializer
+    filterset_class = DNSZoneFilterSet
 
     lookup_field = "pk"
     # Option for modifying the default HTTP methods:
     # http_method_names = ["get", "post", "put", "patch", "delete", "head", "options", "trace"]
 
 
-class NSRecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
-    """NSRecordModel API ViewSet."""
+class NSRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+    """NSRecord API ViewSet."""
 
-    queryset = NSRecordModel.objects.all()
-    serializer_class = NSRecordModelSerializer
-    filterset_class = NSRecordModelFilterSet
-
-    lookup_field = "pk"
-
-
-class ARecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
-    """ARecordModel API ViewSet."""
-
-    queryset = ARecordModel.objects.all()
-    serializer_class = ARecordModelSerializer
-    filterset_class = ARecordModelFilterSet
+    queryset = NSRecord.objects.all()
+    serializer_class = NSRecordSerializer
+    filterset_class = NSRecordFilterSet
 
     lookup_field = "pk"
 
 
-class AAAARecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
-    """AAAARecordModel API ViewSet."""
+class ARecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+    """ARecord API ViewSet."""
 
-    queryset = AAAARecordModel.objects.all()
-    serializer_class = AAAARecordModelSerializer
-    filterset_class = AAAARecordModelFilterSet
-
-    lookup_field = "pk"
-
-
-class CNameRecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
-    """CNameRecordModel API ViewSet."""
-
-    queryset = CNAMERecordModel.objects.all()
-    serializer_class = CNAMERecordModelSerializer
-    filterset_class = CNAMERecordModelFilterSet
+    queryset = ARecord.objects.all()
+    serializer_class = ARecordSerializer
+    filterset_class = ARecordFilterSet
 
     lookup_field = "pk"
 
 
-class MXRecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
-    """MXRecordModel API ViewSet."""
+class AAAARecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+    """AAAARecord API ViewSet."""
 
-    queryset = MXRecordModel.objects.all()
-    serializer_class = MXRecordModelSerializer
-    filterset_class = MXRecordModelFilterSet
-
-    lookup_field = "pk"
-
-
-class TXTRecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
-    """TXTRecordModel API ViewSet."""
-
-    queryset = TXTRecordModel.objects.all()
-    serializer_class = TXTRecordModelSerializer
-    filterset_class = TXTRecordModelFilterSet
+    queryset = AAAARecord.objects.all()
+    serializer_class = AAAARecordSerializer
+    filterset_class = AAAARecordFilterSet
 
     lookup_field = "pk"
 
 
-class PTRRecordModelViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
-    """PTRRecordModel API ViewSet."""
+class CNameRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+    """CNameRecord API ViewSet."""
 
-    queryset = PTRRecordModel.objects.all()
-    serializer_class = PTRRecordModelSerializer
-    filterset_class = PTRRecordModelFilterSet
+    queryset = CNAMERecord.objects.all()
+    serializer_class = CNAMERecordSerializer
+    filterset_class = CNAMERecordFilterSet
+
+    lookup_field = "pk"
+
+
+class MXRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+    """MXRecord API ViewSet."""
+
+    queryset = MXRecord.objects.all()
+    serializer_class = MXRecordSerializer
+    filterset_class = MXRecordFilterSet
+
+    lookup_field = "pk"
+
+
+class TXTRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+    """TXTRecord API ViewSet."""
+
+    queryset = TXTRecord.objects.all()
+    serializer_class = TXTRecordSerializer
+    filterset_class = TXTRecordFilterSet
+
+    lookup_field = "pk"
+
+
+class PTRRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+    """PTRRecord API ViewSet."""
+
+    queryset = PTRRecord.objects.all()
+    serializer_class = PTRRecordSerializer
+    filterset_class = PTRRecordFilterSet
+
+    lookup_field = "pk"
+
+
+class SRVRecordViewSet(NautobotModelViewSet):  # pylint: disable=too-many-ancestors
+    """SRVRecord API ViewSet."""
+
+    queryset = SRVRecord.objects.all()
+    serializer_class = SRVRecordSerializer
+    filterset_class = SRVRecordFilterSet
 
     lookup_field = "pk"

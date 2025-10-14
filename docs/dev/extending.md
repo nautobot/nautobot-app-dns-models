@@ -13,9 +13,9 @@ erDiagram
     DNSModel {
     }
 
-    DNSZoneModel {
+    DNSZone {
         charfield name UK
-        integer ttl 
+        integer ttl
         charfied filename
         textfield description
         string soa_mname
@@ -27,9 +27,9 @@ erDiagram
         integer soa_minimum
     }
 
-    DNSRecordModel {
+    DNSRecord {
         charfield name UK
-        DNSZoneModel DNSZone
+        DNSZone DNSZone
         integer ttl
         textfield description
         charfied comment
@@ -37,47 +37,55 @@ erDiagram
 
     ipam_IPaddressModel {}
 
-    ARecordModel {
+    ARecord {
         ipam_IPaddressModel IPAddress
     }
 
-    AAAARecordModel {
+    AAAARecord {
         ipam_IPaddressModel IPAddress
     }
 
-    CNAMERecordModel {
+    CNAMERecord {
         charfied alias
     }
 
-    MXRecordModel {
+    MXRecord {
         integer preference
         charfied server
     }
 
-    TXTRecordModel {
+    TXTRecord {
         textfield text
     }
 
-    PTRRecordModel {
+    PTRRecord {
         charfied ptrdname
     }
 
-    NSRecordModel {
+    NSRecord {
         charfied server
     }
 
-    DNSModel ||--o{ DNSZoneModel : implements
-    DNSModel ||--o{ DNSRecordModel : implements
-    DNSRecordModel ||--o{ ARecordModel: implements
-    DNSRecordModel ||--o{ AAAARecordModel: implements
-    DNSRecordModel ||--o{ CNAMERecordModel: implements
-    DNSRecordModel ||--o{ MXRecordModel: implements
-    DNSRecordModel ||--o{ TXTRecordModel: implements
-    DNSRecordModel ||--o{ PTRRecordModel: implements
-    DNSRecordModel ||--o{ NSRecordModel: implements
+    SRVRecord {
+        integer priority
+        integer weight
+        integer port
+        charfied target
+    }
 
-    DNSRecordModel ||--o{ DNSZoneModel: "is inside of a"
+    DNSModel ||--o{ DNSZone : implements
+    DNSModel ||--o{ DNSRecord : implements
+    DNSRecord ||--o{ ARecord: implements
+    DNSRecord ||--o{ AAAARecord: implements
+    DNSRecord ||--o{ CNAMERecord: implements
+    DNSRecord ||--o{ MXRecord: implements
+    DNSRecord ||--o{ TXTRecord: implements
+    DNSRecord ||--o{ PTRRecord: implements
+    DNSRecord ||--o{ NSRecord: implements
+    DNSRecord ||--o{ SRVRecord: implements
 
-    ARecordModel ||--|| ipam_IPaddressModel: "references"
-    AAAARecordModel ||--|| ipam_IPaddressModel: "references"
+    DNSRecord ||--o{ DNSZone: "is inside of a"
+
+    ARecord ||--|| ipam_IPaddressModel: "references"
+    AAAARecord ||--|| ipam_IPaddressModel: "references"
 ```
