@@ -1,2 +1,2 @@
-Changed ARecord address field to ipaddress.
-Changed AAAARecord address field to ipaddress.
+Changed ARecord address field to ip_address.
+Changed AAAARecord address field to ip_address.

@@ -3,10 +3,8 @@
 import django_filters
 from django.db.models import F
 from django.db.models.functions import Coalesce
-from nautobot.apps.filters import NautobotFilterSet, SearchFilter
+from nautobot.apps.filters import NautobotFilterSet, SearchFilter, TenancyModelFilterSetMixin
 from netaddr import IPAddress as NetIPAddress
-
-from nautobot.apps.filters import TenancyModelFilterSetMixin
 
 from nautobot_dns_models import models
 
@@ -32,7 +30,7 @@ class DNSZoneFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
 
 
 # pylint: disable=nb-no-model-found, nb-warn-dunder-filter-field
-class DNSRecordFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
+class DNSRecordFilterSet(NautobotFilterSet):
     """Base filter for all DNSRecord models, with support for effective TTL."""
 
     ttl = django_filters.NumberFilter(method="filter_ttl", label="TTL")
@@ -81,14 +79,14 @@ def ip_address_preprocessor(value):
     return value
 
 
-class ARecordFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
+class ARecordFilterSet(NautobotFilterSet):
     """Filter for ARecord."""
 
     q = SearchFilter(
         filter_predicates={
             "name": "icontains",
             "zone__name": "icontains",
-            "ipaddress__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
+            "ip_address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
         }
     )
 
@@ -106,7 +104,7 @@ class AAAARecordFilterSet(DNSRecordFilterSet):
         filter_predicates={
             "name": "icontains",
             "zone__name": "icontains",
-            "ipaddress__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
+            "ip_address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
         }
     )
 

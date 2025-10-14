@@ -26,13 +26,6 @@ class DNSModel(PrimaryModel):
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
     )
-    tenant = models.ForeignKey(
-        to="tenancy.Tenant",
-        on_delete=models.PROTECT,
-        related_name="%(class)ss",
-        blank=True,
-        null=True,
-    )
 
     class Meta:
         """Meta class."""
@@ -131,6 +124,14 @@ class DNSZone(DNSModel):
         default=3600,
         help_text="Minimum TTL for records in this zone.",
         verbose_name="SOA Minimum",
+    )
+
+    tenant = models.ForeignKey(
+        to="tenancy.Tenant",
+        on_delete=models.PROTECT,
+        related_name="dns_zones",
+        blank=True,
+        null=True,
     )
 
     class Meta:
@@ -235,7 +236,7 @@ class NSRecord(DNSRecord):  # pylint: disable=too-many-ancestors
 class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     """A Record model."""
 
-    ipaddress = models.ForeignKey(
+    ip_address = models.ForeignKey(
         to="ipam.IPAddress",
         on_delete=models.CASCADE,
         limit_choices_to={"ip_version": 4},
@@ -245,7 +246,7 @@ class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     class Meta:
         """Meta attributes for ARecord."""
 
-        unique_together = [["name", "ipaddress", "zone"]]
+        unique_together = [["name", "ip_address", "zone"]]
         verbose_name = "A Record"
         verbose_name_plural = "A Records"
 
@@ -261,7 +262,7 @@ class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
 class AAAARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     """AAAA Record model."""
 
-    ipaddress = models.ForeignKey(
+    ip_address = models.ForeignKey(
         to="ipam.IPAddress",
         on_delete=models.CASCADE,
         limit_choices_to={"ip_version": 6},
@@ -271,7 +272,7 @@ class AAAARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     class Meta:
         """Meta attributes for AAAARecord."""
 
-        unique_together = [["name", "ipaddress", "zone"]]
+        unique_together = [["name", "ip_address", "zone"]]
         verbose_name = "AAAA Record"
         verbose_name_plural = "AAAA Records"
 

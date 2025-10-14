@@ -14,7 +14,6 @@ class DNSRecordTable(BaseTable):  # pylint: disable=nb-no-model-found
     name = tables.Column(linkify=True)
     zone = tables.LinkColumn()
     ttl = tables.Column(accessor="ttl", verbose_name="TTL")
-    tenant = TenantColumn()
 
 
 class DNSZoneTable(BaseTable):
@@ -83,7 +82,6 @@ class NSRecordTable(DNSRecordTable):
             "description",
             "comment",
             "ttl",
-            "tenant",
             "actions",
         )
 
@@ -100,7 +98,7 @@ class NSRecordTable(DNSRecordTable):
 class ARecordTable(DNSRecordTable):
     """Table for list view."""
 
-    ipaddress = tables.LinkColumn()
+    ip_address = tables.LinkColumn()
     actions = ButtonsColumn(
         models.ARecord,
         # Option for modifying the default action buttons on each row:
@@ -115,12 +113,11 @@ class ARecordTable(DNSRecordTable):
         fields = (
             "pk",
             "name",
-            "ipaddress",
+            "ip_address",
             "zone",
             "comment",
             "ttl",
             "description",
-            "tenant",
             "actions",
         )
 
@@ -128,7 +125,7 @@ class ARecordTable(DNSRecordTable):
         default_columns = (
             "pk",
             "name",
-            "ipaddress",
+            "ip_address",
             "zone",
             "comment",
             "ttl",
@@ -139,7 +136,7 @@ class ARecordTable(DNSRecordTable):
 class AAAARecordTable(DNSRecordTable):
     """Table for list view."""
 
-    ipaddress = tables.LinkColumn()
+    ip_address = tables.LinkColumn()
     actions = ButtonsColumn(
         models.AAAARecord,
         # Option for modifying the default action buttons on each row:
@@ -154,12 +151,11 @@ class AAAARecordTable(DNSRecordTable):
         fields = (
             "pk",
             "name",
-            "ipaddress",
+            "ip_address",
             "zone",
             "comment",
             "ttl",
             "description",
-            "tenant",
             "actions",
         )
 
@@ -167,7 +163,7 @@ class AAAARecordTable(DNSRecordTable):
         default_columns = (
             "pk",
             "name",
-            "ipaddress",
+            "ip_address",
             "zone",
             "comment",
             "ttl",
@@ -197,7 +193,6 @@ class CNAMERecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
-            "tenant",
             "actions",
         )
 
@@ -235,7 +230,6 @@ class MXRecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
-            "tenant",
             "actions",
         )
 
@@ -273,7 +267,6 @@ class TXTRecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
-            "tenant",
             "actions",
         )
 
@@ -311,7 +304,6 @@ class PTRRecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
-            "tenant",
             "actions",
         )
 
@@ -349,7 +341,6 @@ class SRVRecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
-            "tenant",
             "actions",
         )
 

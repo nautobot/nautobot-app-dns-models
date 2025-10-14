@@ -32,9 +32,9 @@ class ForwardDNSRecordsTablePanel(ObjectsTablePanel):
         if show_panel == "if_present":
             ip_address = get_obj_from_context(context)
             if ip_address.ip_version == 4:
-                return ARecord.objects.filter(ipaddress=ip_address).exists()
+                return ARecord.objects.filter(ip_address=ip_address).exists()
             if ip_address.ip_version == 6:
-                return AAAARecord.objects.filter(ipaddress=ip_address).exists()
+                return AAAARecord.objects.filter(ip_address=ip_address).exists()
         return True
 
     def get_extra_context(self, context):
@@ -52,7 +52,7 @@ class ForwardDNSRecordsTablePanel(ObjectsTablePanel):
             url = reverse("plugins:nautobot_dns_models:aaaarecord_add")
 
         # Construct the URL query to auto-populate fields when adding a new record.
-        autopop_fields = {"ipaddress": ip_address.id}
+        autopop_fields = {"ip_address": ip_address.id}
         try:
             name, zone = ip_address.dns_name.split(".", 1)
         except ValueError:
@@ -99,7 +99,7 @@ class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
 
         # Construct the URL query to auto-populate fields when adding a new record.
         autopop_fields = {
-            "ipaddress": ip_address.id,
+            "ip_address": ip_address.id,
             "name": ip_address.dns_name,
             "ptrdname": ptrdname,
         }
@@ -128,7 +128,7 @@ class IPAddressDNSRecords(TemplateExtension):  # pylint: disable=abstract-method
             weight=100,
             section=SectionChoices.RIGHT_HALF,
             table_class=ARecordTable,
-            table_filter="ipaddress",
+            table_filter="ip_address",
             include_columns=["name", "zone", "ttl", "actions"],
         ),
         ReverseDNSRecordsTablePanel(

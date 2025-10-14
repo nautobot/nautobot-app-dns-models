@@ -149,29 +149,29 @@ class ARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
         ARecord.objects.create(
             name="primary",
-            ipaddress=ip_addresses[0],
+            ip_address=ip_addresses[0],
             zone=zone,
         )
         ARecord.objects.create(
             name="primary",
-            ipaddress=ip_addresses[1],
+            ip_address=ip_addresses[1],
             zone=zone,
         )
         ARecord.objects.create(
             name="primary",
-            ipaddress=ip_addresses[2],
+            ip_address=ip_addresses[2],
             zone=zone,
         )
 
         cls.form_data = {
             "name": "test record",
-            "ipaddress": ip_addresses[0].pk,
+            "ip_address": ip_addresses[0].pk,
             "ttl": 3600,
             "zone": zone.pk,
         }
 
         cls.csv_data = (
-            "name,ipaddress,zone",
+            "name,ip_address,zone",
             f"Test 3,{ip_addresses[0].pk},{zone.name}",
         )
 
@@ -200,29 +200,29 @@ class AAAARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
         AAAARecord.objects.create(
             name="primary",
-            ipaddress=ip_addresses[0],
+            ip_address=ip_addresses[0],
             zone=zone,
         )
         AAAARecord.objects.create(
             name="primary",
-            ipaddress=ip_addresses[1],
+            ip_address=ip_addresses[1],
             zone=zone,
         )
         AAAARecord.objects.create(
             name="primary",
-            ipaddress=ip_addresses[2],
+            ip_address=ip_addresses[2],
             zone=zone,
         )
 
         cls.form_data = {
             "name": "test record",
-            "ipaddress": ip_addresses[0].pk,
+            "ip_address": ip_addresses[0].pk,
             "ttl": 3600,
             "zone": zone.pk,
         }
 
         cls.csv_data = (
-            "name,ipaddress,zone",
+            "name,ip_address,zone",
             f"Test 3,{ip_addresses[0].pk},{zone.name}",
         )
 

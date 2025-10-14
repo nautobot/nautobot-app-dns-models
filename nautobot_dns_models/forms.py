@@ -8,8 +8,8 @@ from nautobot.apps.forms import (
     TagsBulkEditFormMixin,
 )
 from nautobot.extras.forms import NautobotFilterForm
-from nautobot.tenancy.models import Tenant
 from nautobot.tenancy.forms import TenancyFilterForm, TenancyForm
+from nautobot.tenancy.models import Tenant
 
 from nautobot_dns_models import models
 
@@ -60,7 +60,7 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
     ]
 
 
-class NSRecordForm(NautobotModelForm, TenancyForm):
+class NSRecordForm(NautobotModelForm):
     """NSRecord creation/edit form."""
 
     class Meta:
@@ -75,21 +75,16 @@ class NSRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.NSRecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
-    tenant = DynamicModelChoiceField(
-        queryset=Tenant.objects.all(),
-        required=False,
-    )
 
     class Meta:
         """Meta attributes."""
 
         nullable_fields = [
             "description",
-            "tenant",
         ]
 
 
-class NSRecordFilterForm(NautobotFilterForm, TenancyFilterForm):
+class NSRecordFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -108,7 +103,7 @@ class NSRecordFilterForm(NautobotFilterForm, TenancyFilterForm):
     ]
 
 
-class ARecordForm(NautobotModelForm, TenancyForm):
+class ARecordForm(NautobotModelForm):
     """ARecord creation/edit form."""
 
     class Meta:
@@ -123,21 +118,16 @@ class ARecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.ARecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
-    tenant = DynamicModelChoiceField(
-        queryset=Tenant.objects.all(),
-        required=False,
-    )
 
     class Meta:
         """Meta attributes."""
 
         nullable_fields = [
             "description",
-            "tenant",
         ]
 
 
-class ARecordFilterForm(NautobotFilterForm, TenancyFilterForm):
+class ARecordFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -156,7 +146,7 @@ class ARecordFilterForm(NautobotFilterForm, TenancyFilterForm):
     ]
 
 
-class AAAARecordForm(NautobotModelForm, TenancyForm):
+class AAAARecordForm(NautobotModelForm):
     """AAAARecord creation/edit form."""
 
     class Meta:
@@ -171,21 +161,16 @@ class AAAARecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.AAAARecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
-    tenant = DynamicModelChoiceField(
-        queryset=Tenant.objects.all(),
-        required=False,
-    )
 
     class Meta:
         """Meta attributes."""
 
         nullable_fields = [
             "description",
-            "tenant",
         ]
 
 
-class AAAARecordFilterForm(NautobotFilterForm, TenancyFilterForm):
+class AAAARecordFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -203,7 +188,7 @@ class AAAARecordFilterForm(NautobotFilterForm, TenancyFilterForm):
     ]
 
 
-class CNAMERecordForm(NautobotModelForm, TenancyForm):
+class CNAMERecordForm(NautobotModelForm):
     """CNAMERecord creation/edit form."""
 
     class Meta:
@@ -218,21 +203,16 @@ class CNAMERecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.CNAMERecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
-    tenant = DynamicModelChoiceField(
-        queryset=Tenant.objects.all(),
-        required=False,
-    )
 
     class Meta:
         """Meta attributes."""
 
         nullable_fields = [
             "description",
-            "tenant",
         ]
 
 
-class CNAMERecordFilterForm(NautobotFilterForm, TenancyFilterForm):
+class CNAMERecordFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -250,7 +230,7 @@ class CNAMERecordFilterForm(NautobotFilterForm, TenancyFilterForm):
     ]
 
 
-class MXRecordForm(NautobotModelForm, TenancyForm):
+class MXRecordForm(NautobotModelForm):
     """MXRecord creation/edit form."""
 
     class Meta:
@@ -265,21 +245,16 @@ class MXRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.MXRecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
-    tenant = DynamicModelChoiceField(
-        queryset=Tenant.objects.all(),
-        required=False,
-    )
 
     class Meta:
         """Meta attributes."""
 
         nullable_fields = [
             "description",
-            "tenant",
         ]
 
 
-class MXRecordFilterForm(NautobotFilterForm, TenancyFilterForm):
+class MXRecordFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -298,7 +273,7 @@ class MXRecordFilterForm(NautobotFilterForm, TenancyFilterForm):
     ]
 
 
-class TXTRecordForm(NautobotModelForm, TenancyForm):
+class TXTRecordForm(NautobotModelForm):
     """TXTRecord creation/edit form."""
 
     class Meta:
@@ -313,21 +288,16 @@ class TXTRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.TXTRecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
-    tenant = DynamicModelChoiceField(
-        queryset=Tenant.objects.all(),
-        required=False,
-    )
 
     class Meta:
         """Meta attributes."""
 
         nullable_fields = [
             "description",
-            "tenant",
         ]
 
 
-class TXTRecordFilterForm(NautobotFilterForm, TenancyFilterForm):
+class TXTRecordFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -345,7 +315,7 @@ class TXTRecordFilterForm(NautobotFilterForm, TenancyFilterForm):
     ]
 
 
-class PTRRecordForm(NautobotModelForm, TenancyForm):
+class PTRRecordForm(NautobotModelForm):
     """PTRRecord creation/edit form."""
 
     class Meta:
@@ -360,21 +330,16 @@ class PTRRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.PTRRecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
-    tenant = DynamicModelChoiceField(
-        queryset=Tenant.objects.all(),
-        required=False,
-    )
 
     class Meta:
         """Meta attributes."""
 
         nullable_fields = [
             "description",
-            "tenant",
         ]
 
 
-class PTRRecordFilterForm(NautobotFilterForm, TenancyFilterForm):
+class PTRRecordFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
@@ -394,7 +359,7 @@ class PTRRecordFilterForm(NautobotFilterForm, TenancyFilterForm):
     ]
 
 
-class SRVRecordForm(NautobotModelForm, TenancyForm):
+class SRVRecordForm(NautobotModelForm):
     """SRVRecord creation/edit form."""
 
     class Meta:
@@ -409,21 +374,16 @@ class SRVRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.SRVRecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
-    tenant = DynamicModelChoiceField(
-        queryset=Tenant.objects.all(),
-        required=False,
-    )
 
     class Meta:
         """Meta attributes."""
 
         nullable_fields = [
             "description",
-            "tenant",
         ]
 
 
-class SRVRecordFilterForm(NautobotFilterForm, TenancyFilterForm):
+class SRVRecordFilterForm(NautobotFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(
