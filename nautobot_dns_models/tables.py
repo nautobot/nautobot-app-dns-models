@@ -98,7 +98,7 @@ class NSRecordTable(DNSRecordTable):
 class ARecordTable(DNSRecordTable):
     """Table for list view."""
 
-    ip_address = tables.LinkColumn()
+    ip_address = tables.Column(linkify=True)
     actions = ButtonsColumn(
         models.ARecord,
         # Option for modifying the default action buttons on each row:
@@ -136,7 +136,7 @@ class ARecordTable(DNSRecordTable):
 class AAAARecordTable(DNSRecordTable):
     """Table for list view."""
 
-    ip_address = tables.LinkColumn()
+    ip_address = tables.Column(linkify=True)
     actions = ButtonsColumn(
         models.AAAARecord,
         # Option for modifying the default action buttons on each row:

@@ -241,6 +241,7 @@ class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
         on_delete=models.CASCADE,
         limit_choices_to={"ip_version": 4},
         help_text="IP address for the record.",
+        verbose_name="IP Address",
     )
 
     class Meta:
@@ -267,6 +268,7 @@ class AAAARecord(DNSRecord):  # pylint: disable=too-many-ancestors
         on_delete=models.CASCADE,
         limit_choices_to={"ip_version": 6},
         help_text="IP address for the record.",
+        verbose_name="IP Address",
     )
 
     class Meta:
