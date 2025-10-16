@@ -13,6 +13,7 @@ The DNS zone model is used to represent a distinct DNS zone. It contains the zon
 - `soa_expire`: (integer): Time in seconds for secondary name servers to stop answering requests if the master does not respond. This value must be bigger than the sum of refresh and retry.
 - `soa_serial`: (integer): Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.
 - `soa_minimum`: (integer): Minimum TTL for records in this zone.
+- `tenant` (Tenant, optional): Reference to the Tenant model for multi-tenancy support.
 
 +++ 1.2.0 "DNS label length rules"
 

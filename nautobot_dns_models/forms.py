@@ -2,16 +2,19 @@
 
 from django import forms
 from nautobot.apps.forms import (
+    DynamicModelChoiceField,
     NautobotBulkEditForm,
     NautobotModelForm,
     TagsBulkEditFormMixin,
 )
 from nautobot.extras.forms import NautobotFilterForm
+from nautobot.tenancy.forms import TenancyFilterForm, TenancyForm
+from nautobot.tenancy.models import Tenant
 
 from nautobot_dns_models import models
 
 
-class DNSZoneForm(NautobotModelForm):
+class DNSZoneForm(NautobotModelForm, TenancyForm):
     """DNSZone creation/edit form."""
 
     class Meta:
@@ -26,16 +29,21 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.DNSZone.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    tenant = DynamicModelChoiceField(
+        queryset=Tenant.objects.all(),
+        required=False,
+    )
 
     class Meta:
         """Meta attributes."""
 
         nullable_fields = [
             "description",
+            "tenant",
         ]
 
 
-class DNSZoneFilterForm(NautobotFilterForm):
+class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
     """Filter form to filter searches."""
 
     q = forms.CharField(

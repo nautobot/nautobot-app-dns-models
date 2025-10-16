@@ -126,6 +126,14 @@ class DNSZone(DNSModel):
         verbose_name="SOA Minimum",
     )
 
+    tenant = models.ForeignKey(
+        to="tenancy.Tenant",
+        on_delete=models.PROTECT,
+        related_name="dns_zones",
+        blank=True,
+        null=True,
+    )
+
     class Meta:
         """Meta attributes for DNSZone."""
 
@@ -228,17 +236,18 @@ class NSRecord(DNSRecord):  # pylint: disable=too-many-ancestors
 class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     """A Record model."""
 
-    address = models.ForeignKey(
+    ip_address = models.ForeignKey(
         to="ipam.IPAddress",
         on_delete=models.CASCADE,
         limit_choices_to={"ip_version": 4},
         help_text="IP address for the record.",
+        verbose_name="IP Address",
     )
 
     class Meta:
         """Meta attributes for ARecord."""
 
-        unique_together = [["name", "address", "zone"]]
+        unique_together = [["name", "ip_address", "zone"]]
         verbose_name = "A Record"
         verbose_name_plural = "A Records"
 
@@ -254,17 +263,18 @@ class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
 class AAAARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     """AAAA Record model."""
 
-    address = models.ForeignKey(
+    ip_address = models.ForeignKey(
         to="ipam.IPAddress",
         on_delete=models.CASCADE,
         limit_choices_to={"ip_version": 6},
         help_text="IP address for the record.",
+        verbose_name="IP Address",
     )
 
     class Meta:
         """Meta attributes for AAAARecord."""
 
-        unique_together = [["name", "address", "zone"]]
+        unique_together = [["name", "ip_address", "zone"]]
         verbose_name = "AAAA Record"
         verbose_name_plural = "AAAA Records"
 
