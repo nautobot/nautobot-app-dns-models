@@ -19,7 +19,6 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
     base_url = "dns"
     required_settings = []
     default_settings = {}
-    caching_config = {}
     docs_view_name = "plugins:nautobot_dns_models:docs"
     searchable_models = ["dnszone"]
 
