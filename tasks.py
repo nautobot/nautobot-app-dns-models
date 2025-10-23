@@ -52,11 +52,7 @@ namespace = Collection("nautobot_dns_models")
 namespace.configure(
     {
         "nautobot_dns_models": {
-<<<<<<< HEAD
-            "nautobot_ver": "2.4.4",
-=======
             "nautobot_ver": "2.4.20",
->>>>>>> 3287f84 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
             "project_name": "nautobot-dns-models",
             "python_ver": "3.12",
             "local": False,
@@ -723,13 +719,6 @@ def help_task(context):
 )
 def generate_release_notes(context, version="", date="", keep=False):
     """Generate Release Notes using Towncrier."""
-<<<<<<< HEAD
-    command = "poetry run towncrier build --name {namespace.name}"
-    if version:
-        command += f" --version {version}"
-    else:
-        command += " --version `poetry version -s`"
-=======
     command = "poetry run towncrier build"
     if not version:
         version = context.run("poetry version --short", hide=True).stdout.strip()
@@ -741,7 +730,6 @@ def generate_release_notes(context, version="", date="", keep=False):
     version_major_minor = ".".join(version.split(".")[:2])
     context.run(f"poetry run python development/bin/ensure_release_notes.py --version {version_major_minor}")
 
->>>>>>> 3287f84 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
     # Due to issues with git repo ownership in the containers, this must always run locally.
     context.run(command)
 

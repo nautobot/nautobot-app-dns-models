@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nautobot-dns-models"
-version = "1.2.3a0"
+version = "1.3.0a0"
 description = "Nautobot DNS Models"
 authors = ["Network to Code, LLC <info@networktocode.com>"]
 license = "Apache-2.0"
@@ -28,11 +28,7 @@ include = [
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
 # Used for local development
-<<<<<<< HEAD
-nautobot = ">=2.4.4,<3.0.0"
-=======
 nautobot = ">=2.4.20,<3.0.0"
->>>>>>> 3287f84 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
 [tool.poetry.group.dev.dependencies]
 coverage = "*"
@@ -54,12 +50,9 @@ to-json-schema = "*"
 jsonschema = "*"
 djlint = ">=1.36.4,<2.0.0"
 djhtml = ">=3.0.8,<4.0.0"
-<<<<<<< HEAD
 snakeviz = "^2.2.0"
 gitpython = "^3.1.41"
-=======
 tomli = { version = "*", markers = "python_version < '3.11'" }  # tomli is included in the stdlib as of Python 3.11
->>>>>>> 3287f84 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
 [tool.poetry.group.docs.dependencies]
 # Render custom markdown for version added/changed/remove notes
