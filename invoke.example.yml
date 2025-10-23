@@ -1,7 +1,12 @@
 ---
 nautobot_dns_models:
+<<<<<<< HEAD
   nautobot_ver: "2.4.4"
   python_ver: "3.11"
+=======
+  nautobot_ver: "2.4.20"
+  python_ver: "3.12"
+>>>>>>> 3287f84 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
   # local: false
   # compose_dir: "/full/path/to/nautobot-app-dns-models/development"
 
