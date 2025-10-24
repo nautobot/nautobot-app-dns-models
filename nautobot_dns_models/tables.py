@@ -15,17 +15,47 @@ class DNSRecordTable(BaseTable):  # pylint: disable=nb-no-model-found
     ttl = tables.Column(accessor="ttl", verbose_name="TTL")
 
 
+class DNSViewTable(BaseTable):
+    """Table for DNS View list view."""
+
+    pk = ToggleColumn()
+    name = tables.Column(linkify=True)
+    actions = ButtonsColumn(
+        models.DNSView,
+        # Option for modifying the default action buttons on each row:
+        buttons=("changelog", "edit", "delete"),
+        # Option for modifying the pk for the action buttons:
+        # pk_field="pk",
+    )
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.DNSView
+        fields = (
+            "pk",
+            "name",
+            "description",
+            "actions",
+        )
+
+        default_columns = (
+            "pk",
+            "name",
+            "description",
+            "actions",
+        )
+
+
 class DNSZoneTable(BaseTable):
     """Table for DNS Zone list view."""
 
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
+    dns_view = tables.Column(linkify=True)
     actions = ButtonsColumn(
         models.DNSZone,
-        # Option for modifying the default action buttons on each row:
-        # buttons=("changelog", "edit", "delete"),
-        # Option for modifying the pk for the action buttons:
-        # pk_field="pk",
+        buttons=("changelog", "edit", "delete"),
     )
 
     class Meta(BaseTable.Meta):
@@ -35,6 +65,7 @@ class DNSZoneTable(BaseTable):
         fields = (
             "pk",
             "name",
+            "dns_view",
             "ttl",
             "filename",
             "description",
@@ -44,16 +75,10 @@ class DNSZoneTable(BaseTable):
             "soa_retry",
             "soa_serial",
             "soa_minimum",
+            "actions",
         )
 
-        default_columns = (
-            "pk",
-            "name",
-            "ttl",
-            "filename",
-            "soa_expire",
-            "soa_rname",
-        )
+        default_columns = ("pk", "name", "dns_view", "ttl", "filename", "soa_expire", "soa_rname", "actions")
 
 
 class NSRecordTable(DNSRecordTable):
@@ -62,9 +87,6 @@ class NSRecordTable(DNSRecordTable):
     actions = ButtonsColumn(
         models.NSRecord,
         buttons=("changelog", "edit", "delete"),
-        # Option for modifying the default action buttons on each row:
-        # buttons=("changelog", "edit", "delete"),
-        # Option for modifying the pk for the action buttons:
     )
 
     class Meta(BaseTable.Meta):
@@ -98,9 +120,7 @@ class ARecordTable(DNSRecordTable):
     address = tables.LinkColumn()
     actions = ButtonsColumn(
         models.ARecord,
-        # Option for modifying the default action buttons on each row:
         buttons=("changelog", "edit", "delete"),
-        # Option for modifying the pk for the action buttons:
     )
 
     class Meta(BaseTable.Meta):
@@ -136,9 +156,7 @@ class AAAARecordTable(DNSRecordTable):
     address = tables.LinkColumn()
     actions = ButtonsColumn(
         models.AAAARecord,
-        # Option for modifying the default action buttons on each row:
         buttons=("changelog", "edit", "delete"),
-        # Option for modifying the pk for the action buttons:
     )
 
     class Meta(BaseTable.Meta):
@@ -173,9 +191,7 @@ class CNAMERecordTable(DNSRecordTable):
 
     actions = ButtonsColumn(
         models.CNAMERecord,
-        # Option for modifying the default action buttons on each row:
         buttons=("changelog", "edit", "delete"),
-        # Option for modifying the pk for the action buttons:
     )
 
     class Meta(BaseTable.Meta):
@@ -210,9 +226,7 @@ class MXRecordTable(DNSRecordTable):
 
     actions = ButtonsColumn(
         models.MXRecord,
-        # Option for modifying the default action buttons on each row:
         buttons=("changelog", "edit", "delete"),
-        # Option for modifying the pk for the action buttons:
     )
 
     class Meta(BaseTable.Meta):
@@ -247,9 +261,7 @@ class TXTRecordTable(DNSRecordTable):
 
     actions = ButtonsColumn(
         models.TXTRecord,
-        # Option for modifying the default action buttons on each row:
         buttons=("changelog", "edit", "delete"),
-        # Option for modifying the pk for the action buttons:
     )
 
     class Meta(BaseTable.Meta):
@@ -284,9 +296,7 @@ class PTRRecordTable(DNSRecordTable):
 
     actions = ButtonsColumn(
         models.PTRRecord,
-        # Option for modifying the default action buttons on each row:
         buttons=("changelog", "edit", "delete"),
-        # Option for modifying the pk for the action buttons:
     )
 
     class Meta(BaseTable.Meta):

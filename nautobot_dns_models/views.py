@@ -10,11 +10,13 @@ from nautobot.apps.ui import (
     StatsPanel,
 )
 from nautobot.core.ui import object_detail
+from nautobot.ipam.tables import PrefixTable
 
 from nautobot_dns_models.api.serializers import (
     AAAARecordSerializer,
     ARecordSerializer,
     CNAMERecordSerializer,
+    DNSViewSerializer,
     DNSZoneSerializer,
     MXRecordSerializer,
     NSRecordSerializer,
@@ -26,6 +28,7 @@ from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSViewFilterSet,
     DNSZoneFilterSet,
     MXRecordFilterSet,
     NSRecordFilterSet,
@@ -43,6 +46,9 @@ from nautobot_dns_models.forms import (
     CNAMERecordBulkEditForm,
     CNAMERecordFilterForm,
     CNAMERecordForm,
+    DNSViewBulkEditForm,
+    DNSViewFilterForm,
+    DNSViewForm,
     DNSZoneBulkEditForm,
     DNSZoneFilterForm,
     DNSZoneForm,
@@ -66,6 +72,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSView,
     DNSZone,
     MXRecord,
     NSRecord,
@@ -77,6 +84,7 @@ from nautobot_dns_models.tables import (
     AAAARecordTable,
     ARecordTable,
     CNAMERecordTable,
+    DNSViewTable,
     DNSZoneTable,
     MXRecordTable,
     NSRecordTable,
@@ -84,6 +92,45 @@ from nautobot_dns_models.tables import (
     SRVRecordTable,
     TXTRecordTable,
 )
+
+
+class DNSViewUIViewSet(views.NautobotUIViewSet):
+    """DNSView UI ViewSet."""
+
+    form_class = DNSViewForm
+    bulk_update_form_class = DNSViewBulkEditForm
+    filterset_class = DNSViewFilterSet
+    filterset_form_class = DNSViewFilterForm
+    serializer_class = DNSViewSerializer
+    lookup_field = "pk"
+    queryset = DNSView.objects.all()
+    table_class = DNSViewTable
+
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            ),
+            ObjectsTablePanel(
+                weight=100,
+                section=SectionChoices.RIGHT_HALF,
+                table_filter="dns_view",
+                table_class=DNSZoneTable,
+                table_title="Zones",
+                include_columns=["name", "ttl", "filename", "soa_rname", "actions"],
+            ),
+            ObjectsTablePanel(
+                weight=200,
+                section=SectionChoices.RIGHT_HALF,
+                table_filter="dns_views",
+                table_class=PrefixTable,
+                table_title="Assigned Prefixes",
+                include_columns=["prefix", "status", "location_count", "namespace"],
+            ),
+        ],
+    )
 
 
 class DNSZoneUIViewSet(views.NautobotUIViewSet):

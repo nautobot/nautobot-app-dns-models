@@ -10,6 +10,7 @@ from nautobot_dns_models import views
 app_name = "nautobot_dns_models"
 router = NautobotUIViewSetRouter()
 
+router.register("dns-views", views.DNSViewUIViewSet)
 router.register("dns-zones", views.DNSZoneUIViewSet)
 router.register("a-records", views.ARecordUIViewSet)
 router.register("aaaa-records", views.AAAARecordUIViewSet)
@@ -30,7 +31,9 @@ urlpatterns = [
     ),
     path(
         "dns-zones/<uuid:pk>/aaaa-records/add/",
-        RedirectView.as_view(url="/plugins/dns/aaaa-records/add/?zone=%(pk)s&return_url=/plugins/dns/dns-zones/%(pk)s"),
+        RedirectView.as_view(
+            url="/plugins/dns/aquiaaa-records/add/?zone=%(pk)s&return_url=/plugins/dns/dns-zones/%(pk)s"
+        ),
         name="zone_aaaa_records_add",
     ),
     path(

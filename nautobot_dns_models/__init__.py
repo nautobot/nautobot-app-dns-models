@@ -49,6 +49,7 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
     caching_config = {}
     docs_view_name = "plugins:nautobot_dns_models:docs"
     searchable_models = [
+        "DNSView",
         "DNSZone",
         "ARecord",
         "AAAARecord",
