@@ -12,7 +12,7 @@ class DNSRecordTable(BaseTable):  # pylint: disable=nb-no-model-found
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
     zone = tables.LinkColumn()
-    ttl = tables.Column(accessor="ttl", verbose_name="TTL")
+    ttl = tables.Column(accessor="ttl", verbose_name="TTL", orderable=False)
 
 
 class DNSViewTable(BaseTable):
