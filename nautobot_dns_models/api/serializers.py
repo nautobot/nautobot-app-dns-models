@@ -1,13 +1,38 @@
 """API serializers for nautobot_dns_models."""
 
 from drf_spectacular.utils import extend_schema_field
-from nautobot.apps.api import NautobotModelSerializer
+from nautobot.apps.api import NautobotModelSerializer, ValidatedModelSerializer
 from rest_framework import serializers
 
 from nautobot_dns_models import models
 
 
-class DNSZoneSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
+class DNSViewSerializer(NautobotModelSerializer):
+    """DNSView Serializer."""
+
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnsview-detail")
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSView
+        fields = "__all__"
+
+        # Option for disabling write for certain fields:
+        # read_only_fields = []
+
+
+class DNSViewPrefixAssignmentSerializer(ValidatedModelSerializer):
+    """DNSViewPrefixAssignment Serializer."""
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSViewPrefixAssignment
+        fields = "__all__"
+
+
+class DNSZoneSerializer(NautobotModelSerializer):
     """DNSZone Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnszone-detail")
@@ -18,11 +43,8 @@ class DNSZoneSerializer(NautobotModelSerializer):  # pylint: disable=too-many-an
         model = models.DNSZone
         fields = "__all__"
 
-        # Option for disabling write for certain fields:
-        # read_only_fields = []
 
-
-class DNSRecordSerializer(NautobotModelSerializer):  # pylint: disable=too-many-ancestors
+class DNSRecordSerializer(NautobotModelSerializer):
     """DNSRecord Serializer."""
 
     ttl = serializers.SerializerMethodField(read_only=True)
@@ -48,7 +70,7 @@ class DNSRecordSerializer(NautobotModelSerializer):  # pylint: disable=too-many-
         return super().validate(attrs)
 
 
-class NSRecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-ancestors
+class NSRecordSerializer(DNSRecordSerializer):
     """NSRecord Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:nsrecord-detail")
@@ -59,11 +81,8 @@ class NSRecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-ances
         model = models.NSRecord
         fields = "__all__"
 
-        # Option for disabling write for certain fields:
-        # read_only_fields = []
 
-
-class ARecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-ancestors
+class ARecordSerializer(DNSRecordSerializer):
     """ARecord Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:arecord-detail")
@@ -74,11 +93,8 @@ class ARecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-ancest
         model = models.ARecord
         fields = "__all__"
 
-        # Option for disabling write for certain fields:
-        # read_only_fields = []
 
-
-class AAAARecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-ancestors
+class AAAARecordSerializer(DNSRecordSerializer):
     """AAAARecord Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:aaaarecord-detail")
@@ -89,11 +105,8 @@ class AAAARecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-anc
         model = models.AAAARecord
         fields = "__all__"
 
-        # Option for disabling write for certain fields:
-        # read_only_fields = []
 
-
-class CNAMERecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-ancestors
+class CNAMERecordSerializer(DNSRecordSerializer):
     """CNAMERecord Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:cnamerecord-detail")
@@ -104,11 +117,8 @@ class CNAMERecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-an
         model = models.CNAMERecord
         fields = "__all__"
 
-        # Option for disabling write for certain fields:
-        # read_only_fields = []
 
-
-class MXRecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-ancestors
+class MXRecordSerializer(DNSRecordSerializer):
     """MXRecord Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:mxrecord-detail")
@@ -119,11 +129,8 @@ class MXRecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-ances
         model = models.MXRecord
         fields = "__all__"
 
-        # Option for disabling write for certain fields:
-        # read_only_fields = []
 
-
-class TXTRecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-ancestors
+class TXTRecordSerializer(DNSRecordSerializer):
     """TXTRecord Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:txtrecord-detail")
@@ -134,11 +141,8 @@ class TXTRecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-ance
         model = models.TXTRecord
         fields = "__all__"
 
-        # Option for disabling write for certain fields:
-        # read_only_fields = []
 
-
-class PTRRecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-ancestors
+class PTRRecordSerializer(DNSRecordSerializer):
     """PTRRecord Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:ptrrecord-detail")
@@ -149,11 +153,8 @@ class PTRRecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-ance
         model = models.PTRRecord
         fields = "__all__"
 
-        # Option for disabling write for certain fields:
-        # read_only_fields = []
 
-
-class SRVRecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-ancestors
+class SRVRecordSerializer(DNSRecordSerializer):
     """SRVRecord Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:srvrecord-detail")
@@ -163,6 +164,3 @@ class SRVRecordSerializer(DNSRecordSerializer):  # pylint: disable=too-many-ance
 
         model = models.SRVRecord
         fields = "__all__"
-
-        # Option for disabling write for certain fields:
-        # read_only_fields = []
