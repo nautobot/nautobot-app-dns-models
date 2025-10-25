@@ -52,9 +52,9 @@ namespace = Collection("nautobot_dns_models")
 namespace.configure(
     {
         "nautobot_dns_models": {
-            "nautobot_ver": "2.4.18",
+            "nautobot_ver": "2.4.20",
             "project_name": "nautobot-dns-models",
-            "python_ver": "3.11",
+            "python_ver": "3.12",
             "local": False,
             "compose_dir": os.path.join(os.path.dirname(__file__), "development"),
             "compose_files": [
@@ -560,7 +560,12 @@ def dbshell(context, db_name="", input_file="", output_file="", query=""):
         f"> '{output_file}'" if output_file else "",
     ]
 
-    docker_compose(context, " ".join(command), env=env, pty=not (input_file or output_file or query))
+    docker_compose(
+        context,
+        " ".join(command),
+        env=env,
+        pty=not (input_file or output_file or query),
+    )
 
 
 @task(
@@ -712,16 +717,24 @@ def help_task(context):
 
 @task(
     help={
-        "version": "Version of Nautobot DNS Models to generate the release notes for.",
+        "version": "Version of Nautobot Dev Example App to generate the release notes for.",
+        "date": "Date of the release (default: today).",
+        "keep": "Keep existing release notes files. Useful for testing. (default: False).",
     }
 )
-def generate_release_notes(context, version=""):
+def generate_release_notes(context, version="", date="", keep=False):
     """Generate Release Notes using Towncrier."""
-    command = "poetry run towncrier build --name {namespace.name}"
-    if version:
-        command += f" --version {version}"
-    else:
-        command += " --version `poetry version -s`"
+    command = "poetry run towncrier build"
+    if not version:
+        version = context.run("poetry version --short", hide=True).stdout.strip()
+    command += f" --version {version}"
+    if date:
+        command += f" --date {date}"
+    command += " --keep" if keep else " --yes"
+
+    version_major_minor = ".".join(version.split(".")[:2])
+    context.run(f"poetry run python development/bin/ensure_release_notes.py --version {version_major_minor}")
+
     # Due to issues with git repo ownership in the containers, this must always run locally.
     context.run(command)
 
@@ -981,7 +994,13 @@ def tests(context, failfast=False, keepdb=False, lint_only=False):
     validate_app_config(context)
     if not lint_only:
         print("Running unit tests...")
-        unittest(context, failfast=failfast, keepdb=keepdb, coverage=True, skip_docs_build=True)
+        unittest(
+            context,
+            failfast=failfast,
+            keepdb=keepdb,
+            coverage=True,
+            skip_docs_build=True,
+        )
         unittest_coverage(context)
         coverage_lcov(context)
     print("All tests have passed!")
@@ -1000,11 +1019,20 @@ def generate_app_config_schema(context):
     - `NautobotAppConfig.required_settings`
     """
     start(context, service="nautobot")
-    nbshell(context, file="development/app_config_schema.py", env={"APP_CONFIG_SCHEMA_COMMAND": "generate"})
+    nbshell(
+        context,
+        file="development/app_config_schema.py",
+        env={"APP_CONFIG_SCHEMA_COMMAND": "generate"},
+    )
 
 
 @task
 def validate_app_config(context):
     """Validate the app config based on the app config schema."""
     start(context, service="nautobot")
-    nbshell(context, plain=True, file="development/app_config_schema.py", env={"APP_CONFIG_SCHEMA_COMMAND": "validate"})
+    nbshell(
+        context,
+        plain=True,
+        file="development/app_config_schema.py",
+        env={"APP_CONFIG_SCHEMA_COMMAND": "validate"},
+    )
