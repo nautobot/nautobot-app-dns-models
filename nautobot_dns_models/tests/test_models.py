@@ -10,6 +10,8 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSView,
+    DNSViewPrefixAssignment,
     DNSZone,
     MXRecord,
     NSRecord,
@@ -18,11 +20,9 @@ from nautobot_dns_models.models import (
     TXTRecord,
     dns_wire_label_length,
 )
-from nautobot_dns_models.tests import fixtures
+
 
 # Helper for generating unicode labels of a specific IDNA-encoded length
-
-
 def _make_unicode_label_with_idna_length(char, target_length):
     """Return a string of repeated `char` whose IDNA-encoded length is exactly `target_length` bytes."""
     label = ""
@@ -35,8 +35,72 @@ def _make_unicode_label_with_idna_length(char, target_length):
     return label
 
 
+class TestDNSView(ModelTestCases.BaseModelTestCase):
+    """Test DNSView model."""
+
+    model = DNSView
+
+    @classmethod
+    def setUpTestData(cls):
+        """Create test data for DNSView Model."""
+        super().setUpTestData()
+        # Create 3 objects for the model test cases.
+        DNSView.objects.create(name="View 1", description="First DNS View")
+        DNSView.objects.create(name="View 2", description="Second DNS View")
+        DNSView.objects.create(name="View 3", description="Third DNS View")
+
+    def test_create_dnsview_only_required(self):
+        """Create with only required fields, and validate null description and __str__."""
+        dnsview = DNSView.objects.create(name="Test View")
+        self.assertEqual(dnsview.name, "Test View")
+        self.assertEqual(dnsview.description, "")
+        self.assertEqual(str(dnsview), "Test View")
+
+    def test_create_dnsview_all_fields_success(self):
+        """Create DNSViewModel with all fields."""
+        dnsview = DNSView.objects.create(name="Test View", description="Test Description")
+        self.assertEqual(dnsview.name, "Test View")
+        self.assertEqual(dnsview.description, "Test Description")
+
+    def test_get_absolute_url(self):
+        dns_view_model = DNSView.objects.get(name="View 1")
+        self.assertEqual(dns_view_model.get_absolute_url(), f"/plugins/dns/dns-views/{dns_view_model.id}/")
+
+
+class TestDNSViewPrefixAssignment(ModelTestCases.BaseModelTestCase):
+    """Test DNSViewPrefixAssignment model."""
+
+    model = DNSViewPrefixAssignment
+
+    @classmethod
+    def setUpTestData(cls):
+        """Create test data for DNSViewPrefixAssignment Model."""
+        super().setUpTestData()
+        # Create Prefixes
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        cls.prefixes = (
+            Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, status=status),
+            Prefix.objects.create(prefix="2001:db8:abcd:99::/64", namespace=namespace, status=status),
+        )
+        # Create DNS Views
+        cls.dns_views = (
+            DNSView.objects.create(name="View 1", description="First DNS View"),
+            DNSView.objects.create(name="View 2", description="Second DNS View"),
+        )
+
+        # Create DNSViewPrefixAssignment
+        DNSViewPrefixAssignment.objects.create(dns_view=cls.dns_views[0], prefix=cls.prefixes[0])
+
+    def test_create_dnsviewprefixassignment(self):
+        """Create DNSViewPrefixAssignment with all fields."""
+        assignment = DNSViewPrefixAssignment.objects.create(dns_view=self.dns_views[1], prefix=self.prefixes[1])
+        self.assertEqual(assignment.dns_view, self.dns_views[1])
+        self.assertEqual(assignment.prefix, self.prefixes[1])
+
+
 class TestDnsZone(ModelTestCases.BaseModelTestCase):
-    """Test DnsZoneModel."""
+    """Test DnsZone model."""
 
     model = DNSZone
 
@@ -45,7 +109,9 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
         """Create test data for DNSZone Model."""
         super().setUpTestData()
         # Create 3 objects for the model test cases.
-        fixtures.create_dnszone()
+        DNSZone.objects.create(name="Test One")
+        DNSZone.objects.create(name="Test Two")
+        DNSZone.objects.create(name="Test Three")
 
     def test_create_dnszone_only_required(self):
         """Create with only required fields, and validate null description and __str__."""
@@ -61,7 +127,7 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
         self.assertEqual(dnszone.description, "Development Test")
 
     def test_get_absolute_url(self):
-        dns_zone_model = DNSZone(name="example.com")
+        dns_zone_model = DNSZone.objects.create(name="example.com")
         self.assertEqual(dns_zone_model.get_absolute_url(), f"/plugins/dns/dns-zones/{dns_zone_model.id}/")
 
 

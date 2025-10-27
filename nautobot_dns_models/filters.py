@@ -9,13 +9,44 @@ from netaddr import IPAddress as NetIPAddress
 from nautobot_dns_models import models
 
 
+class DNSViewFilterSet(NautobotFilterSet):
+    """Filter for DNSView."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+        }
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSView
+        fields = "__all__"
+
+
+class DNSViewPrefixAssignmentFilterSet(NautobotFilterSet):
+    """Filter for DNSViewPrefixAssignment."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "dns_view__name": "icontains",
+        }
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSViewPrefixAssignment
+        fields = "__all__"
+
+
 class DNSZoneFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
     """Filter for DNSZone."""
 
     q = SearchFilter(
         filter_predicates={
             "name": "icontains",
-            "description": "icontains",
             "filename": "icontains",
             "soa_mname": "icontains",
             "soa_rname": "icontains",
