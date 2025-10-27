@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ("ipam", "0053_alter_vrfdeviceassignment_options_and_more"),
         ("tenancy", "0009_update_all_charfields_max_length_to_255"),
-        ("nautobot_dns_models", "0004_rename_aaaarecordmodel_aaaarecord_and_more"),
+        ("nautobot_dns_models", "0005_dnsview_alter_dnszone_name_dnsviewprefixassignment_and_more"),
     ]
 
     operations = [
