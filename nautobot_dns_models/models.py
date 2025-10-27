@@ -1,9 +1,12 @@
 """Models for Nautobot DNS Models."""
+# ruff: noqa: E501
+# pylint: disable=line-too-long
 
 from constance import config as constance_config
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from nautobot.apps.choices import IPAddressVersionChoices
 from nautobot.apps.models import PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 
@@ -231,7 +234,7 @@ class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     address = models.ForeignKey(
         to="ipam.IPAddress",
         on_delete=models.CASCADE,
-        limit_choices_to={"ip_version": 4},
+        limit_choices_to={"ip_version": IPAddressVersionChoices.VERSION_4},
         help_text="IP address for the record.",
     )
 
@@ -245,7 +248,7 @@ class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     def clean(self):
         """Validate that the referenced IP address is IPv4."""
         super().clean()
-        if getattr(self, "address", None) and getattr(self.address, "ip_version", None) != 4:
+        if self.address and self.address.ip_version != IPAddressVersionChoices.VERSION_4:
             raise ValidationError({"address": "ARecord must reference an IPv4 address."})
 
     def save(self, *args, **kwargs):
@@ -268,7 +271,7 @@ class AAAARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     address = models.ForeignKey(
         to="ipam.IPAddress",
         on_delete=models.CASCADE,
-        limit_choices_to={"ip_version": 6},
+        limit_choices_to={"ip_version": IPAddressVersionChoices.VERSION_6},
         help_text="IP address for the record.",
     )
 
@@ -282,7 +285,7 @@ class AAAARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     def clean(self):
         """Validate that the referenced IP address is IPv6."""
         super().clean()
-        if getattr(self, "address", None) and getattr(self.address, "ip_version", None) != 6:
+        if self.address and self.address.ip_version != IPAddressVersionChoices.VERSION_6:
             raise ValidationError({"address": "AAAARecord must reference an IPv6 address."})
 
     def save(self, *args, **kwargs):
