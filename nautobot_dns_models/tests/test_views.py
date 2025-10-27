@@ -1,14 +1,20 @@
 """Unit tests for views."""
 
+from constance import config as constance_config
 from django.contrib.auth import get_user_model
+from django.test import override_settings
+from django.urls import reverse
 from nautobot.apps.testing import ViewTestCases
+from nautobot.core.testing.utils import extract_page_body
 from nautobot.extras.models import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
+from netutils.ip import ipaddress_address
 
 from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSView,
     DNSZone,
     MXRecord,
     NSRecord,
@@ -20,8 +26,76 @@ from nautobot_dns_models.models import (
 User = get_user_model()
 
 
+class SidePanelTestsMixin:
+    """Provide test methods for template_content side panels."""
+
+    def detail_view_test_side_panels(
+        self, detail_object, render_panel, panel_model, panel_objects=None, panel_title=None
+    ):  # pylint: disable=too-many-arguments
+        """Test whether a side panel renders properly.
+
+        Args:
+            detail_object (obj): The object with the under-test detailed view.
+            render_panel (bool): Should the under-test side panel render or not.
+            panel_model (obj): The class of the objects in the side panel.
+            panel_objects (list, optional): List of expected panel objects.
+            panel_title (str, optional): The title of the side panel, defaults to panel_model._meta.verbose_name_plural.
+        """
+        panel_objects = panel_objects or []
+        panel_title = panel_title or panel_model._meta.verbose_name_plural
+
+        detail_reverse = f"{detail_object._meta.app_label}:{detail_object._meta.model_name}"
+        url = reverse(detail_reverse, args=(detail_object.pk,))
+        response = self.client.get(url)
+        self.assertHttpStatus(response, 200)
+        content = extract_page_body(response.content.decode(response.charset))
+
+        self.assertInHTML(f"<strong>{panel_title}</strong>", content, int(render_panel))
+        if render_panel:
+            if not panel_objects:
+                component = f"— No {panel_model._meta.verbose_name_plural} found —"
+                self.assertInHTML(component, content, 1)
+            for panel_object in panel_objects:
+                panel_reverse = f"plugins:{panel_object._meta.app_label}:{panel_object._meta.model_name}"
+                panel_object_url = reverse(panel_reverse, args=(panel_object.pk,))
+                component = f'<a href="{panel_object_url}">{panel_object.name}</a>'
+                self.assertInHTML(component, content, 1)
+
+
+class DNSViewViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+    """Test the DNSView views."""
+
+    model = DNSView
+
+    @classmethod
+    def setUpTestData(cls):
+        DNSView.objects.create(
+            name="View 1",
+            description="Test Description",
+        )
+        DNSView.objects.create(
+            name="View 2",
+            description="Test Description",
+        )
+        DNSView.objects.create(
+            name="View 3",
+            description="Test Description",
+        )
+
+        cls.form_data = {
+            "name": "Test 1",
+            "description": "Initial model",
+        }
+
+        cls.csv_data = (
+            "name,description",
+            "Test 3,Description 3",
+        )
+
+        cls.bulk_edit_data = {"description": "Bulk edit views"}
+
+
 class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
-    # pylint: disable=too-many-ancestors
     """Test the DNSZone views."""
 
     model = DNSZone
@@ -62,8 +136,10 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             soa_minimum=172800,
         )
 
+        dns_view = DNSView.objects.get(name="Default")
         cls.form_data = {
             "name": "Test 1",
+            "dns_view": dns_view.id,
             "ttl": 3600,
             "description": "Initial model",
             "filename": "test three",
@@ -77,15 +153,14 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         }
 
         cls.csv_data = (
-            "name, ttl, description, filename, soa_mname, soa_rname, soa_refresh, soa_retry, soa_expire, soa_serial, soa_minimum",
-            "Test 3, 3600, Description 3, filename 3, auth-server, admin@example_three.com, 86400, 7200, 3600000, 0, 172800",
+            "name, dns_view, ttl, description, filename, soa_mname, soa_rname, soa_refresh, soa_retry, soa_expire, soa_serial, soa_minimum",
+            f"Test 3, {dns_view.id}, 3600, Description 3, filename 3, auth-server, admin@example_three.com, 86400, 7200, 3600000, 0, 172800",
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
 
 class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
-    # pylint: disable=too-many-ancestors
     """Test the NSRecord views."""
 
     model = NSRecord
@@ -127,7 +202,7 @@ class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
 
-class ARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+class ARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsMixin):
     # pylint: disable=too-many-ancestors
     """Test the ARecord views."""
 
@@ -141,44 +216,95 @@ class ARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
         Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status)
-        ip_addresses = (
+        cls.ip_addresses = (
             IPAddress.objects.create(address="10.0.0.1/32", namespace=namespace, status=status),
             IPAddress.objects.create(address="10.0.0.2/32", namespace=namespace, status=status),
             IPAddress.objects.create(address="10.0.0.3/32", namespace=namespace, status=status),
         )
+        cls.ip_addresses_wo_records = (
+            IPAddress.objects.create(address="10.0.0.4/32", namespace=namespace, status=status),
+        )
 
         ARecord.objects.create(
             name="primary",
-            address=ip_addresses[0],
+            address=cls.ip_addresses[0],
             zone=zone,
         )
         ARecord.objects.create(
             name="primary",
-            address=ip_addresses[1],
+            address=cls.ip_addresses[1],
             zone=zone,
         )
         ARecord.objects.create(
             name="primary",
-            address=ip_addresses[2],
+            address=cls.ip_addresses[2],
             zone=zone,
         )
 
         cls.form_data = {
             "name": "test record",
-            "address": ip_addresses[0].pk,
+            "address": cls.ip_addresses[0].pk,
             "ttl": 3600,
             "zone": zone.pk,
         }
 
         cls.csv_data = (
             "name,address,zone",
-            f"Test 3,{ip_addresses[0].pk},{zone.name}",
+            f"Test 3,{cls.ip_addresses[0].pk},{zone.name}",
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_always(self):
+        """Test IP Address side panel for A Records when set to 'Always'."""
+        constance_config.nautobot_dns_models__SHOW_FORWARD_PANEL = "always"
 
-class AAAARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+        address = self.ip_addresses_wo_records[0]
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=True, panel_model=ARecord, panel_objects=[]
+        )
+
+        address = self.ip_addresses[0]
+        arecord = ARecord.objects.get(address=address)
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=True, panel_model=ARecord, panel_objects=[arecord]
+        )
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_present(self):
+        """Test IP Address side panel for A Records when set to 'If present'."""
+        constance_config.nautobot_dns_models__SHOW_FORWARD_PANEL = "if_present"
+
+        address = self.ip_addresses_wo_records[0]
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=False, panel_model=ARecord, panel_objects=[]
+        )
+
+        address = self.ip_addresses[0]
+        arecord = ARecord.objects.get(address=address)
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=True, panel_model=ARecord, panel_objects=[arecord]
+        )
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_never(self):
+        """Test IP Address side panel for A Records when set to 'Never'."""
+        constance_config.nautobot_dns_models__SHOW_FORWARD_PANEL = "never"
+
+        address = self.ip_addresses_wo_records[0]
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=False, panel_model=ARecord, panel_objects=[]
+        )
+
+        address = self.ip_addresses[0]
+        arecord = ARecord.objects.get(address=address)
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=False, panel_model=ARecord, panel_objects=[arecord]
+        )
+
+
+class AAAARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsMixin):
     # pylint: disable=too-many-ancestors
     """Test the AAAARecord views."""
 
@@ -192,45 +318,95 @@ class AAAARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
         Prefix.objects.create(prefix="2001:db8:abcd:12::/64", namespace=namespace, type="Pool", status=status)
-        ip_addresses = (
+        cls.ip_addresses = (
             IPAddress.objects.create(address="2001:db8:abcd:12::1/128", namespace=namespace, status=status),
             IPAddress.objects.create(address="2001:db8:abcd:12::2/128", namespace=namespace, status=status),
             IPAddress.objects.create(address="2001:db8:abcd:12::3/128", namespace=namespace, status=status),
         )
+        cls.ip_addresses_wo_records = (
+            IPAddress.objects.create(address="2001:db8:abcd:12::4/128", namespace=namespace, status=status),
+        )
 
         AAAARecord.objects.create(
             name="primary",
-            address=ip_addresses[0],
+            address=cls.ip_addresses[0],
             zone=zone,
         )
         AAAARecord.objects.create(
             name="primary",
-            address=ip_addresses[1],
+            address=cls.ip_addresses[1],
             zone=zone,
         )
         AAAARecord.objects.create(
             name="primary",
-            address=ip_addresses[2],
+            address=cls.ip_addresses[2],
             zone=zone,
         )
 
         cls.form_data = {
             "name": "test record",
-            "address": ip_addresses[0].pk,
+            "address": cls.ip_addresses[0].pk,
             "ttl": 3600,
             "zone": zone.pk,
         }
 
         cls.csv_data = (
             "name,address,zone",
-            f"Test 3,{ip_addresses[0].pk},{zone.name}",
+            f"Test 3,{cls.ip_addresses[0].pk},{zone.name}",
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_always(self):
+        """Test IP Address side panel for AAAA Records when set to 'Always'."""
+        constance_config.nautobot_dns_models__SHOW_FORWARD_PANEL = "always"
+
+        address = self.ip_addresses_wo_records[0]
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=True, panel_model=AAAARecord, panel_objects=[]
+        )
+
+        address = self.ip_addresses[0]
+        aaaarecord = AAAARecord.objects.get(address=address)
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=True, panel_model=AAAARecord, panel_objects=[aaaarecord]
+        )
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_present(self):
+        """Test IP Address side panel for AAAA Records when set to 'If present'."""
+        constance_config.nautobot_dns_models__SHOW_FORWARD_PANEL = "if_present"
+
+        address = self.ip_addresses_wo_records[0]
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=False, panel_model=AAAARecord, panel_objects=[]
+        )
+
+        address = self.ip_addresses[0]
+        aaaarecord = AAAARecord.objects.get(address=address)
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=True, panel_model=AAAARecord, panel_objects=[aaaarecord]
+        )
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_never(self):
+        """Test IP Address side panel for AAAA Records when set to 'Never'."""
+        constance_config.nautobot_dns_models__SHOW_FORWARD_PANEL = "never"
+
+        address = self.ip_addresses_wo_records[0]
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=False, panel_model=AAAARecord, panel_objects=[]
+        )
+
+        address = self.ip_addresses[0]
+        aaaarecord = AAAARecord.objects.get(address=address)
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=False, panel_model=AAAARecord, panel_objects=[aaaarecord]
+        )
+
 
 class CNAMERecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
-    # pylint: disable=too-many-ancestors
     """Test the CNAMERecord views."""
 
     model = CNAMERecord
@@ -273,7 +449,6 @@ class CNAMERecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
 
 class MXRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
-    # pylint: disable=too-many-ancestors
     """Test the MXRecord views."""
 
     model = MXRecord
@@ -317,7 +492,6 @@ class MXRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
 
 class TXTRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
-    # pylint: disable=too-many-ancestors
     """Test the TXTRecord views."""
 
     model = TXTRecord
@@ -360,7 +534,7 @@ class TXTRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
 
-class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsMixin):
     # pylint: disable=too-many-ancestors
     """Test the PTRRecord views."""
 
@@ -370,6 +544,13 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     def setUpTestData(cls):
         zone = DNSZone.objects.create(
             name="example.com",
+        )
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status)
+        cls.ip_addresses = (IPAddress.objects.create(address="10.0.0.1/32", namespace=namespace, status=status),)
+        cls.ip_addresses_wo_records = (
+            IPAddress.objects.create(address="10.0.0.2/32", namespace=namespace, status=status),
         )
 
         PTRRecord.objects.create(
@@ -388,6 +569,12 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             zone=zone,
         )
 
+        PTRRecord.objects.create(
+            name="one.example.com",
+            ptrdname=ipaddress_address(cls.ip_addresses[0].host, "reverse_pointer"),
+            zone=zone,
+        )
+
         cls.form_data = {
             "name": "test record",
             "ptrdname": "ptr-test-record",
@@ -402,9 +589,56 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_always(self):
+        """Test IP Address side panel for PTR Records when set to 'Always'."""
+        constance_config.nautobot_dns_models__SHOW_REVERSE_PANEL = "always"
+
+        address = self.ip_addresses_wo_records[0]
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=True, panel_model=PTRRecord, panel_objects=[]
+        )
+
+        address = self.ip_addresses[0]
+        ptrrecord = PTRRecord.objects.get(ptrdname=ipaddress_address(address.host, "reverse_pointer"))
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=True, panel_model=PTRRecord, panel_objects=[ptrrecord]
+        )
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_present(self):
+        """Test IP Address side panel for PTR Records when set to 'If present'."""
+        constance_config.nautobot_dns_models__SHOW_REVERSE_PANEL = "if_present"
+
+        address = self.ip_addresses_wo_records[0]
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=False, panel_model=PTRRecord, panel_objects=[]
+        )
+
+        address = self.ip_addresses[0]
+        ptrrecord = PTRRecord.objects.get(ptrdname=ipaddress_address(address.host, "reverse_pointer"))
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=True, panel_model=PTRRecord, panel_objects=[ptrrecord]
+        )
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_never(self):
+        """Test IP Address side panel for PTR Records when set to 'Never'."""
+        constance_config.nautobot_dns_models__SHOW_REVERSE_PANEL = "never"
+
+        address = self.ip_addresses_wo_records[0]
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=False, panel_model=PTRRecord, panel_objects=[]
+        )
+
+        address = self.ip_addresses[0]
+        ptrrecord = PTRRecord.objects.get(ptrdname=ipaddress_address(address.host, "reverse_pointer"))
+        self.detail_view_test_side_panels(
+            detail_object=address, render_panel=False, panel_model=PTRRecord, panel_objects=[ptrrecord]
+        )
+
 
 class SRVRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
-    # pylint: disable=too-many-ancestors
     """Test the SRVRecord views."""
 
     model = SRVRecord

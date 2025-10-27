@@ -116,9 +116,6 @@ class SRVRecordType(DNSRecordType):
         model = SRVRecord
         filterset_class = SRVRecordFilterSet
 
-        model = PTRRecord
-        filterset_class = PTRRecordFilterSet
-
 
 graphql_types = [
     NSRecordType,
