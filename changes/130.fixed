@@ -1,1 +1,0 @@
-Fixed SRVRecord GraphQL type so `srv_record` and `srv_records` are available.
