@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from nautobot.apps.choices import IPAddressVersionChoices
-from nautobot.apps.models import PrimaryModel, extras_features
+from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 
 
