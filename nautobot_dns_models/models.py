@@ -6,9 +6,9 @@ from constance import config as constance_config
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from nautobot.ipam.choices import IPAddressVersionChoices
 from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
+from nautobot.ipam.choices import IPAddressVersionChoices
 
 
 def dns_wire_label_length(label):
