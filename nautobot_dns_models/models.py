@@ -318,9 +318,15 @@ class ARecord(DNSRecord):
         verbose_name_plural = "A Records"
 
     def clean(self):
-        """Validate that the referenced IP address is IPv4."""
+        """Validate that the referenced IP address is IPv4.
+
+        Guard against dereferencing the relation when it's unset to avoid
+        RelatedObjectDoesNotExist during form/model validation.
+        """
         super().clean()
-        if self.address and self.address.ip_version != IPAddressVersionChoices.VERSION_4:
+        if self.address_id is None:
+            return
+        if self.address.ip_version != IPAddressVersionChoices.VERSION_4:
             raise ValidationError({"address": "ARecord must reference an IPv4 address."})
 
     def save(self, *args, **kwargs):
@@ -355,9 +361,15 @@ class AAAARecord(DNSRecord):
         verbose_name_plural = "AAAA Records"
 
     def clean(self):
-        """Validate that the referenced IP address is IPv6."""
+        """Validate that the referenced IP address is IPv6.
+
+        Guard against dereferencing the relation when it's unset to avoid
+        RelatedObjectDoesNotExist during form/model validation.
+        """
         super().clean()
-        if self.address and self.address.ip_version != IPAddressVersionChoices.VERSION_6:
+        if self.address_id is None:
+            return
+        if self.address.ip_version != IPAddressVersionChoices.VERSION_6:
             raise ValidationError({"address": "AAAARecord must reference an IPv6 address."})
 
     def save(self, *args, **kwargs):
