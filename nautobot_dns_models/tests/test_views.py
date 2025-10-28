@@ -266,7 +266,7 @@ class ARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsMix
         )
 
         address = self.ip_addresses[0]
-        arecord = ARecord.objects.get(address=address)
+        arecord = ARecord.objects.get(ip_address=address)
         self.detail_view_test_side_panels(
             detail_object=address, render_panel=True, panel_model=ARecord, panel_objects=[arecord]
         )
@@ -282,7 +282,7 @@ class ARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsMix
         )
 
         address = self.ip_addresses[0]
-        arecord = ARecord.objects.get(address=address)
+        arecord = ARecord.objects.get(ip_address=address)
         self.detail_view_test_side_panels(
             detail_object=address, render_panel=True, panel_model=ARecord, panel_objects=[arecord]
         )
@@ -298,7 +298,7 @@ class ARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsMix
         )
 
         address = self.ip_addresses[0]
-        arecord = ARecord.objects.get(address=address)
+        arecord = ARecord.objects.get(ip_address=address)
         self.detail_view_test_side_panels(
             detail_object=address, render_panel=False, panel_model=ARecord, panel_objects=[arecord]
         )
@@ -368,7 +368,7 @@ class AAAARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTests
         )
 
         address = self.ip_addresses[0]
-        aaaarecord = AAAARecord.objects.get(address=address)
+        aaaarecord = AAAARecord.objects.get(ip_address=address)
         self.detail_view_test_side_panels(
             detail_object=address, render_panel=True, panel_model=AAAARecord, panel_objects=[aaaarecord]
         )
@@ -384,7 +384,7 @@ class AAAARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTests
         )
 
         address = self.ip_addresses[0]
-        aaaarecord = AAAARecord.objects.get(address=address)
+        aaaarecord = AAAARecord.objects.get(ip_address=address)
         self.detail_view_test_side_panels(
             detail_object=address, render_panel=True, panel_model=AAAARecord, panel_objects=[aaaarecord]
         )
@@ -400,7 +400,7 @@ class AAAARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTests
         )
 
         address = self.ip_addresses[0]
-        aaaarecord = AAAARecord.objects.get(address=address)
+        aaaarecord = AAAARecord.objects.get(ip_address=address)
         self.detail_view_test_side_panels(
             detail_object=address, render_panel=False, panel_model=AAAARecord, panel_objects=[aaaarecord]
         )

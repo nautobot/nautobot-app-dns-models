@@ -1,7 +1,6 @@
 """Test DNSZone Filter."""
 
-from django.test import TestCase
-from nautobot.apps.testing import FilterTestCases
+from nautobot.apps.testing import FilterTestCases, TestCase
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from nautobot.tenancy.models import Tenant, TenantGroup
@@ -34,43 +33,48 @@ from nautobot_dns_models.models import (
 )
 
 
-class DNSViewFilterTestCase(TestCase):
+class DNSViewFilterTestCase(FilterTestCases.FilterTestCase):
     """DNSView Filter Test Case."""
 
     queryset = DNSView.objects.all()
     filterset = DNSViewFilterSet
+
+    generic_filter_tests = [
+        ["name"],
+        ["description"],
+        ["prefixes"],
+    ]
 
     @classmethod
     def setUpTestData(cls):
         """Setup test data for DNSView Model."""
         namespace = Namespace.objects.get(name="Global")
         active_status = Status.objects.get(name="Active")
-        cls.prefix = Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, status=active_status)
+        cls.prefixes = (
+            Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, status=active_status),
+            Prefix.objects.create(prefix="192.0.3.0/24", namespace=namespace, status=active_status),
+            Prefix.objects.create(prefix="192.0.4.0/24", namespace=namespace, status=active_status),
+            Prefix.objects.create(prefix="192.0.5.0/24", namespace=namespace, status=active_status),
+            Prefix.objects.create(prefix="192.0.6.0/24", namespace=namespace, status=active_status),
+        )
 
-        DNSView.objects.create(name="Test One")
-        DNSView.objects.create(name="Test Two")
-        view_with_prefix = DNSView.objects.create(name="Test Three")
-        view_with_prefix.prefixes.set([cls.prefix])
-
-    def test_single_name(self):
-        """Test using name search with name of DNSView."""
-        params = {"name": "Test One"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
+        dns_views = (
+            DNSView.objects.create(name="Test One", description="Dns View 1"),
+            DNSView.objects.create(name="Test Two", description="Dns View 2"),
+            DNSView.objects.create(name="Test Three", description="Dns View 3"),
+        )
+        dns_views[0].prefixes.set([cls.prefixes[0]])
+        dns_views[1].prefixes.set(cls.prefixes[2:4])
 
     def test_name(self):
         """Test using name search with name of DNSView."""
-        params = {"name__ic": "Test"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+        params = {"name__ic": ["TEST T"]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
 
     def test_name_invalid(self):
         """Test using invalid name search for DNSView."""
         params = {"name": "wrong-name"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
-
-    def test_prefix(self):
-        """Test using prefix search with prefixes of DNSView."""
-        params = {"prefixes": [self.prefix.pk]}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
     def test_search(self):
         """Test filtering by Q search value."""
@@ -80,11 +84,15 @@ class DNSViewFilterTestCase(TestCase):
         self.assertEqual(self.filterset({"q": "view"}, self.queryset).qs.count(), 0)
 
 
-class DNSViewPrefixAssignmentFilterTestCase(TestCase):
+class DNSViewPrefixAssignmentFilterTestCase(FilterTestCases.FilterTestCase):
     """DNSViewPrefixAssignment Filter Test Case."""
 
     queryset = DNSViewPrefixAssignment.objects.all()
     filterset = DNSViewPrefixAssignmentFilterSet
+    generic_filter_tests = [
+        ["dns_view"],
+        ["prefix"],
+    ]
 
     @classmethod
     def setUpTestData(cls):
@@ -94,35 +102,31 @@ class DNSViewPrefixAssignmentFilterTestCase(TestCase):
         cls.prefixes = (
             Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, status=active_status),
             Prefix.objects.create(prefix="192.0.3.0/24", namespace=namespace, status=active_status),
+            Prefix.objects.create(prefix="192.0.4.0/24", namespace=namespace, status=active_status),
         )
 
         cls.dns_views = (
             DNSView.objects.create(name="View 1", description="First DNS View"),
             DNSView.objects.create(name="View 2", description="Second DNS View"),
+            DNSView.objects.create(name="View 3", description="Third DNS View"),
         )
 
         DNSViewPrefixAssignment.objects.create(dns_view=cls.dns_views[0], prefix=cls.prefixes[0])
         DNSViewPrefixAssignment.objects.create(dns_view=cls.dns_views[1], prefix=cls.prefixes[1])
-
-    def test_single_view(self):
-        """Test using dns_view search with dns_view of DNSViewPrefixAssignment."""
-        params = {"dns_view": self.dns_views[0]}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
-
-    def test_view(self):
-        """Test using dns_view search with dns_view of DNSViewPrefixAssignment."""
-        params = {"dns_view__ic": "View"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
-
-    def test_prefix(self):
-        """Test using prefix search with prefix of DNSViewPrefixAssignment."""
-        params = {"prefix": self.prefixes[0]}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
+        DNSViewPrefixAssignment.objects.create(dns_view=cls.dns_views[2], prefix=cls.prefixes[2])
 
     def test_search(self):
         """Test filtering by Q search value."""
-        self.assertEqual(self.filterset({"q": "View 1"}, self.queryset).qs.count(), 1)
-        self.assertEqual(self.filterset({"q": "View"}, self.queryset).qs.count(), 2)
+        self.assertQuerysetEqualAndNotEmpty(
+            self.filterset({"q": "View 1"}, self.queryset).qs,
+            DNSViewPrefixAssignment.objects.filter(dns_view__name__icontains="View 1"),
+            ordered=False,
+        )
+        self.assertQuerysetEqualAndNotEmpty(
+            self.filterset({"q": "View"}, self.queryset).qs,
+            DNSViewPrefixAssignment.objects.filter(dns_view__name__icontains="View"),
+            ordered=False,
+        )
         self.assertEqual(self.filterset({"q": "Nikos"}, self.queryset).qs.count(), 0)
 
 
