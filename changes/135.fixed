@@ -1,0 +1,1 @@
+Fixed ARecord/AAAARecord validation to enforce correct IP version and reject mismatched addresses via ORM writes.

@@ -6,6 +6,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
+from nautobot.ipam.choices import IPAddressVersionChoices
 
 
 def dns_wire_label_length(label):
@@ -303,7 +304,7 @@ class ARecord(DNSRecord):
     address = models.ForeignKey(
         to="ipam.IPAddress",
         on_delete=models.CASCADE,
-        limit_choices_to={"ip_version": 4},
+        limit_choices_to={"ip_version": IPAddressVersionChoices.VERSION_4},
         help_text="IP address for the record.",
     )
 
@@ -313,6 +314,23 @@ class ARecord(DNSRecord):
         unique_together = [["name", "address", "zone"]]
         verbose_name = "A Record"
         verbose_name_plural = "A Records"
+
+    def clean(self):
+        """Validate that the referenced IP address is IPv4.
+
+        Guard against dereferencing the relation when it's unset to avoid
+        RelatedObjectDoesNotExist during form/model validation.
+        """
+        super().clean()
+        if self.address_id is None:
+            return
+        if self.address.ip_version != IPAddressVersionChoices.VERSION_4:
+            raise ValidationError({"address": "ARecord must reference an IPv4 address."})
+
+    def save(self, *args, **kwargs):
+        """Ensure model validation runs on direct ORM writes."""
+        self.clean()
+        return super().save(*args, **kwargs)
 
 
 @extras_features(
@@ -329,7 +347,7 @@ class AAAARecord(DNSRecord):
     address = models.ForeignKey(
         to="ipam.IPAddress",
         on_delete=models.CASCADE,
-        limit_choices_to={"ip_version": 6},
+        limit_choices_to={"ip_version": IPAddressVersionChoices.VERSION_6},
         help_text="IP address for the record.",
     )
 
@@ -339,6 +357,23 @@ class AAAARecord(DNSRecord):
         unique_together = [["name", "address", "zone"]]
         verbose_name = "AAAA Record"
         verbose_name_plural = "AAAA Records"
+
+    def clean(self):
+        """Validate that the referenced IP address is IPv6.
+
+        Guard against dereferencing the relation when it's unset to avoid
+        RelatedObjectDoesNotExist during form/model validation.
+        """
+        super().clean()
+        if self.address_id is None:
+            return
+        if self.address.ip_version != IPAddressVersionChoices.VERSION_6:
+            raise ValidationError({"address": "AAAARecord must reference an IPv6 address."})
+
+    def save(self, *args, **kwargs):
+        """Ensure model validation runs on direct ORM writes."""
+        self.clean()
+        return super().save(*args, **kwargs)
 
 
 @extras_features(
