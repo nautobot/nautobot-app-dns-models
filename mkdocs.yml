@@ -73,6 +73,7 @@ markdown_extensions:
       permalink: true
   - "attr_list"
   - "md_in_html"
+  - "pymdownx.details"
   - "pymdownx.highlight":
       anchor_linenums: true
   - "pymdownx.inlinehilite"
@@ -113,6 +114,7 @@ nav:
       - External Interactions: "user/external_interactions.md"
       - Data Models:
           - DNS Zone: "models/dnszone.md"
+          - DNS View: "models/dnsview.md"
           - DNS Record: "models/dnsrecord.md"
           - NS Record: "models/nsrecord.md"
           - A Record: "models/arecord.md"
@@ -122,6 +124,7 @@ nav:
           - PTR Record: "models/ptrrecord.md"
           - SRV Record: "models/srvrecord.md"
           - TXT Record: "models/txtrecord.md"
+          - DNS View Prefix Assignment: "models/dnsviewprefixassignment.md"
   - Administrator Guide:
       - Install and Configure: "admin/install.md"
       - Upgrade: "admin/upgrade.md"
@@ -129,6 +132,7 @@ nav:
       - Compatibility Matrix: "admin/compatibility_matrix.md"
       - Release Notes:
           - "admin/release_notes/index.md"
+          - v1.3: "admin/release_notes/version_1.3.md"
           - v1.2: "admin/release_notes/version_1.2.md"
           - v1.1: "admin/release_notes/version_1.1.md"
           - v1.0: "admin/release_notes/version_1.0.md"

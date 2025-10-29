@@ -4,8 +4,9 @@ from constance import config as constance_config
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from nautobot.apps.models import PrimaryModel, extras_features
+from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
+from nautobot.ipam.choices import IPAddressVersionChoices
 
 
 def dns_wire_label_length(label):
@@ -76,10 +77,81 @@ class DNSModel(PrimaryModel):
     "relationships",
     "webhooks",
 )
+class DNSView(PrimaryModel):
+    """Model for DNS Views."""
+
+    name = models.CharField(max_length=200, help_text="Name of the View.", unique=True)
+    description = models.TextField(help_text="Description of the View.", blank=True)
+    prefixes = models.ManyToManyField(
+        to="ipam.Prefix",
+        related_name="dns_views",
+        through="DNSViewPrefixAssignment",
+        through_fields=("dns_view", "prefix"),
+        blank=True,
+        help_text="IP Prefixes that define the View.",
+    )
+
+    class Meta:
+        """Meta attributes for DNSView."""
+
+        verbose_name = "DNS View"
+        verbose_name_plural = "DNS Views"
+
+    def __str__(self):
+        """Stringify instance."""
+        return self.name
+
+
+@extras_features("graphql")
+class DNSViewPrefixAssignment(BaseModel):
+    """Through model for DNSView and Prefix many-to-many relationship."""
+
+    dns_view = ForeignKeyWithAutoRelatedName(
+        DNSView,
+        on_delete=models.CASCADE,
+    )
+    prefix = ForeignKeyWithAutoRelatedName(to="ipam.Prefix", on_delete=models.CASCADE)
+
+    class Meta:
+        """Meta attributes for DNSViewPrefixAssignment."""
+
+        unique_together = [["dns_view", "prefix"]]
+        verbose_name = "DNS View Prefix Assignment"
+        verbose_name_plural = "DNS View Prefix Assignments"
+
+    def __str__(self):
+        """Stringify instance."""
+        return f"{self.dns_view}: {self.prefix}"
+
+
+def get_default_view_pk():
+    """Return the default DNSView ID, creating it if necessary."""
+    default_view, _ = DNSView.objects.get_or_create(
+        name="Default", defaults={"description": "Default DNS view. Created by Nautobot DNS Models app."}
+    )
+    return default_view.pk
+
+
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
 class DNSZone(DNSModel):
     """Model for DNS SOA Records. An SOA Record defines a DNS Zone."""
 
-    name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD. e.g example.com", unique=True)
+    name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD. e.g example.com")
+    dns_view = ForeignKeyWithAutoRelatedName(
+        DNSView,
+        on_delete=models.PROTECT,
+        help_text="The DNS View this Zone belongs to.",
+        verbose_name="View",
+        default=get_default_view_pk,
+    )
     ttl = models.IntegerField(
         validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
         default=3600,
@@ -129,11 +201,12 @@ class DNSZone(DNSModel):
     class Meta:
         """Meta attributes for DNSZone."""
 
+        unique_together = [["name", "dns_view"]]
         verbose_name = "DNS Zone"
         verbose_name_plural = "DNS Zones"
 
 
-class DNSRecord(DNSModel):  # pylint: disable=too-many-ancestors
+class DNSRecord(DNSModel):
     """Primary Dns Record model for plugin."""
 
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
@@ -204,7 +277,7 @@ class DNSRecord(DNSModel):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class NSRecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class NSRecord(DNSRecord):
     """NS Record model."""
 
     server = models.CharField(max_length=200, help_text="FQDN of an authoritative Name Server.")
@@ -225,13 +298,13 @@ class NSRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class ARecord(DNSRecord):
     """A Record model."""
 
     address = models.ForeignKey(
         to="ipam.IPAddress",
         on_delete=models.CASCADE,
-        limit_choices_to={"ip_version": 4},
+        limit_choices_to={"ip_version": IPAddressVersionChoices.VERSION_4},
         help_text="IP address for the record.",
     )
 
@@ -242,6 +315,23 @@ class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
         verbose_name = "A Record"
         verbose_name_plural = "A Records"
 
+    def clean(self):
+        """Validate that the referenced IP address is IPv4.
+
+        Guard against dereferencing the relation when it's unset to avoid
+        RelatedObjectDoesNotExist during form/model validation.
+        """
+        super().clean()
+        if self.address_id is None:
+            return
+        if self.address.ip_version != IPAddressVersionChoices.VERSION_4:
+            raise ValidationError({"address": "ARecord must reference an IPv4 address."})
+
+    def save(self, *args, **kwargs):
+        """Ensure model validation runs on direct ORM writes."""
+        self.clean()
+        return super().save(*args, **kwargs)
+
 
 @extras_features(
     "custom_fields",
@@ -251,13 +341,13 @@ class ARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class AAAARecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class AAAARecord(DNSRecord):
     """AAAA Record model."""
 
     address = models.ForeignKey(
         to="ipam.IPAddress",
         on_delete=models.CASCADE,
-        limit_choices_to={"ip_version": 6},
+        limit_choices_to={"ip_version": IPAddressVersionChoices.VERSION_6},
         help_text="IP address for the record.",
     )
 
@@ -268,6 +358,23 @@ class AAAARecord(DNSRecord):  # pylint: disable=too-many-ancestors
         verbose_name = "AAAA Record"
         verbose_name_plural = "AAAA Records"
 
+    def clean(self):
+        """Validate that the referenced IP address is IPv6.
+
+        Guard against dereferencing the relation when it's unset to avoid
+        RelatedObjectDoesNotExist during form/model validation.
+        """
+        super().clean()
+        if self.address_id is None:
+            return
+        if self.address.ip_version != IPAddressVersionChoices.VERSION_6:
+            raise ValidationError({"address": "AAAARecord must reference an IPv6 address."})
+
+    def save(self, *args, **kwargs):
+        """Ensure model validation runs on direct ORM writes."""
+        self.clean()
+        return super().save(*args, **kwargs)
+
 
 @extras_features(
     "custom_fields",
@@ -277,7 +384,7 @@ class AAAARecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class CNAMERecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class CNAMERecord(DNSRecord):
     """CNAME Record model."""
 
     alias = models.CharField(max_length=200, help_text="FQDN of the Alias.")
@@ -298,7 +405,7 @@ class CNAMERecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class MXRecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class MXRecord(DNSRecord):
     """MX Record model."""
 
     preference = models.IntegerField(
@@ -324,7 +431,7 @@ class MXRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class TXTRecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class TXTRecord(DNSRecord):
     """TXT Record model."""
 
     text = models.CharField(max_length=256, help_text="Text for the TXT Record.")
@@ -345,7 +452,7 @@ class TXTRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class PTRRecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class PTRRecord(DNSRecord):
     """PTR Record model."""
 
     ptrdname = models.CharField(
@@ -372,7 +479,7 @@ class PTRRecord(DNSRecord):  # pylint: disable=too-many-ancestors
     "relationships",
     "webhooks",
 )
-class SRVRecord(DNSRecord):  # pylint: disable=too-many-ancestors
+class SRVRecord(DNSRecord):
     """SRV Record model."""
 
     priority = models.IntegerField(
