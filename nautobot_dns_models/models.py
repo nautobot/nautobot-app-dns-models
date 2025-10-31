@@ -331,10 +331,10 @@ class ARecord(DNSRecord):
         RelatedObjectDoesNotExist during form/model validation.
         """
         super().clean()
-        if self.address_id is None:
+        if self.ip_address_id is None:
             return
-        if self.address.ip_version != IPAddressVersionChoices.VERSION_4:
-            raise ValidationError({"address": "ARecord must reference an IPv4 address."})
+        if self.ip_address.ip_version != IPAddressVersionChoices.VERSION_4:
+            raise ValidationError({"ip_address": "ARecord must reference an IPv4 address."})
 
     def save(self, *args, **kwargs):
         """Ensure model validation runs on direct ORM writes."""
@@ -375,10 +375,10 @@ class AAAARecord(DNSRecord):
         RelatedObjectDoesNotExist during form/model validation.
         """
         super().clean()
-        if self.address_id is None:
+        if self.ip_address_id is None:
             return
-        if self.address.ip_version != IPAddressVersionChoices.VERSION_6:
-            raise ValidationError({"address": "AAAARecord must reference an IPv6 address."})
+        if self.ip_address.ip_version != IPAddressVersionChoices.VERSION_6:
+            raise ValidationError({"ip_address": "AAAARecord must reference an IPv6 address."})
 
     def save(self, *args, **kwargs):
         """Ensure model validation runs on direct ORM writes."""

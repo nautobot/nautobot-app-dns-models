@@ -183,7 +183,7 @@ class ARecordTestCase(TestCase):
     def test_create_ipv6_arecord_fails_on_save(self):
         """Creating via ORM should also fail due to save() calling clean()."""
         with self.assertRaises(ValidationError):
-            ARecord.objects.create(name="invalid-save.example.com", address=self.ipv6_address, zone=self.dns_zone)
+            ARecord.objects.create(name="invalid-save.example.com", ip_address=self.ipv6_address, zone=self.dns_zone)
 
     def test_get_absolute_url(self):
         a_record = ARecord.objects.create(name="site.example.com", ip_address=self.ip_address, zone=self.dns_zone)
@@ -223,7 +223,7 @@ class AAAARecordTestCase(TestCase):
         with self.assertRaises(ValidationError):
             AAAARecord.objects.create(
                 name="invalid-save.example.com",
-                address=self.ipv4_address,
+                ip_address=self.ipv4_address,
                 zone=self.dns_zone,
             )
 
