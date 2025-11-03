@@ -8,7 +8,7 @@ This document describes all new features and changes in the release. The format 
 - Added support for Python 3.13.
 - Dropped support for Python 3.9.
 
-## [v2.0.0a1 (2025-10-31)](https://github.com/nautobot/nautobot-app-dns-models/releases/tag/v2.0.0a1)
+## [v2.0.0a1 (2025-11-03)](https://github.com/nautobot/nautobot-app-dns-models/releases/tag/v2.0.0a1)
 
 ### Added
 
