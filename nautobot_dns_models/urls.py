@@ -32,7 +32,7 @@ urlpatterns = [
     path(
         "dns-zones/<uuid:pk>/aaaa-records/add/",
         RedirectView.as_view(
-            url="/plugins/dns/aquiaaa-records/add/?zone=%(pk)s&return_url=/plugins/dns/dns-zones/%(pk)s"
+            url="/plugins/dns/aaaa-records/add/?zone=%(pk)s&return_url=/plugins/dns/dns-zones/%(pk)s"
         ),
         name="zone_aaaa_records_add",
     ),
