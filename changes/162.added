@@ -1,0 +1,1 @@
+Added the `nautobot_dns_models_dns_views` filter extension to the `ipam.Prefix` model to allow filtering prefixes by DNS views.
