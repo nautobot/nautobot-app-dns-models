@@ -4,17 +4,31 @@ This document describes all new features and changes in the release. The format 
 
 ## Release Overview
 
-- Added support for Nautobot 3.0.
-- Added support for Python 3.13.
-- Dropped support for Python 3.9.
+This major release marks the compatibility of the DNS Models App with Nautobot 3.0.0. Check out the [full details](https://docs.nautobot.com/projects/core/en/stable/release-notes/version-3.0/) of the changes included in this new major release of Nautobot. Highlights:
 
-## [v2.0.0a1 (2025-11-03)](https://github.com/nautobot/nautobot-app-dns-models/releases/tag/v2.0.0a1)
+* Minimum Nautobot version supported is 3.0.
+* Added support for Python 3.13 and removed support for 3.9.
+* Updated UI framework to use latest Bootstrap 5.3.
+* Changed ARecord address field name to ip_address.
+* Changed AAAARecord address field name to ip_address.
+
+We will continue to support the previous major release for users of Nautobot LTM 2.4 only with critical bug and security fixes as per the [Software Lifecycle Policy](https://networktocode.com/company/legal/software-lifecycle-policy/).
+
+## [v2.0.0 (2025-11-17)](https://github.com/nautobot/nautobot-app-dns-models/releases/tag/v2.0.0)
+
+### Breaking Changes
+
+- [#141](https://github.com/nautobot/nautobot-app-dns-models/issues/141) - Changed ARecord address field name to ip_address.
+- [#141](https://github.com/nautobot/nautobot-app-dns-models/issues/141) - Changed AAAARecord address field name to ip_address.
 
 ### Added
 
 - Added support for Python 3.13.
 - Added support for Nautobot 3.0.
+- [#141](https://github.com/nautobot/nautobot-app-dns-models/issues/141) - Added Tenant to DNS Zones.
 
 ### Removed
 
 - Dropped support for Python 3.9.
+
+## [v2.0.0a1 (2025-11-03)](https://github.com/nautobot/nautobot-app-dns-models/releases/tag/v2.0.0a1)
