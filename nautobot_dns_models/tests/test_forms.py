@@ -144,7 +144,7 @@ class ARecordFormTestCase(TestCase):
     def test_specifying_only_required_success(self):
         data = {
             "name": "a-record",
-            "address": self.ip_address,
+            "ip_address": self.ip_address,
             "ttl": 3600,
             "zone": self.dns_zone,
         }
@@ -155,7 +155,7 @@ class ARecordFormTestCase(TestCase):
     def test_specifying_all_fields_success(self):
         data = {
             "name": "a-record",
-            "address": self.ip_address,
+            "ip_address": self.ip_address,
             "ttl": 3600,
             "zone": self.dns_zone,
             "comment": "example-comment",
@@ -168,14 +168,14 @@ class ARecordFormTestCase(TestCase):
     def test_ip_address_obj_is_required(self):
         data = {
             "name": "a-record",
-            "address": "10.10.10.0/32",
+            "ip_address": "10.10.10.0/32",
             "ttl": 3600,
             "zone": self.dns_zone,
         }
         form = self.form_class(data)
         self.assertFalse(form.is_valid())
         self.assertTrue(form.errors)
-        self.assertIn("not a valid UUID.", form.errors["address"][0])
+        self.assertIn("not a valid UUID.", form.errors["ip_address"][0])
 
 
 class AAAARecordFormTestCase(TestCase):
@@ -194,7 +194,7 @@ class AAAARecordFormTestCase(TestCase):
     def test_specifying_only_required_success(self):
         data = {
             "name": "aaaa-record",
-            "address": self.ip_address,
+            "ip_address": self.ip_address,
             "ttl": 3600,
             "zone": self.dns_zone,
         }
@@ -205,7 +205,7 @@ class AAAARecordFormTestCase(TestCase):
     def test_specifying_all_fields_success(self):
         data = {
             "name": "aaaa-record",
-            "address": self.ip_address,
+            "ip_address": self.ip_address,
             "ttl": 3600,
             "zone": self.dns_zone,
             "comment": "example-comment",
@@ -218,7 +218,7 @@ class AAAARecordFormTestCase(TestCase):
     def test_ip_address_obj_is_required(self):
         data = {
             "name": "aaaa-record",
-            "address": "10.10.10.0/32",
+            "ip_address": "10.10.10.0/32",
             "ttl": 3600,
             "zone": self.dns_zone,
         }

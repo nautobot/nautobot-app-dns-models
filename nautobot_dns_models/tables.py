@@ -2,6 +2,7 @@
 
 import django_tables2 as tables
 from nautobot.apps.tables import BaseTable, ButtonsColumn, ToggleColumn
+from nautobot.tenancy.tables import TenantColumn
 
 from nautobot_dns_models import models
 
@@ -52,6 +53,7 @@ class DNSZoneTable(BaseTable):
 
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
+    tenant = TenantColumn()
     dns_view = tables.Column(linkify=True)
     actions = ButtonsColumn(
         models.DNSZone,
@@ -75,6 +77,7 @@ class DNSZoneTable(BaseTable):
             "soa_retry",
             "soa_serial",
             "soa_minimum",
+            "tenant",
             "actions",
         )
 
@@ -117,7 +120,7 @@ class NSRecordTable(DNSRecordTable):
 class ARecordTable(DNSRecordTable):
     """Table for list view."""
 
-    address = tables.LinkColumn()
+    ip_address = tables.Column(linkify=True)
     actions = ButtonsColumn(
         models.ARecord,
         buttons=("changelog", "edit", "delete"),
@@ -130,7 +133,7 @@ class ARecordTable(DNSRecordTable):
         fields = (
             "pk",
             "name",
-            "address",
+            "ip_address",
             "zone",
             "comment",
             "ttl",
@@ -142,7 +145,7 @@ class ARecordTable(DNSRecordTable):
         default_columns = (
             "pk",
             "name",
-            "address",
+            "ip_address",
             "zone",
             "comment",
             "ttl",
@@ -153,7 +156,7 @@ class ARecordTable(DNSRecordTable):
 class AAAARecordTable(DNSRecordTable):
     """Table for list view."""
 
-    address = tables.LinkColumn()
+    ip_address = tables.Column(linkify=True)
     actions = ButtonsColumn(
         models.AAAARecord,
         buttons=("changelog", "edit", "delete"),
@@ -166,7 +169,7 @@ class AAAARecordTable(DNSRecordTable):
         fields = (
             "pk",
             "name",
-            "address",
+            "ip_address",
             "zone",
             "comment",
             "ttl",
@@ -178,7 +181,7 @@ class AAAARecordTable(DNSRecordTable):
         default_columns = (
             "pk",
             "name",
-            "address",
+            "ip_address",
             "zone",
             "comment",
             "ttl",

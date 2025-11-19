@@ -1,8 +1,9 @@
 """Test DNSZone Filter."""
 
-from django.test import TestCase
+from nautobot.apps.testing import FilterTestCases, TestCase
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
+from nautobot.tenancy.models import Tenant, TenantGroup
 
 from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
@@ -32,43 +33,48 @@ from nautobot_dns_models.models import (
 )
 
 
-class DNSViewFilterTestCase(TestCase):
+class DNSViewFilterTestCase(FilterTestCases.FilterTestCase):
     """DNSView Filter Test Case."""
 
     queryset = DNSView.objects.all()
     filterset = DNSViewFilterSet
+
+    generic_filter_tests = [
+        ["name"],
+        ["description"],
+        ["prefixes"],
+    ]
 
     @classmethod
     def setUpTestData(cls):
         """Setup test data for DNSView Model."""
         namespace = Namespace.objects.get(name="Global")
         active_status = Status.objects.get(name="Active")
-        cls.prefix = Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, status=active_status)
+        cls.prefixes = (
+            Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, status=active_status),
+            Prefix.objects.create(prefix="192.0.3.0/24", namespace=namespace, status=active_status),
+            Prefix.objects.create(prefix="192.0.4.0/24", namespace=namespace, status=active_status),
+            Prefix.objects.create(prefix="192.0.5.0/24", namespace=namespace, status=active_status),
+            Prefix.objects.create(prefix="192.0.6.0/24", namespace=namespace, status=active_status),
+        )
 
-        DNSView.objects.create(name="Test One")
-        DNSView.objects.create(name="Test Two")
-        view_with_prefix = DNSView.objects.create(name="Test Three")
-        view_with_prefix.prefixes.set([cls.prefix])
-
-    def test_single_name(self):
-        """Test using name search with name of DNSView."""
-        params = {"name": "Test One"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
+        dns_views = (
+            DNSView.objects.create(name="Test One", description="Dns View 1"),
+            DNSView.objects.create(name="Test Two", description="Dns View 2"),
+            DNSView.objects.create(name="Test Three", description="Dns View 3"),
+        )
+        dns_views[0].prefixes.set([cls.prefixes[0]])
+        dns_views[1].prefixes.set(cls.prefixes[2:4])
 
     def test_name(self):
         """Test using name search with name of DNSView."""
-        params = {"name__ic": "Test"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+        params = {"name__ic": ["TEST T"]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
 
     def test_name_invalid(self):
         """Test using invalid name search for DNSView."""
         params = {"name": "wrong-name"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
-
-    def test_prefix(self):
-        """Test using prefix search with prefixes of DNSView."""
-        params = {"prefixes": [self.prefix.pk]}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
     def test_search(self):
         """Test filtering by Q search value."""
@@ -78,11 +84,15 @@ class DNSViewFilterTestCase(TestCase):
         self.assertEqual(self.filterset({"q": "view"}, self.queryset).qs.count(), 0)
 
 
-class DNSViewPrefixAssignmentFilterTestCase(TestCase):
+class DNSViewPrefixAssignmentFilterTestCase(FilterTestCases.FilterTestCase):
     """DNSViewPrefixAssignment Filter Test Case."""
 
     queryset = DNSViewPrefixAssignment.objects.all()
     filterset = DNSViewPrefixAssignmentFilterSet
+    generic_filter_tests = [
+        ["dns_view"],
+        ["prefix"],
+    ]
 
     @classmethod
     def setUpTestData(cls):
@@ -92,50 +102,102 @@ class DNSViewPrefixAssignmentFilterTestCase(TestCase):
         cls.prefixes = (
             Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, status=active_status),
             Prefix.objects.create(prefix="192.0.3.0/24", namespace=namespace, status=active_status),
+            Prefix.objects.create(prefix="192.0.4.0/24", namespace=namespace, status=active_status),
         )
 
         cls.dns_views = (
             DNSView.objects.create(name="View 1", description="First DNS View"),
             DNSView.objects.create(name="View 2", description="Second DNS View"),
+            DNSView.objects.create(name="View 3", description="Third DNS View"),
         )
 
         DNSViewPrefixAssignment.objects.create(dns_view=cls.dns_views[0], prefix=cls.prefixes[0])
         DNSViewPrefixAssignment.objects.create(dns_view=cls.dns_views[1], prefix=cls.prefixes[1])
-
-    def test_single_view(self):
-        """Test using dns_view search with dns_view of DNSViewPrefixAssignment."""
-        params = {"dns_view": self.dns_views[0]}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
-
-    def test_view(self):
-        """Test using dns_view search with dns_view of DNSViewPrefixAssignment."""
-        params = {"dns_view__ic": "View"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
-
-    def test_prefix(self):
-        """Test using prefix search with prefix of DNSViewPrefixAssignment."""
-        params = {"prefix": self.prefixes[0]}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
+        DNSViewPrefixAssignment.objects.create(dns_view=cls.dns_views[2], prefix=cls.prefixes[2])
 
     def test_search(self):
         """Test filtering by Q search value."""
-        self.assertEqual(self.filterset({"q": "View 1"}, self.queryset).qs.count(), 1)
-        self.assertEqual(self.filterset({"q": "View"}, self.queryset).qs.count(), 2)
+        self.assertQuerysetEqualAndNotEmpty(
+            self.filterset({"q": "View 1"}, self.queryset).qs,
+            DNSViewPrefixAssignment.objects.filter(dns_view__name__icontains="View 1"),
+            ordered=False,
+        )
+        self.assertQuerysetEqualAndNotEmpty(
+            self.filterset({"q": "View"}, self.queryset).qs,
+            DNSViewPrefixAssignment.objects.filter(dns_view__name__icontains="View"),
+            ordered=False,
+        )
         self.assertEqual(self.filterset({"q": "Nikos"}, self.queryset).qs.count(), 0)
 
 
-class DNSZoneFilterTestCase(TestCase):
+class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.TenancyFilterTestCaseMixin):
     """DNSZone Filter Test Case."""
 
     queryset = DNSZone.objects.all()
     filterset = DNSZoneFilterSet
+    tenancy_related_name = "dns_zones"
+
+    generic_filter_tests = (
+        ("id",),
+        ("created",),
+        ("last_updated",),
+        ("name",),
+        ("ttl",),
+        ("filename",),
+        ("description",),
+        ("soa_expire",),
+        ("soa_mname",),
+        ("soa_rname",),
+        ("soa_refresh",),
+        ("soa_retry",),
+        ("soa_serial",),
+        ("soa_minimum",),
+    )
 
     @classmethod
     def setUpTestData(cls):
         """Setup test data for DNSZone Model."""
-        DNSZone.objects.create(name="Test One", filename="zone1.conf")
-        DNSZone.objects.create(name="Test Two", filename="zone2.conf")
-        DNSZone.objects.create(name="Test Three", filename="zone3.conf")
+        super().setUpTestData()
+
+        cls.tenant_group1 = TenantGroup.objects.create(name="Test Tenant Group 1")
+        cls.tenant_group2 = TenantGroup.objects.create(name="Test Tenant Group 2")
+        cls.tenant1 = Tenant.objects.create(name="Test DNS Zone Tenant 1", tenant_group=cls.tenant_group1)
+        cls.tenant2 = Tenant.objects.create(name="Test DNS Zone Tenant 2", tenant_group=cls.tenant_group2)
+
+        DNSZone.objects.create(
+            name="Test One",
+            filename="zone1.conf",
+            tenant=cls.tenant1,
+            ttl=6400,
+            description="Test zone one",
+            soa_mname="ns1.example.com",
+            soa_rname="admin.example.com",
+            soa_refresh=7200,
+            soa_expire=1209600,
+            soa_minimum=9600,
+        )
+        DNSZone.objects.create(
+            name="Test Two",
+            filename="zone2.conf",
+            tenant=cls.tenant2,
+            soa_mname="ns2.example.com",
+            description="Test zone two",
+            ttl=7200,
+            soa_serial=15,
+            soa_refresh=74000,
+            soa_retry=8900,
+        )
+        DNSZone.objects.create(
+            name="Test Three",
+            filename="zone3.conf",
+            tenant=cls.tenant1,
+            description="Test zone three",
+            soa_rname="admin.admin.com",
+            soa_serial=2024020101,
+            soa_retry=9600,
+            soa_expire=1209200,
+            soa_minimum=7200,
+        )
 
     def test_single_name(self):
         """Test using Q search with name of DNSZone."""
@@ -262,9 +324,9 @@ class ARecordFilterTestCase(TestCase):
             IPAddress.objects.create(address="10.0.0.3/32", namespace=namespace, status=status),
         )
 
-        ARecord.objects.create(name="a-record-01", address=cls.ip_addresses[0], zone=cls.zone)
-        ARecord.objects.create(name="a-record-02", address=cls.ip_addresses[1], zone=cls.zone)
-        ARecord.objects.create(name="a-record-03", address=cls.ip_addresses[2], zone=cls.zone)
+        ARecord.objects.create(name="a-record-01", ip_address=cls.ip_addresses[0], zone=cls.zone)
+        ARecord.objects.create(name="a-record-02", ip_address=cls.ip_addresses[1], zone=cls.zone)
+        ARecord.objects.create(name="a-record-03", ip_address=cls.ip_addresses[2], zone=cls.zone)
 
     def test_single_name(self):
         """Test filter with name of ARecord."""
@@ -281,14 +343,14 @@ class ARecordFilterTestCase(TestCase):
         params = {"name": "wrong-name"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 
-    def test_address(self):
+    def test_ipaddress(self):
         """Test search with IP address of ARecord."""
-        params = {"address": self.ip_addresses[0]}
+        params = {"ip_address": [self.ip_addresses[0]]}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
-    def test_address_in(self):
-        """Test address in ARecord."""
-        params = {"address__in": "10.0.0."}
+    def test_ipaddress_in(self):
+        """Test ip_address in ARecord."""
+        params = {"ip_address__in": "10.0.0."}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
     def test_zone(self):
@@ -322,9 +384,9 @@ class AAAARecordFilterTestCase(TestCase):
             IPAddress.objects.create(address="2001:db8:abcd:12::3/128", namespace=namespace, status=status),
         )
 
-        AAAARecord.objects.create(name="aaaa-record-01", address=cls.ip_addresses[0], zone=zone)
-        AAAARecord.objects.create(name="aaaa-record-02", address=cls.ip_addresses[1], zone=zone)
-        AAAARecord.objects.create(name="aaaa-record-03", address=cls.ip_addresses[2], zone=zone)
+        AAAARecord.objects.create(name="aaaa-record-01", ip_address=cls.ip_addresses[0], zone=zone)
+        AAAARecord.objects.create(name="aaaa-record-02", ip_address=cls.ip_addresses[1], zone=zone)
+        AAAARecord.objects.create(name="aaaa-record-03", ip_address=cls.ip_addresses[2], zone=zone)
 
     def test_single_name(self):
         """Test filter with name of AAAARecord."""
@@ -341,14 +403,14 @@ class AAAARecordFilterTestCase(TestCase):
         params = {"name": "wrong-name"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 
-    def test_address(self):
+    def test_ip_address(self):
         """Test search with IP address of AAAARecord."""
-        params = {"address": self.ip_addresses[0]}
+        params = {"ip_address": [self.ip_addresses[0]]}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
-    def test_address_in(self):
-        """Test address in AAAARecord."""
-        params = {"address__in": "2001:db8:abcd:12::"}
+    def test_ip_address_in(self):
+        """Test ip_address in AAAARecord."""
+        params = {"ip_address__in": "2001:db8:abcd:12::"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
     def test_search(self):
