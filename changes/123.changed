@@ -1,0 +1,2 @@
+Enforce exact-match CNAME exclusivity (RFC 1912 §2.4) with opt-out `CNAME_RESTRICTION_ENABLED`; normalize trailing-dot names and allow apex; add API/model tests and docs.
+
