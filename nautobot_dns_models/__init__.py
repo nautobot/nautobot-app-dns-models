@@ -33,6 +33,7 @@ constance_additional_fields = {
         "django.forms.fields.BooleanField",
         {
             "widget": "django.forms.CheckboxInput",
+            "required": False,
         },
     ],
 }
