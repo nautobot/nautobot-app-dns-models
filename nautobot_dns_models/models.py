@@ -237,9 +237,14 @@ class DNSRecord(DNSModel):
 
         In addition to label checks, ensures the full DNS name (record + zone) does not exceed 255 bytes (octets) in wire format.
         """
-        # Normalize trailing-dot absolute FQDNs by removing the trailing dot only; do not strip the zone suffix.
+        # Normalize trailing-dot only when the record name is zone-qualified (e.g., "host.example.com.")
         if isinstance(self.name, str) and self.name.endswith("."):
-            self.name = self.name[:-1]
+            try:
+                zone_suffix_with_dot = f"{self.zone.name}."
+            except Exception:  # pragma: no cover - guard against unset zone during partial validation
+                zone_suffix_with_dot = None
+            if zone_suffix_with_dot and self.name.endswith(zone_suffix_with_dot):
+                self.name = self.name[:-1]
 
         super().clean()
 
