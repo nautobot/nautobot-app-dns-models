@@ -238,52 +238,58 @@ class DNSRecord(DNSModel):
         In addition to label checks, ensures the full DNS name (record + zone) does not exceed 255 bytes (octets) in wire format.
         """
         # Normalize trailing-dot only when the record name is zone-qualified (e.g., "host.example.com.")
-        if isinstance(self.name, str) and self.name.endswith("."):
-            try:
-                zone_suffix_with_dot = f"{self.zone.name}."
-            except Exception:  # pragma: no cover - guard against unset zone during partial validation
-                zone_suffix_with_dot = None
-            if zone_suffix_with_dot and self.name.endswith(zone_suffix_with_dot):
-                self.name = self.name[:-1]
+        if (
+            isinstance(self.name, str)
+            and self.name.endswith(".")
+            and getattr(self, "zone", None)
+            and getattr(self.zone, "name", None)
+            and self.name.endswith(f"{self.zone.name}.")
+        ):
+            self.name = self.name[:-1]
 
         super().clean()
 
         if not hasattr(self, "zone"):
             raise ValidationError({"zone": "Zone is required"})
 
+        self._validate_total_wire_length_if_enabled()
+        self._enforce_cname_exclusivity_if_enabled()
+
+    def _validate_total_wire_length_if_enabled(self) -> None:
+        """Validate full DNS name (record + zone) total wire-format length if wire-format validation is enabled."""
         validation_level = getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL")
-        if validation_level == "wire-format":
-            record_label_list = [] if self.name == "" else self.name.split(".")
-            zone_label_list = self.zone.name.split(".")
+        if validation_level != "wire-format":
+            return
 
-            wire_length = 0
-            # Record labels
-            for label in record_label_list:
-                wire_length += 1 + dns_wire_label_length(label)
-            # Zone labels
-            for label in zone_label_list:
-                wire_length += 1 + dns_wire_label_length(label)
-            wire_length += 1  # Add the final zero byte for root
+        record_label_list = [] if self.name == "" else self.name.split(".")
+        zone_label_list = self.zone.name.split(".")
 
-            if wire_length > 255:
-                raise ValidationError(
-                    {"name": "Total length of DNS name cannot exceed 255 bytes (octets) in wire format."}
-                )
-        # Enforce CNAME exclusivity by exact (name, zone) match when enabled
+        wire_length = 0
+        for label in record_label_list:
+            wire_length += 1 + dns_wire_label_length(label)
+        for label in zone_label_list:
+            wire_length += 1 + dns_wire_label_length(label)
+        wire_length += 1  # Final zero-length root label
+
+        if wire_length > 255:
+            raise ValidationError({"name": "Total length of DNS name cannot exceed 255 bytes (octets) in wire format."})
+
+    def _enforce_cname_exclusivity_if_enabled(self) -> None:
+        """Enforce mutual exclusivity between CNAME and other record types for exact (name, zone) matches."""
         enforce = getattr(constance_config, "nautobot_dns_models__CNAME_RESTRICTION_ENABLED", True)
-        if enforce and getattr(self, "name", None) is not None and getattr(self, "zone_id", None) is not None:
-            if isinstance(self, CNAMERecord):
-                conflicting_models = (NSRecord, ARecord, AAAARecord, MXRecord, TXTRecord, PTRRecord, SRVRecord)
-                for model in conflicting_models:
-                    if model.objects.filter(name=self.name, zone_id=self.zone_id).exclude(pk=self.pk).exists():
-                        raise ValidationError(
-                            {"name": "CNAME cannot co-exist with other records of the same name in this zone."}
-                        )
-            else:
-                if CNAMERecord.objects.filter(name=self.name, zone_id=self.zone_id).exclude(pk=self.pk).exists():
+        if not enforce or getattr(self, "name", None) is None or getattr(self, "zone_id", None) is None:
+            return
+
+        if isinstance(self, CNAMERecord):
+            conflicting_models = (NSRecord, ARecord, AAAARecord, MXRecord, TXTRecord, PTRRecord, SRVRecord)
+            for model in conflicting_models:
+                if model.objects.filter(name=self.name, zone_id=self.zone_id).exclude(pk=self.pk).exists():
                     raise ValidationError(
-                        {"name": "Record cannot co-exist with a CNAME of the same name in this zone."}
+                        {"name": "CNAME cannot co-exist with other records of the same name in this zone."}
                     )
+        else:
+            if CNAMERecord.objects.filter(name=self.name, zone_id=self.zone_id).exclude(pk=self.pk).exists():
+                raise ValidationError({"name": "Record cannot co-exist with a CNAME of the same name in this zone."})
 
     class Meta:
         """Meta attributes for DnsRecord."""
