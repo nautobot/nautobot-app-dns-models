@@ -1,12 +1,12 @@
 """Unit tests for nautobot_dns_models."""
 
+from constance.test import override_config
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from nautobot.apps.testing import APIViewTestCases
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from rest_framework import status
-from constance.test import override_config
 
 from nautobot_dns_models.models import (
     AAAARecord,

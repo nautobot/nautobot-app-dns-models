@@ -271,10 +271,14 @@ class DNSRecord(DNSModel):
                 conflicting_models = (NSRecord, ARecord, AAAARecord, MXRecord, TXTRecord, PTRRecord, SRVRecord)
                 for model in conflicting_models:
                     if model.objects.filter(name=self.name, zone_id=self.zone_id).exclude(pk=self.pk).exists():
-                        raise ValidationError({"name": "CNAME cannot co-exist with other records of the same name in this zone."})
+                        raise ValidationError(
+                            {"name": "CNAME cannot co-exist with other records of the same name in this zone."}
+                        )
             else:
                 if CNAMERecord.objects.filter(name=self.name, zone_id=self.zone_id).exclude(pk=self.pk).exists():
-                    raise ValidationError({"name": "Record cannot co-exist with a CNAME of the same name in this zone."})
+                    raise ValidationError(
+                        {"name": "Record cannot co-exist with a CNAME of the same name in this zone."}
+                    )
 
     class Meta:
         """Meta attributes for DnsRecord."""

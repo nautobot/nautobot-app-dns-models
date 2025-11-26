@@ -7,8 +7,8 @@ When CNAME exclusivity is enabled (via the `CNAME_RESTRICTION_ENABLED` configura
 - A CNAME cannot co‑exist with any other record type that has the exact same `name` in the same `zone`.
 - Conversely, a non‑CNAME record cannot co‑exist where a CNAME with the exact same `name` already exists in the same `zone`.
 - Name comparison is exact:
-  - A zone‑qualified `name` such as `host.example.com` is distinct from the relative `host` under zone `example.com`.
-  - A trailing dot is ignored (e.g., `host.example.com.` is treated as `host.example.com`).
+    - A zone‑qualified `name` such as `host.example.com` is distinct from the relative `host` under zone `example.com`.
+    - A trailing dot is ignored (e.g., `host.example.com.` is treated as `host.example.com`).
 
 Additional constraints:
 

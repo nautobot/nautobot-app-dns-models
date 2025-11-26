@@ -408,6 +408,7 @@ class CNAMEExclusivityModelTestCase(TestCase):
         # Should succeed when enforcement disabled
         CNAMERecord.objects.create(name="opt", alias="opt.example.com", zone=self.zone)
 
+
 class DNSRecordNameLengthValidationTest(TestCase):
     """Test DNS record name validation rules from RFC 1035 §3.1."""
 
