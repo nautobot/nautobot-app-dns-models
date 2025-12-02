@@ -19,13 +19,17 @@
         "_drift_manager": {
             "template": "https://github.com/nautobot/cookiecutter-nautobot-app.git",
             "template_dir": "nautobot-app",
-            "template_ref": "nautobot-app-v2.7.1",
+            "template_ref": "nautobot-app-v2.7.2",
             "cookie_dir": "",
-            "branch_prefix": "drift-manager",
             "pull_request_strategy": "update-or-create",
             "post_actions": [],
             "draft": false,
+<<<<<<< HEAD
             "baked_commit_ref": "5b98b5c5a73a8a407eaa9c5a7497208efe002107"
+=======
+            "baked_commit_ref": "45574da2502a2bbff6149f4e6caecbd559d29016",
+            "drift_managed_branch": "ltm-2.4"
+>>>>>>> 1d6e2e2 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
         }
     }
 }
