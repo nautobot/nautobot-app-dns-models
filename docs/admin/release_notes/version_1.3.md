@@ -8,6 +8,22 @@ This document describes all new features and changes in the release. The format 
 - Changes to compatibility with Nautobot and/or other apps, libraries etc.
 
 <!-- towncrier release notes start -->
+## [v1.3.1 (2025-12-12)](https://github.com/nautobot/nautobot-app-dns-models/releases/tag/v1.3.1)
+
+### Added
+
+- [#162](https://github.com/nautobot/nautobot-app-dns-models/issues/162) - Added the `nautobot_dns_models_dns_views` filter extension to the `ipam.Prefix` model to allow filtering prefixes by DNS views.
+
+### Fixed
+
+- [#161](https://github.com/nautobot/nautobot-app-dns-models/issues/161) - Fixed a bug when trying to create AAAA records for a DNS View.
+- [#162](https://github.com/nautobot/nautobot-app-dns-models/issues/162) - Fixed the filter for the badge link on the Assigned Prefixes panel in the DNS View detail view.
+- [#170](https://github.com/nautobot/nautobot-app-dns-models/issues/170) - Fixed a bug preventing the Python package from loading in some cases.
+
+### Housekeeping
+
+- Rebaked from the cookie `nautobot-app-v2.7.1`.
+- Rebaked from the cookie `nautobot-app-v2.7.2`.
 
 ## [v1.3.0 (2025-10-29)](https://github.com/nautobot/nautobot-app-dns-models/releases/tag/v1.3.0)
 
