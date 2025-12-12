@@ -2,10 +2,18 @@
 
 from importlib import metadata
 
-from django.conf import settings
 from nautobot.apps import ConstanceConfigItem, NautobotAppConfig
 
 __version__ = metadata.version(__name__)
+
+# nautobot.core.cli places preprocessed settings in a nautobot_config module before loading django
+# doing this is a hack but it's the only way we can modify the settings before NautobotAppConfig.constance_config is processed
+try:
+    import nautobot_config as settings
+
+    NAUTOBOT_CONFIG_LOADED = True
+except ImportError:
+    NAUTOBOT_CONFIG_LOADED = False
 
 constance_additional_fields = {
     "show_dns_panel": [
@@ -31,8 +39,9 @@ constance_additional_fields = {
     ],
 }
 
-# pylint:disable=no-member
-settings.CONSTANCE_ADDITIONAL_FIELDS |= constance_additional_fields
+if NAUTOBOT_CONFIG_LOADED:
+    # pylint:disable=no-member
+    settings.CONSTANCE_ADDITIONAL_FIELDS |= constance_additional_fields
 
 
 class NautobotDnsModelsConfig(NautobotAppConfig):
