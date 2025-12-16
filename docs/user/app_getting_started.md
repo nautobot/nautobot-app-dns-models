@@ -17,6 +17,7 @@ The first step with the App is to create a DNS Zone. The Zone is the organizatio
 
 ![Create a DNS Zone from DNS Zone list page](../images/getting_started-add-zone-2-light.png#only-light){ .on-glb }
 ![Create a DNS Zone from DNS Zone list page](../images/getting_started-add-zone-2-dark.png#only-dark){ .on-glb }
+[//]: # "`https://next.demo.nautobot.com/plugins/dns/dns-zones/`"
 
 In the New Zone form, enter:
 
@@ -29,6 +30,7 @@ The rest of the Zone inputs may be left at their defaults.
 
 ![Example New DNS Zone form with filled entries](../images/getting_started-add-zone-3-light.png#only-light){ .on-glb }
 ![Example New DNS Zone form with filled entries](../images/getting_started-add-zone-3-dark.png#only-dark){ .on-glb }
+[//]: # "`https://next.demo.nautobot.com/plugins/dns/dns-zones/add/`"
 
 Once the Zone is created, create the other records as necessary. Typical first records could be A and/or AAAA, and PTR records.
 
