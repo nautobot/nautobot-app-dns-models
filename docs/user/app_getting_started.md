@@ -11,7 +11,7 @@ To install the App, please follow the instructions detailed in the [Installation
 Navigate to the DNS Models under Apps in the navigation bar.
 
 ![DNS Models App in the Navigation bar](../images/getting_started-dns-zone-nav-bar-light.png#only-light){ .on-glb }
-![DNS Models App in the Navigation bar](../images/getting_started-dns-zone-nav-bar-dark.png#only-dark.png){ .on-glb }
+![DNS Models App in the Navigation bar](../images/getting_started-dns-zone-nav-bar-dark.png#only-dark){ .on-glb }
 
 The first step with the App is to create a DNS Zone. The Zone is the organizational container for DNS records. In our implementation, we have added the SoA record fields and details to the Zone, because a DNS Zone requires a single SoA record. The SoA fields are optional in case you are not recreating DNS server objects 1:1.
 
