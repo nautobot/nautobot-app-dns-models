@@ -33,7 +33,7 @@ constance_additional_fields = {
         "django.forms.fields.BooleanField",
         {
             "widget": "django.forms.CheckboxInput",
-            "required": False,
+            # "required": False,
         },
     ],
 }
@@ -83,9 +83,9 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
             field_type="dns_validation_level",
         ),
         "CNAME_RESTRICTION_ENABLED": ConstanceConfigItem(
-            default=True,
+            default=False,
             help_text="Enforce CNAME exclusivity",
-            field_type="boolean",
+            field_type=bool,
         ),
     }
 

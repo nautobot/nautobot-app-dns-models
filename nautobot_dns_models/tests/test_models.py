@@ -367,6 +367,7 @@ class SRVRecordTestCase(TestCase):
         self.assertEqual(srv_record.get_absolute_url(), f"/plugins/dns/srv-records/{srv_record.id}/")
 
 
+@override_config(nautobot_dns_models__CNAME_RESTRICTION_ENABLED=True)
 class CNAMEExclusivityModelTestCase(TestCase):
     """Model-level tests for exact-match CNAME exclusivity."""
 
