@@ -29,13 +29,6 @@ constance_additional_fields = {
             ],
         },
     ],
-    "boolean": [
-        "django.forms.fields.BooleanField",
-        {
-            "widget": "django.forms.CheckboxInput",
-            # "required": False,
-        },
-    ],
 }
 
 # pylint:disable=no-member
