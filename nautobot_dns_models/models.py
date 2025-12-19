@@ -308,11 +308,6 @@ class DNSRecord(DNSModel):
         """Set the TTL value for the record."""
         self._ttl = value
 
-    def save(self, *args, **kwargs):
-        """Ensure model validation runs on direct ORM writes."""
-        self.clean()
-        return super().save(*args, **kwargs)
-
 
 @extras_features(
     "custom_fields",
