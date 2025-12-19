@@ -367,6 +367,51 @@ class SRVRecordTestCase(TestCase):
         self.assertEqual(srv_record.get_absolute_url(), f"/plugins/dns/srv-records/{srv_record.id}/")
 
 
+@override_config(nautobot_dns_models__CNAME_RESTRICTION_ENABLED=True)
+class CNAMEExclusivityModelTestCase(TestCase):
+    """Model-level tests for exact-match CNAME exclusivity."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZone.objects.create(name="example.com")
+        # IP setup for ARecord use
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="10.9.0.0/24", namespace=namespace, type="Pool", status=status)
+        cls.ipv4_1 = IPAddress.objects.create(address="10.9.0.1/32", namespace=namespace, status=status)
+        cls.ipv4_2 = IPAddress.objects.create(address="10.9.0.2/32", namespace=namespace, status=status)
+
+    def test_cname_blocked_when_arecord_exists(self):
+        ARecord.objects.create(name="app", ip_address=self.ipv4_1, zone=self.zone)
+        with self.assertRaises(ValidationError):
+            cname_record = CNAMERecord(name="app", alias="target.example.com", zone=self.zone)
+            cname_record.validated_save()
+
+    def test_non_cname_blocked_when_cname_exists(self):
+        CNAMERecord.objects.create(name="web", alias="web.example.com", zone=self.zone)
+        # TODO: remove `save` overwrite from ARecord model and revisit this test
+        with self.assertRaises(ValidationError):
+            ARecord.objects.create(name="web", ip_address=self.ipv4_2, zone=self.zone)
+
+    def test_zone_qualified_name_allowed(self):
+        """A(name='host') does NOT block CNAME(name='host.zone') since names must match exactly."""
+        ARecord.objects.create(name="testrecord", ip_address=self.ipv4_1, zone=self.zone)
+        # Allowed because name differs (zone-qualified vs relative)
+        CNAMERecord.objects.create(name=f"testrecord.{self.zone.name}", alias="x.example.com", zone=self.zone)
+
+    def test_trailing_dot_zone_qualified_allowed(self):
+        """A(name='host') does NOT block CNAME(name='host.zone.') (trailing dot normalized)."""
+        ARecord.objects.create(name="td", ip_address=self.ipv4_1, zone=self.zone)
+        # Trailing dot is removed to "td.zone", still zone-qualified and thus different from "td"
+        CNAMERecord.objects.create(name=f"td.{self.zone.name}.", alias="x.example.com", zone=self.zone)
+
+    @override_config(nautobot_dns_models__CNAME_RESTRICTION_ENABLED=False)
+    def test_opt_out_allows_coexistence(self):
+        ARecord.objects.create(name="opt", ip_address=self.ipv4_1, zone=self.zone)
+        # Should succeed when enforcement disabled
+        CNAMERecord.objects.create(name="opt", alias="opt.example.com", zone=self.zone)
+
+
 class DNSRecordNameLengthValidationTest(TestCase):
     """Test DNS record name validation rules from RFC 1035 §3.1."""
 

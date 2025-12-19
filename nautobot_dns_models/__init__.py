@@ -84,6 +84,11 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
             help_text="DNS validation level for zones and records.",
             field_type="dns_validation_level",
         ),
+        "CNAME_RESTRICTION_ENABLED": ConstanceConfigItem(
+            default=False,
+            help_text="Enforce CNAME exclusivity",
+            field_type=bool,
+        ),
     }
 
 

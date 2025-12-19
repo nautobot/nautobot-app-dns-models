@@ -1,5 +1,6 @@
 """Unit tests for nautobot_dns_models."""
 
+from constance.test import override_config
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from nautobot.apps.testing import APIViewTestCases
@@ -573,3 +574,113 @@ class SRVRecordAPITestCase(APIViewTestCases.APIViewTestCase):
                 "zone": zone.id,
             },
         ]
+
+
+class CNAMEExclusivityAPITestCase(APIViewTestCases.APIViewTestCase):
+    """API tests for RFC 1912 §2.4 CNAME exclusivity."""
+
+    model = CNAMERecord  # Not used directly but required by base
+    view_namespace = "plugins-api:nautobot_dns_models"
+    brief_fields = ["name", "alias"]
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZone.objects.create(
+            name="example.com",
+            filename="example.com.zone",
+            soa_mname="ns1.example.com",
+            soa_rname="admin@example.com",
+        )
+        active_status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="10.22.0.0/24", namespace=namespace, type="Pool", status=active_status)
+        cls.ip = IPAddress.objects.create(address="10.22.0.1/32", namespace=namespace, status=active_status)
+        # Seed some CNAMEs for base APIViewTestCases
+        CNAMERecord.objects.create(name="alpha", alias="alpha.example.com", zone=cls.zone)
+        CNAMERecord.objects.create(name="beta", alias="beta.example.com", zone=cls.zone)
+        CNAMERecord.objects.create(name="gamma", alias="gamma.example.com", zone=cls.zone)
+        cls.create_data = [
+            {"name": "delta", "alias": "delta.example.com", "zone": cls.zone.id},
+            {"name": "epsilon", "alias": "epsilon.example.com", "zone": cls.zone.id},
+            {"name": "zeta", "alias": "zeta.example.com", "zone": cls.zone.id},
+        ]
+
+    def test_post_cname_fails_when_arecord_exists(self):
+        self.add_permissions("nautobot_dns_models.add_arecord")
+        self.add_permissions("nautobot_dns_models.add_cnamerecord")
+
+        # Pre-create A (ip_address field)
+        ARecord.objects.create(name="conflict", ip_address=self.ip, zone=self.zone)
+
+        url = reverse("plugins-api:nautobot_dns_models-api:cnamerecord-list")
+        data = {"name": "conflict", "alias": "target.example.com", "zone": self.zone.id}
+        response = self.client.post(url, data=data, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+
+    def test_post_arecord_fails_when_cname_exists(self):
+        self.add_permissions("nautobot_dns_models.add_arecord")
+        self.add_permissions("nautobot_dns_models.add_cnamerecord")
+
+        # Pre-create CNAME
+        CNAMERecord.objects.create(name="conflict2", alias="target.example.com", zone=self.zone)
+
+        url = reverse("plugins-api:nautobot_dns_models-api:arecord-list")
+        data = {"name": "conflict2", "ip_address": self.ip.id, "zone": self.zone.id}
+        response = self.client.post(url, data=data, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+
+    def test_cname_zone_qualified_allowed(self):
+        """A(name="host") does NOT block CNAME(name="host.zone")."""
+        self.add_permissions("nautobot_dns_models.add_arecord")
+        self.add_permissions("nautobot_dns_models.add_cnamerecord")
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+
+        ARecord.objects.create(name="api", ip_address=self.ip, zone=self.zone)
+        url = reverse("plugins-api:nautobot_dns_models-api:cnamerecord-list")
+        data = {"name": f"api.{self.zone.name}", "alias": "x.example.com", "zone": self.zone.id}
+        response = self.client.post(url, data=data, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+
+    def test_cname_trailing_dot_zone_qualified_allowed(self):
+        """A(name="host") does NOT block CNAME(name="host.zone.") (dot dropped, zone suffix preserved)."""
+        self.add_permissions("nautobot_dns_models.add_arecord")
+        self.add_permissions("nautobot_dns_models.add_cnamerecord")
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+
+        ARecord.objects.create(name="dotapi", ip_address=self.ip, zone=self.zone)
+        url = reverse("plugins-api:nautobot_dns_models-api:cnamerecord-list")
+        data = {"name": f"dotapi.{self.zone.name}.", "alias": "x.example.com", "zone": self.zone.id}
+        response = self.client.post(url, data=data, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+
+    def test_arecord_zone_qualified_allowed(self):
+        """CNAME(name="host") does NOT block A(name="host.zone")."""
+        self.add_permissions("nautobot_dns_models.add_arecord")
+        self.add_permissions("nautobot_dns_models.add_cnamerecord")
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+        self.add_permissions("ipam.view_ipaddress")
+
+        CNAMERecord.objects.create(name="reverseapi", alias="x.example.com", zone=self.zone)
+        url = reverse("plugins-api:nautobot_dns_models-api:arecord-list")
+        data = {"name": f"reverseapi.{self.zone.name}", "ip_address": self.ip.id, "zone": self.zone.id}
+        response = self.client.post(url, data=data, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+
+    @override_config(nautobot_dns_models__CNAME_RESTRICTION_ENABLED=False)
+    def test_opt_out_allows_coexistence(self):
+        self.add_permissions("nautobot_dns_models.add_arecord")
+        self.add_permissions("nautobot_dns_models.add_cnamerecord")
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+        self.add_permissions("ipam.view_ipaddress")
+
+        # Create A
+        url_a = reverse("plugins-api:nautobot_dns_models-api:arecord-list")
+        data_a = {"name": "opt", "ip_address": self.ip.id, "zone": self.zone.id}
+        response = self.client.post(url_a, data=data_a, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+
+        # Create CNAME with same name
+        url_c = reverse("plugins-api:nautobot_dns_models-api:cnamerecord-list")
+        data_c = {"name": "opt", "alias": "opt.example.com", "zone": self.zone.id}
+        response = self.client.post(url_c, data=data_c, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)

@@ -76,3 +76,11 @@ This setting controls the DNS validation level applied to zones and records:
     - Each label (the parts of the name separated by dots) must be no more than 63 bytes in wire format
     - Empty labels (e.g., consecutive dots or leading/trailing dots) are not allowed
     - The total length of the fully qualified DNS name (including all dots, in wire format) must not exceed 255 bytes
+
+`CNAME_RESTRICTION_ENABLED` (default: "False")
+
+- **Disabled** - No CNAME exclusivity checks are performed.
+- **Enabled** - Enforces CNAME exclusivity within a zone per [RFC 1912 §2.4](https://datatracker.ietf.org/doc/html/rfc1912#section-2.4) semantics:
+    - A CNAME cannot co-exist with any other record type that has the exact same `name` in the same `zone`.
+    - Conversely, a non‑CNAME record cannot co-exist where a CNAME with the exact same `name` exists in the same `zone`.
+    - Name comparison is exact. A zone‑qualified `name` such as `host.example.com` is distinct from the relative `host` under zone `example.com`. A trailing dot is ignored (e.g., `host.example.com.` is treated as `host.example.com`).
