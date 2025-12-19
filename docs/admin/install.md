@@ -77,7 +77,7 @@ This setting controls the DNS validation level applied to zones and records:
     - Empty labels (e.g., consecutive dots or leading/trailing dots) are not allowed
     - The total length of the fully qualified DNS name (including all dots, in wire format) must not exceed 255 bytes
 
-`CNAME_RESTRICTION_ENABLED` (default: "True")
+`CNAME_RESTRICTION_ENABLED` (default: "False")
 
 - **Disabled** - No CNAME exclusivity checks are performed.
 - **Enabled** - Enforces CNAME exclusivity within a zone per [RFC 1912 §2.4](https://datatracker.ietf.org/doc/html/rfc1912#section-2.4) semantics:
