@@ -389,6 +389,7 @@ class CNAMEExclusivityModelTestCase(TestCase):
 
     def test_non_cname_blocked_when_cname_exists(self):
         CNAMERecord.objects.create(name="web", alias="web.example.com", zone=self.zone)
+        # TODO: remove `save` overwrite from ARecord model and revisit this test
         with self.assertRaises(ValidationError):
             ARecord.objects.create(name="web", ip_address=self.ipv4_2, zone=self.zone)
 
