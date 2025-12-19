@@ -384,7 +384,8 @@ class CNAMEExclusivityModelTestCase(TestCase):
     def test_cname_blocked_when_arecord_exists(self):
         ARecord.objects.create(name="app", ip_address=self.ipv4_1, zone=self.zone)
         with self.assertRaises(ValidationError):
-            CNAMERecord.objects.create(name="app", alias="target.example.com", zone=self.zone)
+            cname_record = CNAMERecord(name="app", alias="target.example.com", zone=self.zone)
+            cname_record.validated_save()
 
     def test_non_cname_blocked_when_cname_exists(self):
         CNAMERecord.objects.create(name="web", alias="web.example.com", zone=self.zone)
