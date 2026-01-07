@@ -198,6 +198,14 @@ class DNSZone(DNSModel):
         verbose_name="SOA Minimum",
     )
 
+    tenant = models.ForeignKey(
+        to="tenancy.Tenant",
+        on_delete=models.PROTECT,
+        related_name="dns_zones",
+        blank=True,
+        null=True,
+    )
+
     class Meta:
         """Meta attributes for DNSZone."""
 
@@ -301,17 +309,18 @@ class NSRecord(DNSRecord):
 class ARecord(DNSRecord):
     """A Record model."""
 
-    address = models.ForeignKey(
+    ip_address = models.ForeignKey(
         to="ipam.IPAddress",
         on_delete=models.CASCADE,
         limit_choices_to={"ip_version": IPAddressVersionChoices.VERSION_4},
         help_text="IP address for the record.",
+        verbose_name="IP Address",
     )
 
     class Meta:
         """Meta attributes for ARecord."""
 
-        unique_together = [["name", "address", "zone"]]
+        unique_together = [["name", "ip_address", "zone"]]
         verbose_name = "A Record"
         verbose_name_plural = "A Records"
 
@@ -322,10 +331,10 @@ class ARecord(DNSRecord):
         RelatedObjectDoesNotExist during form/model validation.
         """
         super().clean()
-        if self.address_id is None:
+        if self.ip_address_id is None:
             return
-        if self.address.ip_version != IPAddressVersionChoices.VERSION_4:
-            raise ValidationError({"address": "ARecord must reference an IPv4 address."})
+        if self.ip_address.ip_version != IPAddressVersionChoices.VERSION_4:
+            raise ValidationError({"ip_address": "ARecord must reference an IPv4 address."})
 
     def save(self, *args, **kwargs):
         """Ensure model validation runs on direct ORM writes."""
@@ -344,17 +353,18 @@ class ARecord(DNSRecord):
 class AAAARecord(DNSRecord):
     """AAAA Record model."""
 
-    address = models.ForeignKey(
+    ip_address = models.ForeignKey(
         to="ipam.IPAddress",
         on_delete=models.CASCADE,
         limit_choices_to={"ip_version": IPAddressVersionChoices.VERSION_6},
         help_text="IP address for the record.",
+        verbose_name="IP Address",
     )
 
     class Meta:
         """Meta attributes for AAAARecord."""
 
-        unique_together = [["name", "address", "zone"]]
+        unique_together = [["name", "ip_address", "zone"]]
         verbose_name = "AAAA Record"
         verbose_name_plural = "AAAA Records"
 
@@ -365,10 +375,10 @@ class AAAARecord(DNSRecord):
         RelatedObjectDoesNotExist during form/model validation.
         """
         super().clean()
-        if self.address_id is None:
+        if self.ip_address_id is None:
             return
-        if self.address.ip_version != IPAddressVersionChoices.VERSION_6:
-            raise ValidationError({"address": "AAAARecord must reference an IPv6 address."})
+        if self.ip_address.ip_version != IPAddressVersionChoices.VERSION_6:
+            raise ValidationError({"ip_address": "AAAARecord must reference an IPv6 address."})
 
     def save(self, *args, **kwargs):
         """Ensure model validation runs on direct ORM writes."""

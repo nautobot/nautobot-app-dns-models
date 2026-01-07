@@ -7,4 +7,7 @@ The AAAA Record model is used to represent IPv6 address records in DNS. It maps 
 - `ttl` (integer): Time to live for the record.
 - `description` (string): Description of the record.
 - `comment` (string): Comment for the record.
-- `address` (IPAddress): IPv6 address for the record (AAAA records must use IPv6).
+- `ip_address` (IPAddress): IPv6 address for the record (AAAA records must use IPv6).
+
++++ 2.0.0
+    `address` field in AAAA Record is now `ip_address`

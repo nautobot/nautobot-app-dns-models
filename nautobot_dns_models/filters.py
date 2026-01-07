@@ -3,7 +3,7 @@
 import django_filters
 from django.db.models import F
 from django.db.models.functions import Coalesce
-from nautobot.apps.filters import NautobotFilterSet, SearchFilter
+from nautobot.apps.filters import NautobotFilterSet, SearchFilter, TenancyModelFilterSetMixin
 from netaddr import IPAddress as NetIPAddress
 
 from nautobot_dns_models import models
@@ -41,7 +41,7 @@ class DNSViewPrefixAssignmentFilterSet(NautobotFilterSet):
         fields = "__all__"
 
 
-class DNSZoneFilterSet(NautobotFilterSet):
+class DNSZoneFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
     """Filter for DNSZone."""
 
     q = SearchFilter(
@@ -117,7 +117,7 @@ class ARecordFilterSet(NautobotFilterSet):
         filter_predicates={
             "name": "icontains",
             "zone__name": "icontains",
-            "address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
+            "ip_address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
         }
     )
 
@@ -135,7 +135,7 @@ class AAAARecordFilterSet(DNSRecordFilterSet):
         filter_predicates={
             "name": "icontains",
             "zone__name": "icontains",
-            "address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
+            "ip_address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
         }
     )
 

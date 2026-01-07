@@ -125,6 +125,7 @@ class DNSViewUIViewSet(views.NautobotUIViewSet):
                 weight=200,
                 section=SectionChoices.RIGHT_HALF,
                 table_filter="dns_views",
+                related_field_name="nautobot_dns_models_dns_views",
                 table_class=PrefixTable,
                 table_title="Assigned Prefixes",
                 include_columns=["prefix", "status", "location_count", "namespace"],
