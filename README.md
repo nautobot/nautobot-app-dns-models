@@ -19,13 +19,13 @@ The DNS models app adds specific DNS related models for managing DNS zones and r
 
 More screenshots can be found in the [Using the App](https://docs.nautobot.com/projects/dns-models/en/latest/user/app_use_cases/) page in the documentation. Here's a quick overview of some of the app's added functionality:
 
-![Zone List View](https://raw.githubusercontent.com/nautobot/nautobot-app-dns-models/develop/docs/images/readme-1.png)
+![Zone List View](https://raw.githubusercontent.com/nautobot/nautobot-app-dns-models/develop/docs/images/readme-1-dark.png)
 
-![Adding a DNS Zone](https://raw.githubusercontent.com/nautobot/nautobot-app-dns-models/develop/docs/images/getting_started-add-zone-3.png)
+![Adding a DNS Zone](https://raw.githubusercontent.com/nautobot/nautobot-app-dns-models/develop/docs/images/getting_started-add-zone-3-dark.png)
 
 Adding a DNS Zone
 
-![DNS Zone View](https://raw.githubusercontent.com/nautobot/nautobot-app-dns-models/develop/docs/images/getting_started-add-record-3.png)
+![DNS Zone View](https://raw.githubusercontent.com/nautobot/nautobot-app-dns-models/develop/docs/images/getting_started-add-record-3-dark.png)
 
 The DNS Zone View
 
