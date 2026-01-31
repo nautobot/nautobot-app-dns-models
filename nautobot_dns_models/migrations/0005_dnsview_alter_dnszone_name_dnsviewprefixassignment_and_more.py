@@ -100,6 +100,7 @@ class Migration(migrations.Migration):
                 blank=True,
                 related_name="dns_views",
                 through="nautobot_dns_models.DNSViewPrefixAssignment",
+                through_fields=("dns_view", "prefix"),
                 to="ipam.prefix",
             ),
         ),
