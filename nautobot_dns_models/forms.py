@@ -9,7 +9,8 @@ from nautobot.apps.forms import (
     NautobotModelForm,
     TagsBulkEditFormMixin,
 )
-from nautobot.ipam.models import Prefix
+from nautobot.ipam.choices import IPAddressVersionChoices
+from nautobot.ipam.models import IPAddress, Prefix
 from nautobot.tenancy.forms import TenancyFilterForm, TenancyForm
 from nautobot.tenancy.models import Tenant
 
@@ -64,6 +65,11 @@ class DNSViewFilterForm(NautobotFilterForm):
 
 class DNSZoneForm(NautobotModelForm, TenancyForm):
     """DNSZone creation/edit form."""
+
+    dns_view = DynamicModelChoiceField(
+        queryset=models.DNSView.objects.all(),
+        required=True,
+    )
 
     class Meta:
         """Meta attributes."""
@@ -154,6 +160,12 @@ class NSRecordFilterForm(NautobotFilterForm):
 class ARecordForm(NautobotModelForm):
     """ARecord creation/edit form."""
 
+    ip_address = DynamicModelChoiceField(
+        queryset=IPAddress.objects.all(),
+        required=True,
+        query_params={"ip_version": IPAddressVersionChoices.VERSION_4},
+    )
+
     class Meta:
         """Meta attributes."""
 
@@ -196,6 +208,12 @@ class ARecordFilterForm(NautobotFilterForm):
 
 class AAAARecordForm(NautobotModelForm):
     """AAAARecord creation/edit form."""
+
+    ip_address = DynamicModelChoiceField(
+        queryset=IPAddress.objects.all(),
+        required=True,
+        query_params={"ip_version": IPAddressVersionChoices.VERSION_6},
+    )
 
     class Meta:
         """Meta attributes."""
