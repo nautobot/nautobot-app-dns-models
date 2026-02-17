@@ -10,9 +10,9 @@ from nautobot.apps.ui import (
 
 menu_items = (
     NavMenuTab(
-        name="Apps",
-        icon=NavigationIconChoices.APPS,
-        weight=NavigationWeightChoices.APPS,
+        name="DNS",
+        icon="bus-globe",
+        weight=NavigationWeightChoices.IPAM + 10,
         groups=(
             NavMenuGroup(
                 name="DNS",
