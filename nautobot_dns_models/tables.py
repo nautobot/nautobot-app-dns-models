@@ -48,6 +48,37 @@ class DNSViewTable(BaseTable):
         )
 
 
+class DNSRegistrarTable(BaseTable):
+    """Table for DNS Registrar list view."""
+
+    pk = ToggleColumn()
+    name = tables.Column(linkify=True)
+    actions = ButtonsColumn(
+        models.DNSRegistrar,
+        buttons=("changelog", "edit", "delete"),
+    )
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.DNSRegistrar
+        fields = (
+            "pk",
+            "name",
+            "url",
+            "account_number",
+            "actions",
+        )
+
+        default_columns = (
+            "pk",
+            "name",
+            "url",
+            "account_number",
+            "actions",
+        )
+
+
 class DNSZoneTable(BaseTable):
     """Table for DNS Zone list view."""
 
@@ -55,6 +86,7 @@ class DNSZoneTable(BaseTable):
     name = tables.Column(linkify=True)
     tenant = TenantColumn()
     dns_view = tables.Column(linkify=True)
+    dns_registrar = tables.Column(linkify=True)
     actions = ButtonsColumn(
         models.DNSZone,
         buttons=("changelog", "edit", "delete"),
@@ -68,9 +100,18 @@ class DNSZoneTable(BaseTable):
             "pk",
             "name",
             "dns_view",
+            "dns_registrar",
             "ttl",
             "filename",
             "description",
+            "expiration_date",
+            "auto_renewal",
+            "registry_locked",
+            "transfer_locked",
+            "privacy_enabled",
+            "website_forwarding_enabled",
+            "renewal_term_months",
+            "dnssec_enabled",
             "soa_expire",
             "soa_rname",
             "soa_refresh",
@@ -81,7 +122,18 @@ class DNSZoneTable(BaseTable):
             "actions",
         )
 
-        default_columns = ("pk", "name", "dns_view", "ttl", "filename", "soa_expire", "soa_rname", "actions")
+        default_columns = (
+            "pk",
+            "name",
+            "dns_view",
+            "dns_registrar",
+            "ttl",
+            "filename",
+            "expiration_date",
+            "soa_expire",
+            "soa_rname",
+            "actions",
+        )
 
 
 class NSRecordTable(DNSRecordTable):

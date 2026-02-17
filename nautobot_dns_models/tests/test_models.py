@@ -10,6 +10,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSRegistrar,
     DNSView,
     DNSViewPrefixAssignment,
     DNSZone,
@@ -99,6 +100,43 @@ class TestDNSViewPrefixAssignment(ModelTestCases.BaseModelTestCase):
         self.assertEqual(assignment.prefix, self.prefixes[1])
 
 
+class TestDNSRegistrar(ModelTestCases.BaseModelTestCase):
+    """Test DNSRegistrar model."""
+
+    model = DNSRegistrar
+
+    @classmethod
+    def setUpTestData(cls):
+        """Create test data for DNSRegistrar Model."""
+        super().setUpTestData()
+        DNSRegistrar.objects.create(name="Registrar 1", url="https://registrar1.example", account_number="ACC-001")
+        DNSRegistrar.objects.create(name="Registrar 2", url="https://registrar2.example", account_number="ACC-002")
+        DNSRegistrar.objects.create(name="Registrar 3", url="https://registrar3.example", account_number="ACC-003")
+
+    def test_create_dnsregistrar_only_required(self):
+        """Create with only required fields."""
+        registrar = DNSRegistrar.objects.create(name="Test Registrar")
+        self.assertEqual(registrar.name, "Test Registrar")
+        self.assertEqual(registrar.url, "")
+        self.assertEqual(registrar.account_number, "")
+        self.assertEqual(str(registrar), "Test Registrar")
+
+    def test_create_dnsregistrar_all_fields_success(self):
+        """Create DNSRegistrar with all fields."""
+        registrar = DNSRegistrar.objects.create(
+            name="Another Registrar",
+            url="https://another-registrar.example",
+            account_number="ACCT-1234",
+        )
+        self.assertEqual(registrar.name, "Another Registrar")
+        self.assertEqual(registrar.url, "https://another-registrar.example")
+        self.assertEqual(registrar.account_number, "ACCT-1234")
+
+    def test_get_absolute_url(self):
+        registrar = DNSRegistrar.objects.get(name="Registrar 1")
+        self.assertEqual(registrar.get_absolute_url(), f"/plugins/dns/dns-registrars/{registrar.id}/")
+
+
 class TestDnsZone(ModelTestCases.BaseModelTestCase):
     """Test DnsZone model."""
 
@@ -122,9 +160,30 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
 
     def test_create_dnszone_all_fields_success(self):
         """Create DnsZoneModel with all fields."""
-        dnszone = DNSZone.objects.create(name="Development", description="Development Test")
+        registrar = DNSRegistrar.objects.create(name="Registrar")
+        dnszone = DNSZone.objects.create(
+            name="Development",
+            description="Development Test",
+            dns_registrar=registrar,
+            expiration_date="2026-12-31",
+            auto_renewal=True,
+            registry_locked=True,
+            transfer_locked=True,
+            privacy_enabled=True,
+            website_forwarding_enabled=True,
+            renewal_term_months=12,
+            dnssec_enabled=True,
+        )
         self.assertEqual(dnszone.name, "Development")
         self.assertEqual(dnszone.description, "Development Test")
+        self.assertEqual(dnszone.dns_registrar, registrar)
+        self.assertTrue(dnszone.auto_renewal)
+        self.assertTrue(dnszone.registry_locked)
+        self.assertTrue(dnszone.transfer_locked)
+        self.assertTrue(dnszone.privacy_enabled)
+        self.assertTrue(dnszone.website_forwarding_enabled)
+        self.assertEqual(dnszone.renewal_term_months, 12)
+        self.assertTrue(dnszone.dnssec_enabled)
 
     def test_get_absolute_url(self):
         dns_zone_model = DNSZone.objects.create(name="example.com")

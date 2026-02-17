@@ -5,7 +5,7 @@ from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 
 from nautobot_dns_models import forms
-from nautobot_dns_models.models import DNSView, DNSZone
+from nautobot_dns_models.models import DNSRegistrar, DNSView, DNSZone
 
 
 class DNSViewFormTestCase(TestCase):
@@ -41,13 +41,27 @@ class DNSZoneTest(TestCase):
     """Test DNSZone forms."""
 
     def test_specifying_all_fields_success(self):
+        registrar = DNSRegistrar.objects.create(
+            name="Registrar One",
+            url="https://registrar.example",
+            account_number="ACC-100",
+        )
         form = forms.DNSZoneForm(
             data={
                 "name": "Development",
                 "dns_view": DNSView.objects.get(name="Default").id,
+                "dns_registrar": registrar.id,
                 "description": "Development Testing",
                 "ttl": 1010101,
                 "filename": "development.zone",
+                "expiration_date": "2026-12-31",
+                "auto_renewal": True,
+                "registry_locked": True,
+                "transfer_locked": True,
+                "privacy_enabled": True,
+                "website_forwarding_enabled": True,
+                "renewal_term_months": 24,
+                "dnssec_enabled": True,
                 "soa_mname": "ns1.example.com",
                 "soa_rname": "admin@example.com",
                 "soa_refresh": 10800,
@@ -81,6 +95,52 @@ class DNSZoneTest(TestCase):
 
     def test_validate_name_dnszone_is_required(self):
         form = forms.DNSZoneForm(data={"ttl": "1010101"})
+        self.assertFalse(form.is_valid())
+        self.assertIn("This field is required.", form.errors["name"])
+
+    def test_expiration_date_accepts_date_picker_value(self):
+        form = forms.DNSZoneForm(
+            data={
+                "name": "Development",
+                "dns_view": DNSView.objects.get(name="Default").id,
+                "ttl": 1010101,
+                "filename": "development.zone",
+                "expiration_date": "2026-12-31",
+                "soa_mname": "ns1.example.com",
+                "soa_rname": "admin@example.com",
+                "soa_refresh": 10800,
+                "soa_retry": 3600,
+                "soa_expire": 604800,
+                "soa_serial": 202,
+                "soa_minimum": 3600,
+            }
+        )
+        self.assertTrue(form.is_valid())
+
+
+class DNSRegistrarFormTestCase(TestCase):
+    """Test DNSRegistrar forms."""
+
+    form_class = forms.DNSRegistrarForm
+
+    def test_specifying_all_fields_success(self):
+        form = self.form_class(
+            data={
+                "name": "Registrar Test",
+                "url": "https://registrar.test",
+                "account_number": "REG-100",
+            }
+        )
+        self.assertTrue(form.is_valid())
+        self.assertTrue(form.save())
+
+    def test_specifying_only_required_success(self):
+        form = self.form_class(data={"name": "Registrar Required"})
+        self.assertTrue(form.is_valid())
+        self.assertTrue(form.save())
+
+    def test_validate_name_is_required(self):
+        form = self.form_class(data={"url": "https://registrar.test"})
         self.assertFalse(form.is_valid())
         self.assertIn("This field is required.", form.errors["name"])
 

@@ -58,6 +58,7 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
     docs_view_name = "plugins:nautobot_dns_models:docs"
     searchable_models = [
         "DNSView",
+        "DNSRegistrar",
         "DNSZone",
         "ARecord",
         "AAAARecord",

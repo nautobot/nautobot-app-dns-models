@@ -9,6 +9,9 @@ from netaddr import IPAddress as NetIPAddress
 from nautobot_dns_models import models
 
 
+EXPIRATION_DATE_INPUT_FORMATS = ("%Y-%m-%d",)
+
+
 class DNSViewFilterSet(NautobotFilterSet):
     """Filter for DNSView."""
 
@@ -41,13 +44,46 @@ class DNSViewPrefixAssignmentFilterSet(NautobotFilterSet):
         fields = "__all__"
 
 
+class DNSRegistrarFilterSet(NautobotFilterSet):
+    """Filter for DNSRegistrar."""
+
+    url = django_filters.CharFilter(lookup_expr="icontains")
+    account_number = django_filters.CharFilter(lookup_expr="icontains")
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "url": "icontains",
+            "account_number": "icontains",
+        }
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSRegistrar
+        fields = "__all__"
+
+
 class DNSZoneFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
     """Filter for DNSZone."""
+
+    expiration_date__lte = django_filters.DateFilter(
+        field_name="expiration_date",
+        lookup_expr="lte",
+        input_formats=EXPIRATION_DATE_INPUT_FORMATS,
+    )
+    expiration_date__gte = django_filters.DateFilter(
+        field_name="expiration_date",
+        lookup_expr="gte",
+        input_formats=EXPIRATION_DATE_INPUT_FORMATS,
+    )
 
     q = SearchFilter(
         filter_predicates={
             "name": "icontains",
             "filename": "icontains",
+            "dns_registrar__name": "icontains",
             "soa_mname": "icontains",
             "soa_rname": "icontains",
         }
