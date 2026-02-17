@@ -31,9 +31,13 @@ class AutoRenewDomains(Job):
         """Run the job."""
         for domain in DNSZone.objects.filter(auto_renewal=True, expiration_date__lte=timezone.now()):
             period = int(domain.renewal_term_months)
-            self.logger.info(f"Auto renewal period for domain {domain.name} is {period} months")
             new_date = domain.expiration_date + relativedelta(months=+period)
-            self.logger.info(f"Auto renewing domain {domain.name} to {new_date}")
+            self.logger.info(
+                "Auto renewing domain %s to %s, auto renewal period is %s months",
+                domain.name,
+                new_date,
+                period,
+            )
             domain.expiration_date = new_date
             domain.save()
 
