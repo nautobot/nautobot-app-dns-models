@@ -14,6 +14,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSRegistrar,
     DNSView,
     DNSZone,
     MXRecord,
@@ -95,6 +96,31 @@ class DNSViewViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
 
+class DNSRegistrarViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+    """Test the DNSRegistrar views."""
+
+    model = DNSRegistrar
+
+    @classmethod
+    def setUpTestData(cls):
+        DNSRegistrar.objects.create(name="Registrar 1", url="https://registrar1.example", account_number="ACC-001")
+        DNSRegistrar.objects.create(name="Registrar 2", url="https://registrar2.example", account_number="ACC-002")
+        DNSRegistrar.objects.create(name="Registrar 3", url="https://registrar3.example", account_number="ACC-003")
+
+        cls.form_data = {
+            "name": "Registrar Test",
+            "url": "https://registrar-test.example",
+            "account_number": "ACC-TEST",
+        }
+
+        cls.csv_data = (
+            "name,url,account_number",
+            "Registrar CSV,https://registrar-csv.example,ACC-CSV",
+        )
+
+        cls.bulk_edit_data = {"account_number": "UPDATED-ACCOUNT"}
+
+
 class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the DNSZone views."""
 
@@ -102,8 +128,14 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
+        registrar = DNSRegistrar.objects.create(
+            name="Registrar One",
+            url="https://registrar-one.example",
+            account_number="ACC-ONE",
+        )
         DNSZone.objects.create(
             name="example-one.com",
+            dns_registrar=registrar,
             filename="test one",
             soa_mname="auth-server",
             soa_rname="admin@example-one.com",
@@ -140,9 +172,18 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.form_data = {
             "name": "Test 1",
             "dns_view": dns_view.id,
+            "dns_registrar": registrar.id,
             "ttl": 3600,
             "description": "Initial model",
             "filename": "test three",
+            "expiration_date": "2026-12-31",
+            "auto_renewal": True,
+            "registry_locked": True,
+            "transfer_locked": True,
+            "privacy_enabled": True,
+            "website_forwarding_enabled": True,
+            "renewal_term_months": 12,
+            "dnssec_enabled": True,
             "soa_mname": "auth-server",
             "soa_rname": "admin@example-three.com",
             "soa_refresh": 86400,
@@ -153,8 +194,8 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         }
 
         cls.csv_data = (
-            "name, dns_view, ttl, description, filename, soa_mname, soa_rname, soa_refresh, soa_retry, soa_expire, soa_serial, soa_minimum",
-            f"Test 3, {dns_view.id}, 3600, Description 3, filename 3, auth-server, admin@example_three.com, 86400, 7200, 3600000, 0, 172800",
+            "name, dns_view, dns_registrar, ttl, description, filename, expiration_date, auto_renewal, registry_locked, transfer_locked, privacy_enabled, website_forwarding_enabled, renewal_term_months, dnssec_enabled, soa_mname, soa_rname, soa_refresh, soa_retry, soa_expire, soa_serial, soa_minimum",
+            f"Test 3, {dns_view.id}, {registrar.name}, 3600, Description 3, filename 3, 2026-12-31, True, True, True, True, True, 12, True, auth-server, admin@example_three.com, 86400, 7200, 3600000, 0, 172800",
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}

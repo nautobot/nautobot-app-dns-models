@@ -12,6 +12,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSRegistrar,
     DNSView,
     DNSViewPrefixAssignment,
     DNSZone,
@@ -102,6 +103,45 @@ class DNSViewPrefixAssignmentAPITestCase(APIViewTestCases.APIViewTestCase):
         ]
 
 
+class DNSRegistrarAPITestCase(APIViewTestCases.APIViewTestCase):
+    """Test the Nautobot DNSRegistrar API."""
+
+    model = DNSRegistrar
+    view_namespace = "plugins-api:nautobot_dns_models"
+    bulk_update_data = {
+        "account_number": "UPDATED-ACCOUNT",
+    }
+    brief_fields = [
+        "name",
+        "url",
+        "account_number",
+    ]
+
+    @classmethod
+    def setUpTestData(cls):
+        DNSRegistrar.objects.create(name="Registrar 1", url="https://registrar1.example", account_number="ACC-001")
+        DNSRegistrar.objects.create(name="Registrar 2", url="https://registrar2.example", account_number="ACC-002")
+        DNSRegistrar.objects.create(name="Registrar 3", url="https://registrar3.example", account_number="ACC-003")
+
+        cls.create_data = [
+            {
+                "name": "Registrar 4",
+                "url": "https://registrar4.example",
+                "account_number": "ACC-004",
+            },
+            {
+                "name": "Registrar 5",
+                "url": "https://registrar5.example",
+                "account_number": "ACC-005",
+            },
+            {
+                "name": "Registrar 6",
+                "url": "https://registrar6.example",
+                "account_number": "ACC-006",
+            },
+        ]
+
+
 class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
     """Test the Nautobot DNSZone API."""
 
@@ -119,9 +159,15 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
     @classmethod
     def setUpTestData(cls):
         dns_view = DNSView.objects.get(name="Default")
+        registrar = DNSRegistrar.objects.create(
+            name="Registrar One",
+            url="https://registrar-one.example",
+            account_number="ACC-ONE",
+        )
         DNSZone.objects.create(
             name="test.com",
             dns_view=dns_view,
+            dns_registrar=registrar,
             filename="test.com.zone",
             soa_mname="ns1.test.com",
             soa_rname="admin@test.com",
@@ -146,6 +192,15 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
                 "name": "example.com",
                 "dns_view": dns_view.id,
                 "filename": "example.com.zone",
+                "dns_registrar": registrar.id,
+                "expiration_date": "2026-12-31",
+                "auto_renewal": True,
+                "registry_locked": True,
+                "transfer_locked": True,
+                "privacy_enabled": True,
+                "website_forwarding_enabled": True,
+                "renewal_term_months": 12,
+                "dnssec_enabled": True,
                 "soa_mname": "ns1.example.com",
                 "soa_rname": "admin@example.com",
                 "soa_refresh": 3600,
