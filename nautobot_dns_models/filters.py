@@ -8,7 +8,6 @@ from netaddr import IPAddress as NetIPAddress
 
 from nautobot_dns_models import models
 
-
 EXPIRATION_DATE_INPUT_FORMATS = ("%Y-%m-%d",)
 
 
