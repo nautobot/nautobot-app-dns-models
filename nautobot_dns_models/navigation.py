@@ -15,7 +15,7 @@ menu_items = (
         weight=NavigationWeightChoices.IPAM + 10,
         groups=(
             NavMenuGroup(
-                name="DNS",
+                name="Zones",
                 weight=300,
                 items=(
                     NavMenuItem(
