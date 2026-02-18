@@ -9,9 +9,9 @@ from nautobot.apps.ui import (
 
 menu_items = (
     NavMenuTab(
-        name="Apps",
-        icon=NavigationIconChoices.APPS,
-        weight=NavigationWeightChoices.APPS,
+        name="DNS",
+        icon="bus-globe",
+        weight=NavigationWeightChoices.IPAM + 10,
         groups=(
             NavMenuGroup(
                 name="Zones",
@@ -33,7 +33,7 @@ menu_items = (
             ),
             NavMenuGroup(
                 name="Registration",
-                weight=300,
+                weight=400,
                 items=(
                     NavMenuItem(
                         link="plugins:nautobot_dns_models:dnsregistrar_list",
