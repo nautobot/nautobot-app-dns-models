@@ -171,18 +171,9 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
         ("created",),
         ("last_updated",),
         ("name",),
-        ("dns_registrar",),
         ("ttl",),
         ("filename",),
         ("description",),
-        ("expiration_date",),
-        ("auto_renewal",),
-        ("registry_locked",),
-        ("transfer_locked",),
-        ("privacy_enabled",),
-        ("website_forwarding_enabled",),
-        ("renewal_term_months",),
-        ("dnssec_enabled",),
         ("soa_expire",),
         ("soa_mname",),
         ("soa_rname",),
@@ -201,24 +192,13 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
         cls.tenant_group2 = TenantGroup.objects.create(name="Test Tenant Group 2")
         cls.tenant1 = Tenant.objects.create(name="Test DNS Zone Tenant 1", tenant_group=cls.tenant_group1)
         cls.tenant2 = Tenant.objects.create(name="Test DNS Zone Tenant 2", tenant_group=cls.tenant_group2)
-        cls.registrar1 = DNSRegistrar.objects.create(name="Registrar One", account_number="ACC-1")
-        cls.registrar2 = DNSRegistrar.objects.create(name="Registrar Two", account_number="ACC-2")
 
         DNSZone.objects.create(
             name="Test One",
             filename="zone1.conf",
             tenant=cls.tenant1,
-            dns_registrar=cls.registrar1,
             ttl=6400,
             description="Test zone one",
-            expiration_date="2026-10-01",
-            auto_renewal=True,
-            registry_locked=True,
-            transfer_locked=True,
-            privacy_enabled=True,
-            website_forwarding_enabled=True,
-            renewal_term_months=12,
-            dnssec_enabled=True,
             soa_mname="ns1.example.com",
             soa_rname="admin.example.com",
             soa_refresh=7200,
@@ -229,7 +209,6 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
             name="Test Two",
             filename="zone2.conf",
             tenant=cls.tenant2,
-            dns_registrar=cls.registrar2,
             soa_mname="ns2.example.com",
             description="Test zone two",
             ttl=7200,
@@ -270,12 +249,6 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
         self.assertEqual(self.filterset({"q": "Test"}, self.queryset).qs.count(), 3)
         self.assertEqual(self.filterset({"q": "zone1"}, self.queryset).qs.count(), 1)
         self.assertEqual(self.filterset({"q": "zone"}, self.queryset).qs.count(), 3)
-        self.assertEqual(self.filterset({"q": "Registrar One"}, self.queryset).qs.count(), 1)
-
-    def test_expiration_date_gte_with_date_value(self):
-        """Test expiration date gte filter with date-only DatePicker value."""
-        params = {"expiration_date__gte": "2026-09-30"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
 
 class NSRecordFilterTestCase(TestCase):

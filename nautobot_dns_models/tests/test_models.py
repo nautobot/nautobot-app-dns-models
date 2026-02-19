@@ -160,30 +160,16 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
 
     def test_create_dnszone_all_fields_success(self):
         """Create DnsZoneModel with all fields."""
-        registrar = DNSRegistrar.objects.create(name="Registrar")
         dnszone = DNSZone.objects.create(
             name="Development",
             description="Development Test",
-            dns_registrar=registrar,
-            expiration_date="2026-12-31",
-            auto_renewal=True,
-            registry_locked=True,
-            transfer_locked=True,
-            privacy_enabled=True,
-            website_forwarding_enabled=True,
-            renewal_term_months=12,
-            dnssec_enabled=True,
+            filename="development.zone",
+            soa_mname="ns1.development.example",
+            soa_rname="admin@development.example",
         )
         self.assertEqual(dnszone.name, "Development")
         self.assertEqual(dnszone.description, "Development Test")
-        self.assertEqual(dnszone.dns_registrar, registrar)
-        self.assertTrue(dnszone.auto_renewal)
-        self.assertTrue(dnszone.registry_locked)
-        self.assertTrue(dnszone.transfer_locked)
-        self.assertTrue(dnszone.privacy_enabled)
-        self.assertTrue(dnszone.website_forwarding_enabled)
-        self.assertEqual(dnszone.renewal_term_months, 12)
-        self.assertTrue(dnszone.dnssec_enabled)
+        self.assertEqual(dnszone.filename, "development.zone")
 
     def test_get_absolute_url(self):
         dns_zone_model = DNSZone.objects.create(name="example.com")

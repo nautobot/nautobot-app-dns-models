@@ -35,12 +35,22 @@ class DNSViewPrefixAssignmentSerializer(ValidatedModelSerializer):
 class DNSRegistrarSerializer(NautobotModelSerializer):
     """DNSRegistrar Serializer."""
 
-    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnsregistrar-detail")
-
     class Meta:
         """Meta attributes."""
 
         model = models.DNSRegistrar
+        fields = "__all__"
+
+
+class DNSRegistrationSerializer(NautobotModelSerializer):
+    """DNSRegistration Serializer."""
+
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnsregistration-detail")
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSRegistration
         fields = "__all__"
 
 

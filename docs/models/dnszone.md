@@ -2,19 +2,12 @@
 
 The DNS zone model is used to represent a distinct DNS zone. It contains the zone name, TTL, and SOA record details.
 
+Domain registration attributes are modeled separately in `DNSRegistration`.
+
 - `name` (string): Unique FQDN of the Zone, w/ TLD. e.g `example.com`.
-- `dns_registrar` (DNS Registrar, optional): Registrar used for this zone.
 - `ttl` (integer): Time to live for the DNS zone.
 - `filename` (string): Filename of the DNS zone file.
 - `description`: (string): Description of the DNS zone.
-- `expiration_date` (date, optional): Domain expiration date.
-- `auto_renewal` (boolean): Whether auto renewal is enabled.
-- `registry_locked` (boolean): Whether registry lock is enabled.
-- `transfer_locked` (boolean): Whether transfer lock is enabled.
-- `privacy_enabled` (boolean): Whether privacy protection is enabled.
-- `website_forwarding_enabled` (boolean): Whether website forwarding is enabled.
-- `renewal_term_months` (integer, optional): Renewal term in months.
-- `dnssec_enabled` (boolean): Whether DNSSEC is enabled.
 - `soa_mname`: (string): FQDN of the authoritative name server for the DNS zone.
 - `soa_rname`: (string): Email address of the administrator for the DNS zone.
 - `soa_refresh`: (integer): Time in seconds for secondary name servers to query the master for the SOA record.

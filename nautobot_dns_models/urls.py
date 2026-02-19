@@ -12,6 +12,7 @@ router = NautobotUIViewSetRouter()
 
 router.register("dns-views", views.DNSViewUIViewSet)
 router.register("dns-registrars", views.DNSRegistrarUIViewSet)
+router.register("dns-registrations", views.DNSRegistrationUIViewSet)
 router.register("dns-zones", views.DNSZoneUIViewSet)
 router.register("a-records", views.ARecordUIViewSet)
 router.register("aaaa-records", views.AAAARecordUIViewSet)

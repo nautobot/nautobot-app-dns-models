@@ -2,11 +2,15 @@
 
 from constance.test import override_config
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from django.urls import reverse
+from nautobot.apps.api import get_serializer_for_model
 from nautobot.apps.testing import APIViewTestCases
+from nautobot.core.testing import utils
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from rest_framework import status
+from rest_framework.relations import ManyRelatedField
 
 from nautobot_dns_models.models import (
     AAAARecord,
@@ -141,6 +145,47 @@ class DNSRegistrarAPITestCase(APIViewTestCases.APIViewTestCase):
             },
         ]
 
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_recreate_object_csv(self):
+        """CSV recreate test excluding model `url`, which Nautobot omits from CSV headers."""
+        instance = utils.get_deletable_objects(self.model, self._get_queryset()).first()
+        if instance is None:
+            self.fail("Couldn't find a single deletable object!")
+
+        self.add_permissions(
+            f"{self.model._meta.app_label}.add_{self.model._meta.model_name}",
+            f"{self.model._meta.app_label}.view_{self.model._meta.model_name}",
+        )
+
+        response = self.client.get(self._get_detail_url(instance) + "?format=csv", **self.header)
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        csv_data = response.content.decode(response.charset)
+
+        serializer_class = get_serializer_for_model(self.model)
+        old_data = serializer_class(instance, context={"request": None}).data
+        orig_pk = instance.pk
+        instance.delete()
+
+        response = self.client.post(self._get_list_url(), csv_data, content_type="text/csv", **self.header)
+        self.assertHttpStatus(response, status.HTTP_201_CREATED, csv_data)
+        new_instance = self._get_queryset().get(pk=response.data[0]["id"])
+        if isinstance(orig_pk, int):
+            self.assertNotEqual(new_instance.pk, orig_pk)
+        else:
+            self.assertEqual(new_instance.pk, orig_pk)
+
+        new_serializer = serializer_class(new_instance, context={"request": None})
+        new_data = new_serializer.data
+        for field_name, field in new_serializer.fields.items():
+            if isinstance(field, ManyRelatedField) and field_name != "tags":
+                continue
+            if field.read_only or field.write_only or field_name == "url":
+                continue
+            if field_name in ["created", "last_updated"]:
+                self.assertNotEqual(old_data[field_name], new_data[field_name])
+            else:
+                self.assertEqual(old_data[field_name], new_data[field_name])
+
 
 class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
     """Test the Nautobot DNSZone API."""
@@ -159,15 +204,9 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
     @classmethod
     def setUpTestData(cls):
         dns_view = DNSView.objects.get(name="Default")
-        registrar = DNSRegistrar.objects.create(
-            name="Registrar One",
-            url="https://registrar-one.example",
-            account_number="ACC-ONE",
-        )
         DNSZone.objects.create(
             name="test.com",
             dns_view=dns_view,
-            dns_registrar=registrar,
             filename="test.com.zone",
             soa_mname="ns1.test.com",
             soa_rname="admin@test.com",
@@ -192,15 +231,6 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
                 "name": "example.com",
                 "dns_view": dns_view.id,
                 "filename": "example.com.zone",
-                "dns_registrar": registrar.id,
-                "expiration_date": "2026-12-31",
-                "auto_renewal": True,
-                "registry_locked": True,
-                "transfer_locked": True,
-                "privacy_enabled": True,
-                "website_forwarding_enabled": True,
-                "renewal_term_months": 12,
-                "dnssec_enabled": True,
                 "soa_mname": "ns1.example.com",
                 "soa_rname": "admin@example.com",
                 "soa_refresh": 3600,

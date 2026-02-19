@@ -131,6 +131,63 @@ class DNSRegistrar(PrimaryModel):
         return self.name
 
 
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "statuses",
+    "webhooks",
+)
+class DNSRegistration(PrimaryModel):
+    """Model representing the registration of a DNS zone with a registrar."""
+
+    dns_registrar = ForeignKeyWithAutoRelatedName(
+        DNSRegistrar,
+        on_delete=models.PROTECT,
+        help_text="Registrar used for this zone registration.",
+        verbose_name="Registrar",
+    )
+    dns_zone = ForeignKeyWithAutoRelatedName(
+        "DNSZone",
+        on_delete=models.PROTECT,
+        help_text="Zone that is registered.",
+        verbose_name="Zone",
+    )
+    status = models.ForeignKey(
+        to="extras.Status",
+        on_delete=models.PROTECT,
+        related_name="dns_registrations",
+        help_text="Registration status.",
+    )
+    expiration_date = models.DateField(null=True, blank=True, help_text="Domain expiration date.")
+    auto_renewal = models.BooleanField(default=False, help_text="Whether auto renewal is enabled.")
+    registry_locked = models.BooleanField(default=False, help_text="Whether registry lock is enabled.")
+    transfer_locked = models.BooleanField(default=False, help_text="Whether transfer lock is enabled.")
+    privacy_enabled = models.BooleanField(default=False, help_text="Whether privacy protection is enabled.")
+    website_forwarding_enabled = models.BooleanField(default=False, help_text="Whether website forwarding is enabled.")
+    renewal_term_months = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(1200)],
+        help_text="Renewal term in months.",
+    )
+    dnssec_enabled = models.BooleanField(default=False, help_text="Whether DNSSEC is enabled.")
+
+    class Meta:
+        """Meta attributes for DNSRegistration."""
+
+        unique_together = [["dns_registrar", "dns_zone"], ["dns_zone"]]
+        verbose_name = "DNS Registration"
+        verbose_name_plural = "DNS Registrations"
+
+    def __str__(self):
+        """Stringify instance."""
+        return f"{self.dns_zone} @ {self.dns_registrar}"
+
+
 @extras_features("graphql")
 class DNSViewPrefixAssignment(BaseModel):
     """Through model for DNSView and Prefix many-to-many relationship."""
@@ -189,27 +246,6 @@ class DNSZone(DNSModel):
     )
     filename = models.CharField(max_length=200, help_text="Filename of the Zone File.")
     description = models.TextField(help_text="Description of the Zone.", blank=True)
-    dns_registrar = ForeignKeyWithAutoRelatedName(
-        DNSRegistrar,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        help_text="Registrar used for this zone.",
-        verbose_name="Registrar",
-    )
-    expiration_date = models.DateField(null=True, blank=True, help_text="Domain expiration date.")
-    auto_renewal = models.BooleanField(default=False, help_text="Whether auto renewal is enabled.")
-    registry_locked = models.BooleanField(default=False, help_text="Whether registry lock is enabled.")
-    transfer_locked = models.BooleanField(default=False, help_text="Whether transfer lock is enabled.")
-    privacy_enabled = models.BooleanField(default=False, help_text="Whether privacy protection is enabled.")
-    website_forwarding_enabled = models.BooleanField(default=False, help_text="Whether website forwarding is enabled.")
-    renewal_term_months = models.PositiveSmallIntegerField(
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(1), MaxValueValidator(1200)],
-        help_text="Renewal term in months.",
-    )
-    dnssec_enabled = models.BooleanField(default=False, help_text="Whether DNSSEC is enabled.")
     soa_mname = models.CharField(
         max_length=200,
         help_text="FQDN of the Authoritative Name Server for Zone.",

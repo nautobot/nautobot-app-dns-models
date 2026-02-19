@@ -6,4 +6,4 @@ The DNS registrar model tracks registrar account metadata used by domain zones.
 - `url` (string, optional): Registrar portal URL.
 - `account_number` (string, optional): Registrar account identifier for your organization.
 
-DNS zones can optionally reference a registrar through the `dns_registrar` field.
+Registrar-to-zone assignments and registration metadata are tracked through the `DNSRegistration` model.

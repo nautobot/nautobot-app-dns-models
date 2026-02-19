@@ -4,6 +4,7 @@ import django_filters
 from django.db.models import F
 from django.db.models.functions import Coalesce
 from nautobot.apps.filters import NautobotFilterSet, SearchFilter, TenancyModelFilterSetMixin
+from nautobot.core.filters import MultiValueCharFilter
 from netaddr import IPAddress as NetIPAddress
 
 from nautobot_dns_models import models
@@ -46,8 +47,8 @@ class DNSViewPrefixAssignmentFilterSet(NautobotFilterSet):
 class DNSRegistrarFilterSet(NautobotFilterSet):
     """Filter for DNSRegistrar."""
 
-    url = django_filters.CharFilter(lookup_expr="icontains")
-    account_number = django_filters.CharFilter(lookup_expr="icontains")
+    url = MultiValueCharFilter(lookup_expr="icontains")
+    account_number = MultiValueCharFilter(lookup_expr="icontains")
 
     q = SearchFilter(
         filter_predicates={
@@ -64,8 +65,8 @@ class DNSRegistrarFilterSet(NautobotFilterSet):
         fields = "__all__"
 
 
-class DNSZoneFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
-    """Filter for DNSZone."""
+class DNSRegistrationFilterSet(NautobotFilterSet):
+    """Filter for DNSRegistration."""
 
     expiration_date__lte = django_filters.DateFilter(
         field_name="expiration_date",
@@ -80,9 +81,26 @@ class DNSZoneFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
 
     q = SearchFilter(
         filter_predicates={
+            "dns_registrar__name": "icontains",
+            "dns_zone__name": "icontains",
+            "status__name": "icontains",
+        }
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSRegistration
+        fields = "__all__"
+
+
+class DNSZoneFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
+    """Filter for DNSZone."""
+
+    q = SearchFilter(
+        filter_predicates={
             "name": "icontains",
             "filename": "icontains",
-            "dns_registrar__name": "icontains",
             "soa_mname": "icontains",
             "soa_rname": "icontains",
         }

@@ -10,6 +10,7 @@ from nautobot.apps.forms import (
     NautobotModelForm,
     TagsBulkEditFormMixin,
 )
+from nautobot.extras.models import Status
 from nautobot.ipam.models import Prefix
 from nautobot.tenancy.forms import TenancyFilterForm, TenancyForm
 from nautobot.tenancy.models import Tenant
@@ -111,8 +112,8 @@ class DNSRegistrarFilterForm(NautobotFilterForm):
     ]
 
 
-class DNSZoneForm(NautobotModelForm, TenancyForm):
-    """DNSZone creation/edit form."""
+class DNSRegistrationForm(NautobotModelForm):
+    """DNSRegistration creation/edit form."""
 
     expiration_date = forms.DateField(
         required=False,
@@ -123,17 +124,24 @@ class DNSZoneForm(NautobotModelForm, TenancyForm):
     class Meta:
         """Meta attributes."""
 
-        model = models.DNSZone
+        model = models.DNSRegistration
         fields = "__all__"
 
 
-class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
-    """DNSZone bulk edit form."""
+class DNSRegistrationBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
+    """DNSRegistration bulk edit form."""
 
-    pk = forms.ModelMultipleChoiceField(queryset=models.DNSZone.objects.all(), widget=forms.MultipleHiddenInput)
-    description = forms.CharField(required=False)
+    pk = forms.ModelMultipleChoiceField(queryset=models.DNSRegistration.objects.all(), widget=forms.MultipleHiddenInput)
     dns_registrar = DynamicModelChoiceField(
         queryset=models.DNSRegistrar.objects.all(),
+        required=False,
+    )
+    dns_zone = DynamicModelChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        required=False,
+    )
+    status = DynamicModelChoiceField(
+        queryset=Status.objects.all(),
         required=False,
     )
     expiration_date = forms.DateField(
@@ -148,37 +156,38 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     website_forwarding_enabled = forms.NullBooleanField(required=False)
     renewal_term_months = forms.IntegerField(required=False, min_value=1)
     dnssec_enabled = forms.NullBooleanField(required=False)
-    tenant = DynamicModelChoiceField(
-        queryset=Tenant.objects.all(),
-        required=False,
-    )
 
     class Meta:
         """Meta attributes."""
 
         nullable_fields = [
-            "description",
-            "dns_registrar",
             "expiration_date",
             "renewal_term_months",
-            "tenant",
         ]
 
 
-class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
-    """Filter form to filter searches."""
+class DNSRegistrationFilterForm(NautobotFilterForm):
+    """Filter form for DNSRegistration searches."""
 
     q = forms.CharField(
         required=False,
         label="Search",
-        help_text="Search within Name, Filename, Registrar, SOA MNAME, and SOA RNAME.",
+        help_text="Search within Registrar and Zone.",
     )
-    name = forms.CharField(required=False, label="Name")
-    filename = forms.CharField(required=False, label="Filename")
     dns_registrar = DynamicModelChoiceField(
         queryset=models.DNSRegistrar.objects.all(),
         required=False,
         label="Registrar",
+    )
+    dns_zone = DynamicModelChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        required=False,
+        label="Zone",
+    )
+    status = DynamicModelChoiceField(
+        queryset=Status.objects.all(),
+        required=False,
+        label="Status",
     )
     expiration_date__lte = forms.DateField(
         required=False,
@@ -199,13 +208,12 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
     website_forwarding_enabled = forms.NullBooleanField(required=False, label="Website Forwarding Enabled")
     renewal_term_months = forms.IntegerField(required=False, min_value=1, label="Renewal Term (Months)")
     dnssec_enabled = forms.NullBooleanField(required=False, label="DNSSEC Enabled")
-    model = models.DNSZone
-    # Define the fields above for ordering and widget purposes
+    model = models.DNSRegistration
     fields = [
         "q",
-        "name",
-        "filename",
         "dns_registrar",
+        "dns_zone",
+        "status",
         "expiration_date__lte",
         "expiration_date__gte",
         "auto_renewal",
@@ -215,6 +223,54 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
         "website_forwarding_enabled",
         "renewal_term_months",
         "dnssec_enabled",
+    ]
+
+
+class DNSZoneForm(NautobotModelForm, TenancyForm):
+    """DNSZone creation/edit form."""
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSZone
+        fields = "__all__"
+
+
+class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
+    """DNSZone bulk edit form."""
+
+    pk = forms.ModelMultipleChoiceField(queryset=models.DNSZone.objects.all(), widget=forms.MultipleHiddenInput)
+    description = forms.CharField(required=False)
+    tenant = DynamicModelChoiceField(
+        queryset=Tenant.objects.all(),
+        required=False,
+    )
+
+    class Meta:
+        """Meta attributes."""
+
+        nullable_fields = [
+            "description",
+            "tenant",
+        ]
+
+
+class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
+    """Filter form to filter searches."""
+
+    q = forms.CharField(
+        required=False,
+        label="Search",
+        help_text="Search within Name, Filename, SOA MNAME, and SOA RNAME.",
+    )
+    name = forms.CharField(required=False, label="Name")
+    filename = forms.CharField(required=False, label="Filename")
+    model = models.DNSZone
+    # Define the fields above for ordering and widget purposes
+    fields = [
+        "q",
+        "name",
+        "filename",
     ]
 
 

@@ -128,14 +128,8 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        registrar = DNSRegistrar.objects.create(
-            name="Registrar One",
-            url="https://registrar-one.example",
-            account_number="ACC-ONE",
-        )
         DNSZone.objects.create(
             name="example-one.com",
-            dns_registrar=registrar,
             filename="test one",
             soa_mname="auth-server",
             soa_rname="admin@example-one.com",
@@ -172,18 +166,9 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.form_data = {
             "name": "Test 1",
             "dns_view": dns_view.id,
-            "dns_registrar": registrar.id,
             "ttl": 3600,
             "description": "Initial model",
             "filename": "test three",
-            "expiration_date": "2026-12-31",
-            "auto_renewal": True,
-            "registry_locked": True,
-            "transfer_locked": True,
-            "privacy_enabled": True,
-            "website_forwarding_enabled": True,
-            "renewal_term_months": 12,
-            "dnssec_enabled": True,
             "soa_mname": "auth-server",
             "soa_rname": "admin@example-three.com",
             "soa_refresh": 86400,
@@ -194,8 +179,8 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         }
 
         cls.csv_data = (
-            "name, dns_view, dns_registrar, ttl, description, filename, expiration_date, auto_renewal, registry_locked, transfer_locked, privacy_enabled, website_forwarding_enabled, renewal_term_months, dnssec_enabled, soa_mname, soa_rname, soa_refresh, soa_retry, soa_expire, soa_serial, soa_minimum",
-            f"Test 3, {dns_view.id}, {registrar.name}, 3600, Description 3, filename 3, 2026-12-31, True, True, True, True, True, 12, True, auth-server, admin@example_three.com, 86400, 7200, 3600000, 0, 172800",
+            "name, dns_view, ttl, description, filename, soa_mname, soa_rname, soa_refresh, soa_retry, soa_expire, soa_serial, soa_minimum",
+            f"Test 3, {dns_view.id}, 3600, Description 3, filename 3, auth-server, admin@example_three.com, 86400, 7200, 3600000, 0, 172800",
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}
