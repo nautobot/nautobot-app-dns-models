@@ -1,6 +1,7 @@
 """Menu items to the Nautobot navigation menu."""
 
 from nautobot.apps.ui import (
+    NavigationIconChoices,
     NavigationWeightChoices,
     NavMenuGroup,
     NavMenuItem,
@@ -9,12 +10,12 @@ from nautobot.apps.ui import (
 
 menu_items = (
     NavMenuTab(
-        name="DNS",
-        icon="bus-globe",
-        weight=NavigationWeightChoices.IPAM + 10,
+        name="Apps",
+        icon=NavigationIconChoices.APPS,
+        weight=NavigationWeightChoices.APPS,
         groups=(
             NavMenuGroup(
-                name="Zones",
+                name="DNS",
                 weight=300,
                 items=(
                     NavMenuItem(

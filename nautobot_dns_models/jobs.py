@@ -15,7 +15,7 @@ from nautobot.extras.models import Status
 
 from nautobot_dns_models.models import DNSRegistration
 
-name = "DNS"
+name = "DNS"  # pylint: disable=invalid-name
 
 
 class AutoRenewDomains(Job):
@@ -38,14 +38,8 @@ class AutoRenewDomains(Job):
     def _get_or_create_expired_status(self):
         """Get or create Expired status and ensure it supports DNSRegistration."""
         registration_content_type = ContentType.objects.get_for_model(DNSRegistration)
-
-        expired_status = Status.objects.filter(name="Expired", content_types=registration_content_type).first()
-        if expired_status is not None:
-            return expired_status
-
-        expired_status = Status.objects.filter(name="Expired").first()
-        if expired_status is None:
-            expired_status = Status.objects.create(name="Expired", color="9e9e9e")
+        expired_status, created = Status.objects.get_or_create(name="Expired", defaults={"color": "9e9e9e"})
+        if created:
             self.logger.info("Created status 'Expired'.")
 
         if not expired_status.content_types.filter(pk=registration_content_type.pk).exists():
@@ -54,23 +48,25 @@ class AutoRenewDomains(Job):
 
         return expired_status
 
-    def run(self, update_status_on_expiry=False):
+    def run(self, *args, **kwargs):
         """Run the job."""
+        update_status_on_expiry = kwargs.get("update_status_on_expiry", False)
         today = timezone.now().date()
 
         for registration in DNSRegistration.objects.filter(auto_renewal=True, expiration_date__lte=today):
             if registration.renewal_term_months is None:
                 self.logger.warning(
-                    f"Skipping auto renewal for {registration.dns_zone}: renewal term is not set on registration."
+                    "Skipping auto renewal for %s: renewal term is not set on registration.",
+                    registration.dns_zone,
                 )
                 continue
 
             period = int(registration.renewal_term_months)
-            self.logger.info(f"Auto renewal period for {registration.dns_zone} is {period} months")
+            self.logger.info("Auto renewal period for %s is %s months", registration.dns_zone, period)
             new_date = registration.expiration_date + relativedelta(months=+period)
-            self.logger.info(f"Auto renewing {registration.dns_zone} to {new_date}")
+            self.logger.info("Auto renewing %s to %s", registration.dns_zone, new_date)
             registration.expiration_date = new_date
-            registration.save()
+            registration.validated_save()
 
         if not update_status_on_expiry:
             return
@@ -81,9 +77,9 @@ class AutoRenewDomains(Job):
             status=expired_status
         )
         for registration in expired_registrations:
-            self.logger.info(f"Setting registration for {registration.dns_zone} to Expired")
+            self.logger.info("Setting registration for %s to Expired", registration.dns_zone)
             registration.status = expired_status
-            registration.save()
+            registration.validated_save()
 
 
 register_jobs(AutoRenewDomains)

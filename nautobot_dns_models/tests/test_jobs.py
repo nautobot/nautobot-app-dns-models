@@ -23,13 +23,11 @@ class TestAutoRenewDomainsJob(TestCase):
         cls.expired_status.content_types.add(ContentType.objects.get_for_model(DNSRegistration))
         cls.view = DNSView.objects.create(name="Job Test View")
         cls.registrar = DNSRegistrar.objects.create(name="Job Test Registrar")
-
-    def _create_zone(self, name):
-        return DNSZone.objects.create(
-            name=name,
-            dns_view=self.view,
+        cls.zone = DNSZone.objects.create(
+            name="job-test.example.com",
+            dns_view=cls.view,
             ttl=3600,
-            filename=f"{name}.db",
+            filename="job-test.example.com.db",
             soa_mname="ns1.example.com",
             soa_rname="admin@example.com",
             soa_refresh=86400,
@@ -41,10 +39,9 @@ class TestAutoRenewDomainsJob(TestCase):
 
     def test_toggle_disabled_does_not_change_status(self):
         """When toggle is disabled, status should not change for expired non-auto-renew registrations."""
-        zone = self._create_zone("disabled.example.com")
         registration = DNSRegistration.objects.create(
             dns_registrar=self.registrar,
-            dns_zone=zone,
+            dns_zone=self.zone,
             status=self.active_status,
             expiration_date=timezone.now().date() - timedelta(days=1),
             auto_renewal=False,
@@ -58,10 +55,9 @@ class TestAutoRenewDomainsJob(TestCase):
 
     def test_toggle_enabled_marks_non_auto_renewed_registration_expired(self):
         """When toggle is enabled, expired non-auto-renew registrations should be set to Expired."""
-        zone = self._create_zone("enable.example.com")
         registration = DNSRegistration.objects.create(
             dns_registrar=self.registrar,
-            dns_zone=zone,
+            dns_zone=self.zone,
             status=self.active_status,
             expiration_date=timezone.now().date() - timedelta(days=1),
             auto_renewal=False,
@@ -75,11 +71,10 @@ class TestAutoRenewDomainsJob(TestCase):
 
     def test_auto_renew_enabled_extends_expiration(self):
         """Expired registrations with auto renewal enabled should have expiration extended."""
-        zone = self._create_zone("renew.example.com")
         previous_date = timezone.now().date() - timedelta(days=1)
         registration = DNSRegistration.objects.create(
             dns_registrar=self.registrar,
-            dns_zone=zone,
+            dns_zone=self.zone,
             status=self.active_status,
             expiration_date=previous_date,
             auto_renewal=True,
@@ -99,10 +94,9 @@ class TestAutoRenewDomainsJob(TestCase):
 
         Status.objects.filter(name="Expired").delete()
 
-        zone = self._create_zone("create-expired.example.com")
         registration = DNSRegistration.objects.create(
             dns_registrar=self.registrar,
-            dns_zone=zone,
+            dns_zone=self.zone,
             status=self.active_status,
             expiration_date=timezone.now().date() - timedelta(days=1),
             auto_renewal=False,
