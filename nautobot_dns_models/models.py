@@ -264,7 +264,9 @@ class DNSRegistration(PrimaryModel):
         validators=[MinValueValidator(1), MaxValueValidator(1200)],
         help_text="Renewal term in months.",
     )
-    dnssec_enabled = models.BooleanField(default=False, help_text="Whether DNSSEC is enabled.")
+    dnssec_enabled = models.BooleanField(
+        default=False, help_text="Whether DNSSEC is enabled.", verbose_name="DNSSEC Enabled"
+    )
 
     class Meta:
         """Meta attributes for DNSRegistration."""
