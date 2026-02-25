@@ -1,7 +1,10 @@
 """Unit tests for nautobot_dns_models."""
 
+from datetime import date
+
 from constance.test import override_config
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 from django.urls import reverse
 from nautobot.apps.api import get_serializer_for_model
@@ -17,6 +20,7 @@ from nautobot_dns_models.models import (
     ARecord,
     CNAMERecord,
     DNSRegistrar,
+    DNSRegistration,
     DNSView,
     DNSViewPrefixAssignment,
     DNSZone,
@@ -185,6 +189,251 @@ class DNSRegistrarAPITestCase(APIViewTestCases.APIViewTestCase):
                 self.assertNotEqual(old_data[field_name], new_data[field_name])
             else:
                 self.assertEqual(old_data[field_name], new_data[field_name])
+
+    def test_post_dnsregistrar_fails_invalid_url(self):
+        """Attempting to create a registrar with invalid URL should fail."""
+        self.add_permissions("nautobot_dns_models.add_dnsregistrar")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnsregistrar-list")
+        data = {
+            "name": "Bad URL Registrar",
+            "url": "not-a-valid-url",
+            "account_number": "ACC-BAD-URL",
+        }
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+
+    def test_post_dnsregistrar_fails_duplicate_name(self):
+        """Attempting to create a registrar with a duplicate name should fail."""
+        self.add_permissions("nautobot_dns_models.add_dnsregistrar")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnsregistrar-list")
+        data = {
+            "name": "Registrar 1",
+            "url": "https://duplicate-registrar.example",
+            "account_number": "ACC-DUPLICATE",
+        }
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+
+
+class DNSRegistrationAPITestCase(APIViewTestCases.APIViewTestCase):
+    """Test the Nautobot DNSRegistration API."""
+
+    model = DNSRegistration
+    view_namespace = "plugins-api:nautobot_dns_models"
+    bulk_update_data = {
+        "auto_renewal": True,
+        "renewal_term_months": 24,
+    }
+    brief_fields = [
+        "dns_registrar",
+        "dns_zone",
+        "status",
+    ]
+
+    @classmethod
+    def setUpTestData(cls):
+        registration_ct = ContentType.objects.get_for_model(DNSRegistration)
+        cls.active_status = Status.objects.get(name="Active")
+        cls.active_status.content_types.add(registration_ct)
+        cls.pending_status, _ = Status.objects.get_or_create(name="Pending Registration", defaults={"color": "ff9800"})
+        cls.pending_status.content_types.add(registration_ct)
+
+        cls.dns_view = DNSView.objects.create(name="Registration API View", description="View for registration API tests")
+        cls.dns_registrars = (
+            DNSRegistrar.objects.create(name="Reg API Registrar 1", url="https://reg-api-1.example", account_number="R1"),
+            DNSRegistrar.objects.create(name="Reg API Registrar 2", url="https://reg-api-2.example", account_number="R2"),
+            DNSRegistrar.objects.create(name="Reg API Registrar 3", url="https://reg-api-3.example", account_number="R3"),
+        )
+        cls.dns_zones = (
+            DNSZone.objects.create(
+                name="reg-api-one.example",
+                dns_view=cls.dns_view,
+                filename="reg-api-one.example.zone",
+                soa_mname="ns1.reg-api-one.example",
+                soa_rname="admin@reg-api-one.example",
+            ),
+            DNSZone.objects.create(
+                name="reg-api-two.example",
+                dns_view=cls.dns_view,
+                filename="reg-api-two.example.zone",
+                soa_mname="ns1.reg-api-two.example",
+                soa_rname="admin@reg-api-two.example",
+            ),
+            DNSZone.objects.create(
+                name="reg-api-three.example",
+                dns_view=cls.dns_view,
+                filename="reg-api-three.example.zone",
+                soa_mname="ns1.reg-api-three.example",
+                soa_rname="admin@reg-api-three.example",
+            ),
+        )
+
+        DNSRegistration.objects.create(
+            dns_registrar=cls.dns_registrars[0],
+            dns_zone=cls.dns_zones[0],
+            status=cls.active_status,
+            expiration_date=date(2026, 1, 15),
+            auto_renewal=False,
+            renewal_term_months=12,
+        )
+        DNSRegistration.objects.create(
+            dns_registrar=cls.dns_registrars[1],
+            dns_zone=cls.dns_zones[1],
+            status=cls.pending_status,
+            expiration_date=date(2026, 6, 1),
+            auto_renewal=True,
+            dnssec_enabled=True,
+            renewal_term_months=24,
+        )
+        DNSRegistration.objects.create(
+            dns_registrar=cls.dns_registrars[2],
+            dns_zone=cls.dns_zones[2],
+            status=cls.active_status,
+            expiration_date=date(2027, 1, 10),
+            auto_renewal=False,
+            renewal_term_months=36,
+        )
+
+        cls.create_data = [
+            {
+                "dns_registrar": cls.dns_registrars[0].id,
+                "dns_zone": cls.dns_zones[1].id,
+                "status": cls.active_status.id,
+                "expiration_date": date(2027, 2, 1),
+                "auto_renewal": True,
+                "renewal_term_months": 12,
+            },
+            {
+                "dns_registrar": cls.dns_registrars[1].id,
+                "dns_zone": cls.dns_zones[2].id,
+                "status": cls.pending_status.id,
+                "expiration_date": date(2027, 4, 1),
+                "registry_locked": True,
+                "transfer_locked": True,
+                "renewal_term_months": 6,
+            },
+            {
+                "dns_registrar": cls.dns_registrars[2].id,
+                "dns_zone": cls.dns_zones[0].id,
+                "status": cls.active_status.id,
+                "expiration_date": date(2028, 1, 1),
+                "privacy_enabled": True,
+                "website_forwarding_enabled": False,
+                "renewal_term_months": 18,
+            },
+        ]
+
+    @staticmethod
+    def _response_results(response):
+        """Return list endpoint results regardless of pagination mode."""
+        if isinstance(response.data, list):
+            return response.data
+        return response.data.get("results", [])
+
+    def test_post_dnsregistration_fails_duplicate_registrar_zone(self):
+        """Duplicate (dns_registrar, dns_zone) should be rejected."""
+        self.add_permissions("nautobot_dns_models.add_dnsregistration")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnsregistration-list")
+        data = {
+            "dns_registrar": self.dns_registrars[0].id,
+            "dns_zone": self.dns_zones[0].id,
+            "status": self.active_status.id,
+            "expiration_date": "2028-02-15",
+        }
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+
+    def test_post_dnsregistration_fails_invalid_renewal_term_bounds(self):
+        """Renewal term outside min/max bounds should be rejected."""
+        self.add_permissions("nautobot_dns_models.add_dnsregistration")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnsregistration-list")
+        for renewal_term in [0, 1201]:
+            with self.subTest(renewal_term_months=renewal_term):
+                data = {
+                    "dns_registrar": self.dns_registrars[0].id,
+                    "dns_zone": self.dns_zones[1].id,
+                    "status": self.active_status.id,
+                    "renewal_term_months": renewal_term,
+                }
+                response = self.client.post(url, data=data, format="json", **self.header)
+                self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+
+    def test_post_dnsregistration_fails_without_status(self):
+        """Status is required when creating a registration."""
+        self.add_permissions("nautobot_dns_models.add_dnsregistration")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnsregistration-list")
+        data = {
+            "dns_registrar": self.dns_registrars[1].id,
+            "dns_zone": self.dns_zones[0].id,
+            "auto_renewal": False,
+        }
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+
+    def test_patch_dnsregistration_toggles_auto_renewal(self):
+        """Partial update should allow toggling a boolean field."""
+        self.add_permissions("nautobot_dns_models.change_dnsregistration")
+
+        instance = DNSRegistration.objects.filter(auto_renewal=False).first()
+        self.assertIsNotNone(instance)
+
+        response = self.client.patch(
+            self._get_detail_url(instance),
+            data={"auto_renewal": True, "dnssec_enabled": True},
+            format="json",
+            **self.header,
+        )
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+
+        instance.refresh_from_db()
+        self.assertTrue(instance.auto_renewal)
+        self.assertTrue(instance.dnssec_enabled)
+
+    def test_filter_dnsregistration_q(self):
+        """Search filter should match registrar, zone, and status names."""
+        self.add_permissions("nautobot_dns_models.view_dnsregistration")
+
+        response = self.client.get(self._get_list_url(), data={"q": "Reg API Registrar 2"}, **self.header)
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        results = self._response_results(response)
+        self.assertEqual(len(results), 1)
+
+        response = self.client.get(self._get_list_url(), data={"q": "reg-api-three.example"}, **self.header)
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        results = self._response_results(response)
+        self.assertEqual(len(results), 1)
+
+        response = self.client.get(self._get_list_url(), data={"q": "Pending Registration"}, **self.header)
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        results = self._response_results(response)
+        self.assertEqual(len(results), 1)
+
+    def test_filter_dnsregistration_expiration_lte(self):
+        """expiration_date__lte should include only registrations expiring on/before date."""
+        self.add_permissions("nautobot_dns_models.view_dnsregistration")
+
+        response = self.client.get(self._get_list_url(), data={"expiration_date__lte": "2026-06-01"}, **self.header)
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        results = self._response_results(response)
+        self.assertEqual(len(results), 2)
+
+    def test_filter_dnsregistration_expiration_gte(self):
+        """expiration_date__gte should include only registrations expiring on/after date."""
+        self.add_permissions("nautobot_dns_models.view_dnsregistration")
+
+        response = self.client.get(self._get_list_url(), data={"expiration_date__gte": "2026-06-01"}, **self.header)
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        results = self._response_results(response)
+        self.assertEqual(len(results), 2)
 
 
 class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
