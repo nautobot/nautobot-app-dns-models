@@ -192,14 +192,22 @@ class DNSRegistrationFilterTestCase(FilterTestCases.FilterTestCase):
         registration_content_type = ContentType.objects.get_for_model(DNSRegistration)
         cls.active_status = Status.objects.get(name="Active")
         cls.active_status.content_types.add(registration_content_type)
-        cls.pending_status, _ = Status.objects.get_or_create(name="Pending Registration Filter", defaults={"color": "ff9800"})
+        cls.pending_status, _ = Status.objects.get_or_create(
+            name="Pending Registration Filter", defaults={"color": "ff9800"}
+        )
         cls.pending_status.content_types.add(registration_content_type)
 
         cls.view = DNSView.objects.create(name="Registration Filter View")
         cls.registrars = (
-            DNSRegistrar.objects.create(name="Filter Registrar One", url="https://filter-1.example", account_number="F-001"),
-            DNSRegistrar.objects.create(name="Filter Registrar Two", url="https://filter-2.example", account_number="F-002"),
-            DNSRegistrar.objects.create(name="Filter Registrar Three", url="https://filter-3.example", account_number="F-003"),
+            DNSRegistrar.objects.create(
+                name="Filter Registrar One", url="https://filter-1.example", account_number="F-001"
+            ),
+            DNSRegistrar.objects.create(
+                name="Filter Registrar Two", url="https://filter-2.example", account_number="F-002"
+            ),
+            DNSRegistrar.objects.create(
+                name="Filter Registrar Three", url="https://filter-3.example", account_number="F-003"
+            ),
         )
         cls.zones = (
             DNSZone.objects.create(name="registration-filter-one.example", dns_view=cls.view),

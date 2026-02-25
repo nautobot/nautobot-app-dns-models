@@ -242,11 +242,19 @@ class DNSRegistrationAPITestCase(APIViewTestCases.APIViewTestCase):
         cls.pending_status, _ = Status.objects.get_or_create(name="Pending Registration", defaults={"color": "ff9800"})
         cls.pending_status.content_types.add(registration_ct)
 
-        cls.dns_view = DNSView.objects.create(name="Registration API View", description="View for registration API tests")
+        cls.dns_view = DNSView.objects.create(
+            name="Registration API View", description="View for registration API tests"
+        )
         cls.dns_registrars = (
-            DNSRegistrar.objects.create(name="Reg API Registrar 1", url="https://reg-api-1.example", account_number="R1"),
-            DNSRegistrar.objects.create(name="Reg API Registrar 2", url="https://reg-api-2.example", account_number="R2"),
-            DNSRegistrar.objects.create(name="Reg API Registrar 3", url="https://reg-api-3.example", account_number="R3"),
+            DNSRegistrar.objects.create(
+                name="Reg API Registrar 1", url="https://reg-api-1.example", account_number="R1"
+            ),
+            DNSRegistrar.objects.create(
+                name="Reg API Registrar 2", url="https://reg-api-2.example", account_number="R2"
+            ),
+            DNSRegistrar.objects.create(
+                name="Reg API Registrar 3", url="https://reg-api-3.example", account_number="R3"
+            ),
         )
         cls.dns_zones = (
             DNSZone.objects.create(
