@@ -3,7 +3,6 @@
 from datetime import date
 
 from constance.test import override_config
-from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 from django.urls import reverse
@@ -31,7 +30,15 @@ from nautobot_dns_models.models import (
     TXTRecord,
 )
 
-User = get_user_model()
+
+def _create_zone(name, dns_view=None):
+    return DNSZone.objects.create(
+        name=name,
+        dns_view=dns_view,
+        filename=f"{name}.zone",
+        soa_mname=f"ns1.{name}",
+        soa_rname=f"admin@{name}",
+    )
 
 
 class DNSViewAPITestCase(APIViewTestCases.APIViewTestCase):
@@ -256,28 +263,9 @@ class DNSRegistrationAPITestCase(APIViewTestCases.APIViewTestCase):
                 name="Reg API Registrar 3", url="https://reg-api-3.example", account_number="R3"
             ),
         )
-        cls.dns_zones = (
-            DNSZone.objects.create(
-                name="reg-api-one.example",
-                dns_view=cls.dns_view,
-                filename="reg-api-one.example.zone",
-                soa_mname="ns1.reg-api-one.example",
-                soa_rname="admin@reg-api-one.example",
-            ),
-            DNSZone.objects.create(
-                name="reg-api-two.example",
-                dns_view=cls.dns_view,
-                filename="reg-api-two.example.zone",
-                soa_mname="ns1.reg-api-two.example",
-                soa_rname="admin@reg-api-two.example",
-            ),
-            DNSZone.objects.create(
-                name="reg-api-three.example",
-                dns_view=cls.dns_view,
-                filename="reg-api-three.example.zone",
-                soa_mname="ns1.reg-api-three.example",
-                soa_rname="admin@reg-api-three.example",
-            ),
+        cls.dns_zones = tuple(
+            _create_zone(name=name, dns_view=cls.dns_view)
+            for name in ("reg-api-one.example", "reg-api-two.example", "reg-api-three.example")
         )
 
         DNSRegistration.objects.create(
@@ -461,27 +449,9 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
     @classmethod
     def setUpTestData(cls):
         dns_view = DNSView.objects.get(name="Default")
-        DNSZone.objects.create(
-            name="test.com",
-            dns_view=dns_view,
-            filename="test.com.zone",
-            soa_mname="ns1.test.com",
-            soa_rname="admin@test.com",
-        )
-        DNSZone.objects.create(
-            name="test.org",
-            dns_view=dns_view,
-            filename="test.org.zone",
-            soa_mname="ns1.test.org",
-            soa_rname="admin@test.org",
-        )
-        DNSZone.objects.create(
-            name="test.net",
-            dns_view=dns_view,
-            filename="test.net.zone",
-            soa_mname="ns1.test.net",
-            soa_rname="admin@test.net",
-        )
+        _create_zone(name="test.com", dns_view=dns_view)
+        _create_zone(name="test.org", dns_view=dns_view)
+        _create_zone(name="test.net", dns_view=dns_view)
 
         cls.create_data = [
             {
@@ -525,9 +495,7 @@ class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        dns_zone = DNSZone.objects.create(
-            name="example.com", filename="example.com.zone", soa_mname="ns1.example.com", soa_rname="admin@example.com"
-        )
+        dns_zone = _create_zone(name="example.com")
 
         NSRecord.objects.create(name="ns1", server="ns1.example.com.", zone=dns_zone)
         NSRecord.objects.create(name="ns2", server="ns2.example.com.", zone=dns_zone)
@@ -567,9 +535,7 @@ class ARecordAPITestCase(APIViewTestCases.APIViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        dns_zone = DNSZone.objects.create(
-            name="example.com", filename="example.com.zone", soa_mname="ns1.example.com", soa_rname="admin@example.com"
-        )
+        dns_zone = _create_zone(name="example.com")
 
         namespace = Namespace.objects.get(name="Global")
         active_status = Status.objects.get(name="Active")
@@ -640,9 +606,7 @@ class AAAARecordAPITestCase(APIViewTestCases.APIViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        dns_zone = DNSZone.objects.create(
-            name="example.com", filename="example.com.zone", soa_mname="ns1.example.com", soa_rname="admin@example.com"
-        )
+        dns_zone = _create_zone(name="example.com")
 
         active_status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
@@ -711,9 +675,7 @@ class CNAMERecordAPITestCase(APIViewTestCases.APIViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        dns_zone = DNSZone.objects.create(
-            name="example.com", filename="example.com.zone", soa_mname="ns1.example.com", soa_rname="admin@example.com"
-        )
+        dns_zone = _create_zone(name="example.com")
 
         CNAMERecord.objects.create(name="www", alias="www.example.com", zone=dns_zone)
         CNAMERecord.objects.create(name="site", alias="site.example.com", zone=dns_zone)
@@ -753,9 +715,7 @@ class MXRecordAPITestCase(APIViewTestCases.APIViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        dns_zone = DNSZone.objects.create(
-            name="example.com", filename="example.com.zone", soa_mname="ns1.example.com", soa_rname="admin@example.com"
-        )
+        dns_zone = _create_zone(name="example.com")
 
         MXRecord.objects.create(name="mail", mail_server="mail.example.com", zone=dns_zone)
         MXRecord.objects.create(name="mail2", mail_server="mail2.example.com", zone=dns_zone)
@@ -795,9 +755,7 @@ class TXTRecordAPITestCase(APIViewTestCases.APIViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        dns_zone = DNSZone.objects.create(
-            name="example.com", filename="example.com.zone", soa_mname="ns1.example.com", soa_rname="admin@example.com"
-        )
+        dns_zone = _create_zone(name="example.com")
 
         TXTRecord.objects.create(name="txt", text="spf-record-01", zone=dns_zone)
         TXTRecord.objects.create(name="txt2", text="spf-record-02", zone=dns_zone)
@@ -837,9 +795,7 @@ class PTRRecordAPITestCase(APIViewTestCases.APIViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        dns_zone = DNSZone.objects.create(
-            name="example.com", filename="example.com.zone", soa_mname="ns1.example.com", soa_rname="admin@example.com"
-        )
+        dns_zone = _create_zone(name="example.com")
 
         PTRRecord.objects.create(name="ptr-record-01", ptrdname="ptr-01", zone=dns_zone)
         PTRRecord.objects.create(name="ptr-record-02", ptrdname="ptr-02", zone=dns_zone)
@@ -927,12 +883,7 @@ class CNAMEExclusivityAPITestCase(APIViewTestCases.APIViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.zone = DNSZone.objects.create(
-            name="example.com",
-            filename="example.com.zone",
-            soa_mname="ns1.example.com",
-            soa_rname="admin@example.com",
-        )
+        cls.zone = _create_zone(name="example.com")
         active_status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
         Prefix.objects.create(prefix="10.22.0.0/24", namespace=namespace, type="Pool", status=active_status)
