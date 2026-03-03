@@ -231,10 +231,10 @@ class NSRecordFilterTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         """Setup test data for NSRecord Model."""
-        zone = DNSZone.objects.create(name="example.com")
-        NSRecord.objects.create(name="ns-01", server="ns1.example.com", zone=zone)
-        NSRecord.objects.create(name="ns-02", server="ns2.example.com", zone=zone)
-        NSRecord.objects.create(name="ns-02", server="ns3.example.com", zone=zone, ttl=7200)
+        cls.zone = DNSZone.objects.create(name="example.com")
+        NSRecord.objects.create(name="ns-01", server="ns1.example.com", zone=cls.zone)
+        NSRecord.objects.create(name="ns-02", server="ns2.example.com", zone=cls.zone)
+        NSRecord.objects.create(name="ns-02", server="ns3.example.com", zone=cls.zone, ttl=7200)
 
     def test_single_name(self):
         """Test using Q search with name of NSRecord."""
@@ -265,6 +265,10 @@ class NSRecordFilterTestCase(TestCase):
         """Test using invalid Q search for server of NSRecord."""
         params = {"server": "wrong-server"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
+
+    def test_zone(self):
+        params = {"zone": [self.zone]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
     def test_search(self):
         """Test filtering by Q search value."""
@@ -379,7 +383,7 @@ class AAAARecordFilterTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         """Setup test data for ARecord Model."""
-        zone = DNSZone.objects.create(name="example.com")
+        cls.zone = DNSZone.objects.create(name="example.com")
         status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
         Prefix.objects.create(prefix="2001:db8:abcd:12::/64", namespace=namespace, type="Pool", status=status)
@@ -389,9 +393,9 @@ class AAAARecordFilterTestCase(TestCase):
             IPAddress.objects.create(address="2001:db8:abcd:12::3/128", namespace=namespace, status=status),
         )
 
-        AAAARecord.objects.create(name="aaaa-record-01", ip_address=cls.ip_addresses[0], zone=zone)
-        AAAARecord.objects.create(name="aaaa-record-02", ip_address=cls.ip_addresses[1], zone=zone)
-        AAAARecord.objects.create(name="aaaa-record-03", ip_address=cls.ip_addresses[2], zone=zone)
+        AAAARecord.objects.create(name="aaaa-record-01", ip_address=cls.ip_addresses[0], zone=cls.zone)
+        AAAARecord.objects.create(name="aaaa-record-02", ip_address=cls.ip_addresses[1], zone=cls.zone)
+        AAAARecord.objects.create(name="aaaa-record-03", ip_address=cls.ip_addresses[2], zone=cls.zone)
 
     def test_single_name(self):
         """Test filter with name of AAAARecord."""
@@ -418,6 +422,10 @@ class AAAARecordFilterTestCase(TestCase):
         params = {"ip_address__in": "2001:db8:abcd:12::"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
+    def test_zone(self):
+        params = {"zone": [self.zone]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+
     def test_search(self):
         """Test filtering by Q search value."""
         self.assertEqual(self.filterset({"q": "aaaa-record-01"}, self.queryset).qs.count(), 1)
@@ -434,9 +442,9 @@ class CNAMERecordFilterTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        zone = DNSZone.objects.create(name="example.com")
-        CNAMERecord.objects.create(name="cname-record-01", alias="site.example.com", zone=zone)
-        CNAMERecord.objects.create(name="cname-record-02", alias="blog.example.com", zone=zone)
+        cls.zone = DNSZone.objects.create(name="example.com")
+        CNAMERecord.objects.create(name="cname-record-01", alias="site.example.com", zone=cls.zone)
+        CNAMERecord.objects.create(name="cname-record-02", alias="blog.example.com", zone=cls.zone)
 
     def test_single_name(self):
         """Test filter with name of CNAMERecord."""
@@ -467,6 +475,10 @@ class CNAMERecordFilterTestCase(TestCase):
         params = {"alias": "wrong-alias"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 
+    def test_zone(self):
+        params = {"zone": [self.zone]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+
     def test_search(self):
         """Test filtering by Q search value."""
         self.assertEqual(self.filterset({"q": "cname-record-01"}, self.queryset).qs.count(), 1)
@@ -483,9 +495,9 @@ class MXRecordFilterTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        zone = DNSZone.objects.create(name="example.com")
-        MXRecord.objects.create(name="mx-record-01", mail_server="mail.example.com", zone=zone)
-        MXRecord.objects.create(name="mx-record-02", mail_server="mail-02.example.com", zone=zone)
+        cls.zone = DNSZone.objects.create(name="example.com")
+        MXRecord.objects.create(name="mx-record-01", mail_server="mail.example.com", zone=cls.zone)
+        MXRecord.objects.create(name="mx-record-02", mail_server="mail-02.example.com", zone=cls.zone)
 
     def test_single_name(self):
         """Test filter with name of MXRecord."""
@@ -516,6 +528,10 @@ class MXRecordFilterTestCase(TestCase):
         params = {"mail_server": "wrong-mail-server"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 
+    def test_zone(self):
+        params = {"zone": [self.zone]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+
     def test_search(self):
         """Test filtering by Q search value."""
         self.assertEqual(self.filterset({"q": "mx-record-01"}, self.queryset).qs.count(), 1)
@@ -532,9 +548,9 @@ class TXTRecordFilterTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        zone = DNSZone.objects.create(name="example.com")
-        TXTRecord.objects.create(name="txt-record-01", text="spf-record", zone=zone)
-        TXTRecord.objects.create(name="txt-record-02", text="dkim-record", zone=zone)
+        cls.zone = DNSZone.objects.create(name="example.com")
+        TXTRecord.objects.create(name="txt-record-01", text="spf-record", zone=cls.zone)
+        TXTRecord.objects.create(name="txt-record-02", text="dkim-record", zone=cls.zone)
 
     def test_single_name(self):
         """Test filter with name of TXTRecord."""
@@ -565,6 +581,10 @@ class TXTRecordFilterTestCase(TestCase):
         params = {"text": "wrong-text"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 
+    def test_zone(self):
+        params = {"zone": [self.zone]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+
     def test_search(self):
         """Test filtering by Q search value."""
         self.assertEqual(self.filterset({"q": "txt-record-01"}, self.queryset).qs.count(), 1)
@@ -581,9 +601,9 @@ class PTRRecordFilterTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        zone = DNSZone.objects.create(name="example.com")
-        PTRRecord.objects.create(name="ptr-record-01", ptrdname="ptr-record-01", zone=zone)
-        PTRRecord.objects.create(name="ptr-record-02", ptrdname="ptr-record-02", zone=zone)
+        cls.zone = DNSZone.objects.create(name="example.com")
+        PTRRecord.objects.create(name="ptr-record-01", ptrdname="ptr-record-01", zone=cls.zone)
+        PTRRecord.objects.create(name="ptr-record-02", ptrdname="ptr-record-02", zone=cls.zone)
 
     def test_single_name(self):
         """Test filter with name of PTRRecord."""
@@ -614,6 +634,10 @@ class PTRRecordFilterTestCase(TestCase):
         params = {"ptrdname": "wrong-ptrdname"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 
+    def test_zone(self):
+        params = {"zone": [self.zone]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+
     def test_search(self):
         """Test filtering by Q search value."""
         self.assertEqual(self.filterset({"q": "ptr-record-01"}, self.queryset).qs.count(), 1)
@@ -630,14 +654,14 @@ class SRVRecordFilterTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         """Setup test data for SRVRecord Model."""
-        zone = DNSZone.objects.create(name="example.com")
+        cls.zone = DNSZone.objects.create(name="example.com")
         SRVRecord.objects.create(
             name="_sip._tcp",
             priority=10,
             weight=5,
             port=5060,
             target="sip.example.com",
-            zone=zone,
+            zone=cls.zone,
         )
         SRVRecord.objects.create(
             name="_sip._tcp",
@@ -645,7 +669,7 @@ class SRVRecordFilterTestCase(TestCase):
             weight=10,
             port=5060,
             target="sip2.example.com",
-            zone=zone,
+            zone=cls.zone,
         )
         SRVRecord.objects.create(
             name="_xmpp._tcp",
@@ -653,7 +677,7 @@ class SRVRecordFilterTestCase(TestCase):
             weight=15,
             port=5222,
             target="xmpp.example.com",
-            zone=zone,
+            zone=cls.zone,
         )
 
     def test_single_name(self):
@@ -710,6 +734,10 @@ class SRVRecordFilterTestCase(TestCase):
         """Test filter with exact target match of SRVRecord."""
         params = {"target": "sip.example.com"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
+
+    def test_zone(self):
+        params = {"zone": [self.zone]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
     def test_search(self):
         """Test filtering by Q search value."""
