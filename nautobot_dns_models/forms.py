@@ -142,6 +142,12 @@ class NSRecordFilterForm(NautobotFilterForm):
     )
     name = forms.CharField(required=False, label="Name")
     server = forms.CharField(required=False, label="Server")
+    zone = DynamicModelMultipleChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        required=False,
+        label="Zone",
+    )
     model = models.NSRecord
     # Define the fields above for ordering and widget purposes
     fields = [
@@ -184,7 +190,12 @@ class ARecordFilterForm(NautobotFilterForm):
         help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
-    zone = forms.CharField(required=False, label="Zone")
+    zone = DynamicModelMultipleChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        required=False,
+        label="Zone",
+    )
     model = models.ARecord
     # Define the fields above for ordering and widget purposes
     fields = [
@@ -227,6 +238,12 @@ class AAAARecordFilterForm(NautobotFilterForm):
         help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
+    zone = DynamicModelMultipleChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        required=False,
+        label="Zone",
+    )
     model = models.AAAARecord
     # Define the fields above for ordering and widget purposes
     fields = [
@@ -269,6 +286,12 @@ class CNAMERecordFilterForm(NautobotFilterForm):
         help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
+    zone = DynamicModelMultipleChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        required=False,
+        label="Zone",
+    )
     model = models.CNAMERecord
     # Define the fields above for ordering and widget purposes
     fields = [
@@ -311,6 +334,12 @@ class MXRecordFilterForm(NautobotFilterForm):
         help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
+    zone = DynamicModelMultipleChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        required=False,
+        label="Zone",
+    )
     model = models.MXRecord
     # Define the fields above for ordering and widget purposes
     fields = [
@@ -354,6 +383,12 @@ class TXTRecordFilterForm(NautobotFilterForm):
         help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
+    zone = DynamicModelMultipleChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        required=False,
+        label="Zone",
+    )
     model = models.TXTRecord
     # Define the fields above for ordering and widget purposes
     fields = [
@@ -396,6 +431,12 @@ class PTRRecordFilterForm(NautobotFilterForm):
         help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
+    zone = DynamicModelMultipleChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        required=False,
+        label="Zone",
+    )
     model = models.PTRRecord
     # Define the fields above for ordering and widget purposes
     fields = [
@@ -440,6 +481,12 @@ class SRVRecordFilterForm(NautobotFilterForm):
         help_text="Search within Name.",
     )
     name = forms.CharField(required=False, label="Name")
+    zone = DynamicModelMultipleChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        required=False,
+        label="Zone",
+    )
     model = models.SRVRecord
     # Define the fields above for ordering and widget purposes
     fields = [
