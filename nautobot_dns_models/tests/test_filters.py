@@ -315,6 +315,7 @@ class ARecordFilterTestCase(TestCase):
     def setUpTestData(cls):
         """Setup test data for ARecord Model."""
         cls.zone = DNSZone.objects.create(name="example.com")
+        cls.zone2 = DNSZone.objects.create(name="example2.com")
         status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
         Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status)
@@ -354,8 +355,12 @@ class ARecordFilterTestCase(TestCase):
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
 
     def test_zone(self):
-        params = {"zone": self.zone}
+        params = {"zone": [self.zone]}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+
+    def test_zone_invalid(self):
+        params = {"zone": [self.zone2]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 
     def test_search(self):
         """Test filtering by Q search value."""
