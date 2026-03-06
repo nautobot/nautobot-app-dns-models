@@ -32,12 +32,17 @@ from nautobot_dns_models.models import (
 
 
 def _create_zone(name, dns_view=None):
+    zone_data = {
+        "name": name,
+        "filename": f"{name}.zone",
+        "soa_mname": f"ns1.{name}",
+        "soa_rname": f"admin@{name}",
+    }
+    if dns_view is not None:
+        zone_data["dns_view"] = dns_view
+
     return DNSZone.objects.create(
-        name=name,
-        dns_view=dns_view,
-        filename=f"{name}.zone",
-        soa_mname=f"ns1.{name}",
-        soa_rname=f"admin@{name}",
+        **zone_data,
     )
 
 
@@ -478,6 +483,22 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
                 "soa_rname": "admin@example.net",
             },
         ]
+
+    def test_create_zone_helper_uses_supplied_dns_view(self):
+        """_create_zone should use the DNSView explicitly provided by the caller."""
+        custom_view = DNSView.objects.create(name="Helper Supplied View")
+
+        zone = _create_zone(name="helper-supplied.example", dns_view=custom_view)
+
+        self.assertEqual(zone.dns_view, custom_view)
+
+    def test_create_zone_helper_falls_back_to_default_dns_view(self):
+        """_create_zone should allow DNSZone model default when dns_view isn't provided."""
+        expected_default_view = DNSView.objects.get(name="Default")
+
+        zone = _create_zone(name="helper-default.example")
+
+        self.assertEqual(zone.dns_view, expected_default_view)
 
 
 class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):
