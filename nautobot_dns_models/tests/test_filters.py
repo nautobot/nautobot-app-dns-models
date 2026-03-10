@@ -6,7 +6,7 @@ from nautobot_dns_models import filters, models
 from nautobot_dns_models.tests import fixtures
 
 
-class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase):
+class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase):  # pylint: disable=too-many-ancestors
     """DNSZone Filter Test Case."""
 
     queryset = models.DNSZone.objects.all()

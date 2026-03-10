@@ -31,7 +31,7 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):  # pylin
         ]
 
 
-class DNSZoneFilterForm(NautobotFilterForm):
+class DNSZoneFilterForm(NautobotFilterForm):  # pylint: disable=too-many-ancestors
     """Filter form to filter searches."""
 
     model = models.DNSZone
