@@ -86,8 +86,10 @@ markdown_extensions:
   - "pymdownx.blocks.caption"
   - "pymdownx.details"
   - "footnotes"
+  - "meta"
 plugins:
   - "search"
+  - "glightbox"
   - "mkdocstrings":
       default_handler: "python"
       handlers:
