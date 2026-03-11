@@ -33,7 +33,6 @@ from nautobot_dns_models.models import (
 )
 
 
-<<<<<<< HEAD
 class DNSViewFilterTestCase(FilterTestCases.FilterTestCase):
     """DNSView Filter Test Case."""
 
@@ -132,9 +131,6 @@ class DNSViewPrefixAssignmentFilterTestCase(FilterTestCases.FilterTestCase):
 
 
 class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.TenancyFilterTestCaseMixin):
-=======
-class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase):  # pylint: disable=too-many-ancestors
->>>>>>> 5ddf0cd (Cookie updated targeting develop by NetworkToCode Cookie Drift Manager Tool)
     """DNSZone Filter Test Case."""
 
     queryset = DNSZone.objects.all()

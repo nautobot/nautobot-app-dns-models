@@ -1,10 +1,6 @@
 [tool.poetry]
 name = "nautobot-dns-models"
-<<<<<<< HEAD
 version = "2.0.1a0"
-=======
-version = "0.1.0a0"
->>>>>>> 5ddf0cd (Cookie updated targeting develop by NetworkToCode Cookie Drift Manager Tool)
 description = "Nautobot DNS Models"
 authors = ["Network to Code, LLC <info@networktocode.com>"]
 license = "Apache-2.0"

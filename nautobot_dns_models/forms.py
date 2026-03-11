@@ -46,11 +46,7 @@ class DNSViewBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
         ]
 
 
-<<<<<<< HEAD
 class DNSViewFilterForm(NautobotFilterForm):
-=======
-class DNSZoneFilterForm(NautobotFilterForm):  # pylint: disable=too-many-ancestors
->>>>>>> 5ddf0cd (Cookie updated targeting develop by NetworkToCode Cookie Drift Manager Tool)
     """Filter form to filter searches."""
 
     q = forms.CharField(

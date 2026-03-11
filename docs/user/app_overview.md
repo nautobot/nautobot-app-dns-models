@@ -7,12 +7,7 @@ This document provides an overview of the App including critical information and
 
 ## Description
 
-<<<<<<< HEAD
 An app that contains DNS specific models. The goal of the App is to eventually completely model DNS related models within Nautobot to complement and complete those already present in the core data models.
-=======
-![Main Page](../media/ss_main_page_light.png#only-light)
-![Main Page](../media/ss_main_page_dark.png#only-dark)
->>>>>>> 5ddf0cd (Cookie updated targeting develop by NetworkToCode Cookie Drift Manager Tool)
 
 ## Audience (User Personas) - Who should use this App?
 
