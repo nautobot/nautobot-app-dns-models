@@ -32,6 +32,24 @@ menu_items = (
                     ),
                 ),
             ),
+            NavMenuGroup(
+                name="Registration",
+                weight=400,
+                items=(
+                    NavMenuItem(
+                        link="plugins:nautobot_dns_models:dnsregistrar_list",
+                        name="DNS Registrars",
+                        weight=300,
+                        permissions=["nautobot_dns_models.view_dnsregistrar"],
+                    ),
+                    NavMenuItem(
+                        link="plugins:nautobot_dns_models:dnsregistration_list",
+                        name="DNS Registrations",
+                        weight=400,
+                        permissions=["nautobot_dns_models.view_dnsregistration"],
+                    ),
+                ),
+            ),
         ),
     ),
 )

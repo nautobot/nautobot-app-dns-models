@@ -2,6 +2,8 @@
 
 The DNS zone model is used to represent a distinct DNS zone. It contains the zone name, TTL, and SOA record details.
 
+Domain registration attributes are modeled separately in `DNSRegistration`.
+
 - `name` (string): Unique FQDN of the Zone, w/ TLD. e.g `example.com`.
 - `ttl` (integer): Time to live for the DNS zone.
 - `filename` (string): Filename of the DNS zone file.

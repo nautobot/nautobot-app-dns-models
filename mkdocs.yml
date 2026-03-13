@@ -116,6 +116,8 @@ nav:
       - External Interactions: "user/external_interactions.md"
       - Data Models:
           - DNS Zone: "models/dnszone.md"
+          - DNS Registrar: "models/dnsregistrar.md"
+          - DNS Registration: "models/dnsregistration.md"
           - DNS View: "models/dnsview.md"
           - DNS Record: "models/dnsrecord.md"
           - NS Record: "models/nsrecord.md"

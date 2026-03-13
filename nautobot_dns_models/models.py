@@ -104,26 +104,31 @@ class DNSView(PrimaryModel):
         return self.name
 
 
-@extras_features("graphql")
-class DNSViewPrefixAssignment(BaseModel):
-    """Through model for DNSView and Prefix many-to-many relationship."""
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
+class DNSRegistrar(PrimaryModel):
+    """Model for DNS Registrars."""
 
-    dns_view = ForeignKeyWithAutoRelatedName(
-        DNSView,
-        on_delete=models.CASCADE,
-    )
-    prefix = ForeignKeyWithAutoRelatedName(to="ipam.Prefix", on_delete=models.CASCADE)
+    name = models.CharField(max_length=200, help_text="Name of the Registrar.", unique=True)
+    url = models.URLField(max_length=500, blank=True, help_text="Registrar URL.")
+    account_number = models.CharField(max_length=100, blank=True, help_text="Registrar account number.")
 
     class Meta:
-        """Meta attributes for DNSViewPrefixAssignment."""
+        """Meta attributes for DNSRegistrar."""
 
-        unique_together = [["dns_view", "prefix"]]
-        verbose_name = "DNS View Prefix Assignment"
-        verbose_name_plural = "DNS View Prefix Assignments"
+        verbose_name = "DNS Registrar"
+        verbose_name_plural = "DNS Registrars"
 
     def __str__(self):
         """Stringify instance."""
-        return f"{self.dns_view}: {self.prefix}"
+        return self.name
 
 
 def get_default_view_pk():
@@ -214,6 +219,87 @@ class DNSZone(DNSModel):
         unique_together = [["name", "dns_view"]]
         verbose_name = "DNS Zone"
         verbose_name_plural = "DNS Zones"
+
+
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "statuses",
+    "webhooks",
+)
+class DNSRegistration(PrimaryModel):
+    """Model representing the registration of a DNS zone with a registrar."""
+
+    dns_registrar = ForeignKeyWithAutoRelatedName(
+        DNSRegistrar,
+        on_delete=models.PROTECT,
+        help_text="Registrar used for this zone registration.",
+        verbose_name="Registrar",
+    )
+    dns_zone = ForeignKeyWithAutoRelatedName(
+        DNSZone,
+        on_delete=models.PROTECT,
+        help_text="Zone that is registered.",
+        verbose_name="Zone",
+    )
+    status = models.ForeignKey(
+        to="extras.Status",
+        on_delete=models.PROTECT,
+        related_name="dns_registrations",
+        help_text="Registration status.",
+    )
+    expiration_date = models.DateField(null=True, blank=True, help_text="Domain expiration date.")
+    auto_renewal = models.BooleanField(default=False, help_text="Whether auto renewal is enabled.")
+    registry_locked = models.BooleanField(default=False, help_text="Whether registry lock is enabled.")
+    transfer_locked = models.BooleanField(default=False, help_text="Whether transfer lock is enabled.")
+    privacy_enabled = models.BooleanField(default=False, help_text="Whether privacy protection is enabled.")
+    website_forwarding_enabled = models.BooleanField(default=False, help_text="Whether website forwarding is enabled.")
+    renewal_term_months = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(1200)],
+        help_text="Renewal term in months.",
+    )
+    dnssec_enabled = models.BooleanField(
+        default=False, help_text="Whether DNSSEC is enabled.", verbose_name="DNSSEC Enabled"
+    )
+
+    class Meta:
+        """Meta attributes for DNSRegistration."""
+
+        unique_together = [["dns_registrar", "dns_zone"]]
+        verbose_name = "DNS Registration"
+        verbose_name_plural = "DNS Registrations"
+
+    def __str__(self):
+        """Stringify instance."""
+        return f"{self.dns_zone} @ {self.dns_registrar}"
+
+
+@extras_features("graphql")
+class DNSViewPrefixAssignment(BaseModel):
+    """Through model for DNSView and Prefix many-to-many relationship."""
+
+    dns_view = ForeignKeyWithAutoRelatedName(
+        DNSView,
+        on_delete=models.CASCADE,
+    )
+    prefix = ForeignKeyWithAutoRelatedName(to="ipam.Prefix", on_delete=models.CASCADE)
+
+    class Meta:
+        """Meta attributes for DNSViewPrefixAssignment."""
+
+        unique_together = [["dns_view", "prefix"]]
+        verbose_name = "DNS View Prefix Assignment"
+        verbose_name_plural = "DNS View Prefix Assignments"
+
+    def __str__(self):
+        """Stringify instance."""
+        return f"{self.dns_view}: {self.prefix}"
 
 
 class DNSRecord(DNSModel):

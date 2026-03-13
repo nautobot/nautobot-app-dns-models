@@ -16,6 +16,8 @@ from nautobot_dns_models.api.serializers import (
     AAAARecordSerializer,
     ARecordSerializer,
     CNAMERecordSerializer,
+    DNSRegistrarSerializer,
+    DNSRegistrationSerializer,
     DNSViewSerializer,
     DNSZoneSerializer,
     MXRecordSerializer,
@@ -28,6 +30,8 @@ from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSRegistrarFilterSet,
+    DNSRegistrationFilterSet,
     DNSViewFilterSet,
     DNSZoneFilterSet,
     MXRecordFilterSet,
@@ -46,6 +50,12 @@ from nautobot_dns_models.forms import (
     CNAMERecordBulkEditForm,
     CNAMERecordFilterForm,
     CNAMERecordForm,
+    DNSRegistrarBulkEditForm,
+    DNSRegistrarFilterForm,
+    DNSRegistrarForm,
+    DNSRegistrationBulkEditForm,
+    DNSRegistrationFilterForm,
+    DNSRegistrationForm,
     DNSViewBulkEditForm,
     DNSViewFilterForm,
     DNSViewForm,
@@ -72,6 +82,8 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSRegistrar,
+    DNSRegistration,
     DNSView,
     DNSZone,
     MXRecord,
@@ -84,6 +96,8 @@ from nautobot_dns_models.tables import (
     AAAARecordTable,
     ARecordTable,
     CNAMERecordTable,
+    DNSRegistrarTable,
+    DNSRegistrationTable,
     DNSViewTable,
     DNSZoneTable,
     MXRecordTable,
@@ -134,6 +148,60 @@ class DNSViewUIViewSet(views.NautobotUIViewSet):
     )
 
 
+class DNSRegistrarUIViewSet(views.NautobotUIViewSet):
+    """DNSRegistrar UI ViewSet."""
+
+    form_class = DNSRegistrarForm
+    bulk_update_form_class = DNSRegistrarBulkEditForm
+    filterset_class = DNSRegistrarFilterSet
+    filterset_form_class = DNSRegistrarFilterForm
+    serializer_class = DNSRegistrarSerializer
+    lookup_field = "pk"
+    queryset = DNSRegistrar.objects.all()
+    table_class = DNSRegistrarTable
+
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            ),
+            ObjectsTablePanel(
+                weight=100,
+                section=SectionChoices.RIGHT_HALF,
+                table_filter="dns_registrar",
+                table_class=DNSRegistrationTable,
+                table_title="Registrations",
+                include_columns=["dns_zone", "status", "expiration_date", "auto_renewal", "actions"],
+            ),
+        ],
+    )
+
+
+class DNSRegistrationUIViewSet(views.NautobotUIViewSet):
+    """DNSRegistration UI ViewSet."""
+
+    form_class = DNSRegistrationForm
+    bulk_update_form_class = DNSRegistrationBulkEditForm
+    filterset_class = DNSRegistrationFilterSet
+    filterset_form_class = DNSRegistrationFilterForm
+    serializer_class = DNSRegistrationSerializer
+    lookup_field = "pk"
+    queryset = DNSRegistration.objects.all()
+    table_class = DNSRegistrationTable
+
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            ),
+        ],
+    )
+
+
 class DNSZoneUIViewSet(views.NautobotUIViewSet):
     """DNSZone UI ViewSet."""
 
@@ -156,6 +224,15 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
             ),
             ObjectsTablePanel(
                 weight=200,
+                section=SectionChoices.LEFT_HALF,
+                table_filter="dns_zone",
+                table_class=DNSRegistrationTable,
+                table_title="Registration",
+                include_columns=["dns_registrar", "status", "expiration_date", "auto_renewal", "actions"],
+                max_display_count=1,
+            ),
+            ObjectsTablePanel(
+                weight=300,
                 section=SectionChoices.LEFT_HALF,
                 table_filter="zone",
                 table_class=NSRecordTable,

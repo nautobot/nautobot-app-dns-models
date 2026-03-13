@@ -1,5 +1,8 @@
 """Test DNSZone Filter."""
 
+from datetime import date
+
+from django.contrib.contenttypes.models import ContentType
 from nautobot.apps.testing import FilterTestCases, TestCase
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
@@ -9,6 +12,8 @@ from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSRegistrarFilterSet,
+    DNSRegistrationFilterSet,
     DNSViewFilterSet,
     DNSViewPrefixAssignmentFilterSet,
     DNSZoneFilterSet,
@@ -22,6 +27,8 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSRegistrar,
+    DNSRegistration,
     DNSView,
     DNSViewPrefixAssignment,
     DNSZone,
@@ -128,6 +135,162 @@ class DNSViewPrefixAssignmentFilterTestCase(FilterTestCases.FilterTestCase):
             ordered=False,
         )
         self.assertEqual(self.filterset({"q": "Nikos"}, self.queryset).qs.count(), 0)
+
+
+class DNSRegistrarFilterTestCase(FilterTestCases.FilterTestCase):
+    """DNSRegistrar Filter Test Case."""
+
+    queryset = DNSRegistrar.objects.all()
+    filterset = DNSRegistrarFilterSet
+
+    generic_filter_tests = [
+        ["name"],
+        ["url"],
+        ["account_number"],
+    ]
+
+    @classmethod
+    def setUpTestData(cls):
+        DNSRegistrar.objects.create(name="Registrar One", url="https://registrar-one.example", account_number="ACC-1")
+        DNSRegistrar.objects.create(name="Registrar Two", url="https://registrar-two.example", account_number="ACC-2")
+        DNSRegistrar.objects.create(
+            name="Registrar Three", url="https://registrar-three.example", account_number="ACC-3"
+        )
+
+    def test_search(self):
+        """Test filtering by Q search value."""
+        self.assertEqual(self.filterset({"q": "Registrar One"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "registrar"}, self.queryset).qs.count(), 3)
+        self.assertEqual(self.filterset({"q": "ACC-2"}, self.queryset).qs.count(), 1)
+
+    def test_url_icontains(self):
+        """URL filter should match partial values case-insensitively."""
+        self.assertEqual(self.filterset({"url": "REGISTRAR-TWO"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"url": "registrar"}, self.queryset).qs.count(), 3)
+
+    def test_account_number_icontains(self):
+        """Account number filter should support partial case-insensitive matching."""
+        self.assertEqual(self.filterset({"account_number": "acc-1"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"account_number": "ACC"}, self.queryset).qs.count(), 3)
+
+
+class DNSRegistrationFilterTestCase(FilterTestCases.FilterTestCase):
+    """DNSRegistration Filter Test Case."""
+
+    queryset = DNSRegistration.objects.all()
+    filterset = DNSRegistrationFilterSet
+
+    generic_filter_tests = [
+        ["dns_registrar"],
+        ["dns_zone"],
+        ["expiration_date"],
+        ["renewal_term_months"],
+    ]
+
+    @classmethod
+    def setUpTestData(cls):
+        registration_content_type = ContentType.objects.get_for_model(DNSRegistration)
+        cls.active_status = Status.objects.get(name="Active")
+        cls.active_status.content_types.add(registration_content_type)
+        cls.pending_status, _ = Status.objects.get_or_create(
+            name="Pending Registration Filter", defaults={"color": "ff9800"}
+        )
+        cls.pending_status.content_types.add(registration_content_type)
+
+        cls.view = DNSView.objects.create(name="Registration Filter View")
+        cls.registrars = (
+            DNSRegistrar.objects.create(
+                name="Filter Registrar One", url="https://filter-1.example", account_number="F-001"
+            ),
+            DNSRegistrar.objects.create(
+                name="Filter Registrar Two", url="https://filter-2.example", account_number="F-002"
+            ),
+            DNSRegistrar.objects.create(
+                name="Filter Registrar Three", url="https://filter-3.example", account_number="F-003"
+            ),
+        )
+        cls.zones = (
+            DNSZone.objects.create(name="registration-filter-one.example", dns_view=cls.view),
+            DNSZone.objects.create(name="registration-filter-two.example", dns_view=cls.view),
+            DNSZone.objects.create(name="registration-filter-three.example", dns_view=cls.view),
+        )
+
+        DNSRegistration.objects.create(
+            dns_registrar=cls.registrars[0],
+            dns_zone=cls.zones[0],
+            status=cls.active_status,
+            expiration_date=date(2026, 1, 1),
+            auto_renewal=False,
+            renewal_term_months=12,
+        )
+        DNSRegistration.objects.create(
+            dns_registrar=cls.registrars[1],
+            dns_zone=cls.zones[1],
+            status=cls.pending_status,
+            expiration_date=date(2026, 6, 1),
+            auto_renewal=True,
+            registry_locked=True,
+            transfer_locked=True,
+            renewal_term_months=24,
+        )
+        DNSRegistration.objects.create(
+            dns_registrar=cls.registrars[2],
+            dns_zone=cls.zones[2],
+            status=cls.active_status,
+            expiration_date=date(2027, 1, 1),
+            auto_renewal=True,
+            privacy_enabled=True,
+            website_forwarding_enabled=True,
+            dnssec_enabled=True,
+            renewal_term_months=36,
+        )
+
+    def test_status_filter(self):
+        """Status filter should match registrations by specific status."""
+        params = {"status": [self.pending_status.id]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
+
+    def test_auto_renewal_filter(self):
+        """auto_renewal filter should partition true/false values."""
+        self.assertEqual(self.filterset({"auto_renewal": "true"}, self.queryset).qs.count(), 2)
+        self.assertEqual(self.filterset({"auto_renewal": "false"}, self.queryset).qs.count(), 1)
+
+    def test_registry_locked_filter(self):
+        """registry_locked filter should match only locked registrations."""
+        self.assertEqual(self.filterset({"registry_locked": "true"}, self.queryset).qs.count(), 1)
+
+    def test_transfer_locked_filter(self):
+        """transfer_locked filter should match only transfer-locked registrations."""
+        self.assertEqual(self.filterset({"transfer_locked": "true"}, self.queryset).qs.count(), 1)
+
+    def test_privacy_enabled_filter(self):
+        """privacy_enabled filter should match only privacy-enabled registrations."""
+        self.assertEqual(self.filterset({"privacy_enabled": "true"}, self.queryset).qs.count(), 1)
+
+    def test_website_forwarding_enabled_filter(self):
+        """website_forwarding_enabled filter should match only forwarding-enabled registrations."""
+        self.assertEqual(self.filterset({"website_forwarding_enabled": "true"}, self.queryset).qs.count(), 1)
+
+    def test_dnssec_enabled_filter(self):
+        """dnssec_enabled filter should match only DNSSEC-enabled registrations."""
+        self.assertEqual(self.filterset({"dnssec_enabled": "true"}, self.queryset).qs.count(), 1)
+
+    def test_expiration_date_lte(self):
+        """expiration_date__lte should include records with earlier or equal expiration date."""
+        params = {"expiration_date__lte": "2026-06-01"}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+
+    def test_expiration_date_gte(self):
+        """expiration_date__gte should include records with later or equal expiration date."""
+        params = {"expiration_date__gte": "2026-06-01"}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+
+    def test_search(self):
+        """q search should match registrar name, zone name, and status name."""
+        self.assertEqual(self.filterset({"q": "Filter Registrar One"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "registration-filter-two.example"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "Pending Registration Filter"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "does-not-exist"}, self.queryset).qs.count(), 0)
 
 
 class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.TenancyFilterTestCaseMixin):

@@ -14,6 +14,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSRegistrar,
     DNSView,
     DNSZone,
     MXRecord,
@@ -93,6 +94,31 @@ class DNSViewViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}
+
+
+class DNSRegistrarViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+    """Test the DNSRegistrar views."""
+
+    model = DNSRegistrar
+
+    @classmethod
+    def setUpTestData(cls):
+        DNSRegistrar.objects.create(name="Registrar 1", url="https://registrar1.example", account_number="ACC-001")
+        DNSRegistrar.objects.create(name="Registrar 2", url="https://registrar2.example", account_number="ACC-002")
+        DNSRegistrar.objects.create(name="Registrar 3", url="https://registrar3.example", account_number="ACC-003")
+
+        cls.form_data = {
+            "name": "Registrar Test",
+            "url": "https://registrar-test.example",
+            "account_number": "ACC-TEST",
+        }
+
+        cls.csv_data = (
+            "name,url,account_number",
+            "Registrar CSV,https://registrar-csv.example,ACC-CSV",
+        )
+
+        cls.bulk_edit_data = {"account_number": "UPDATED-ACCOUNT"}
 
 
 class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
