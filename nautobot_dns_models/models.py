@@ -248,7 +248,7 @@ class DNSRegistration(PrimaryModel):
         verbose_name="Zone",
     )
     status = StatusField(
-        null=True,
+        null=False,
         on_delete=models.PROTECT,
         help_text="Status of the DNS registration.",
         to="extras.status",
