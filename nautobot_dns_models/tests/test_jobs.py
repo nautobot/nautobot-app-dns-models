@@ -20,7 +20,10 @@ class TestAutoRenewDomainsJob(TestCase):
         super().setUpTestData()
         cls.active_status = Status.objects.get(name="Active")
         cls.expired_status, _ = Status.objects.get_or_create(name="Expired", defaults={"color": "9e9e9e"})
-        cls.expired_status.content_types.add(ContentType.objects.get_for_model(DNSRegistration))
+        registration_content_type = ContentType.objects.get_for_model(DNSRegistration)
+        cls.active_status.content_types.add(registration_content_type)
+        cls.expired_status.content_types.add(registration_content_type)
+
         cls.view = DNSView.objects.create(name="Job Test View")
         cls.registrar = DNSRegistrar.objects.create(name="Job Test Registrar")
         cls.zone = DNSZone.objects.create(
