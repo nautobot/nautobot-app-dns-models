@@ -6,6 +6,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
+from nautobot.extras.models import StatusField
 from nautobot.ipam.choices import IPAddressVersionChoices
 
 
@@ -246,11 +247,11 @@ class DNSRegistration(PrimaryModel):
         help_text="Zone that is registered.",
         verbose_name="Zone",
     )
-    status = models.ForeignKey(
-        to="extras.Status",
+    status = StatusField(
+        null=True,
         on_delete=models.PROTECT,
-        related_name="dns_registrations",
-        help_text="Registration status.",
+        help_text="Status of the DNS registration.",
+        to="extras.status",
     )
     expiration_date = models.DateField(null=True, blank=True, help_text="Domain expiration date.")
     auto_renewal = models.BooleanField(default=False, help_text="Whether auto renewal is enabled.")
