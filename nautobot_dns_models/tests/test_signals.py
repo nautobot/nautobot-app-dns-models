@@ -1,10 +1,8 @@
 """Tests for SOA serial auto-increment signal handlers."""
 
-import threading
-
 from constance.test import override_config
 from django.db import transaction
-from django.test import TestCase
+from nautobot.apps.testing import TestCase
 from nautobot.extras.models import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 

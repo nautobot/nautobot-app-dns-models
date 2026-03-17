@@ -739,7 +739,7 @@ class SOASerialIncrementModelTestCase(TestCase):
         self.assertEqual(self.zone.soa_serial, 2)
 
     def test_rfc1982_rollover_at_max(self):
-        """Serial at SOA_SERIAL_MAX (4,294,967,295) should roll over to 0."""
+        """Serial at SOA_SERIAL_MAX (2,147,483,647) should roll over to 0."""
         DNSZone.objects.filter(pk=self.zone.pk).update(soa_serial=DNSZone.SOA_SERIAL_MAX)
         self.zone.refresh_from_db()
         self.zone.increment_soa_serial()
@@ -785,5 +785,5 @@ class SOASerialIncrementModelTestCase(TestCase):
         self.assertEqual(self.zone.soa_serial, 1)
 
     def test_soa_serial_max_constant(self):
-        """SOA_SERIAL_MAX should be 2^32 - 1 per RFC 1982."""
-        self.assertEqual(DNSZone.SOA_SERIAL_MAX, 4_294_967_295)
+        """SOA_SERIAL_MAX should match Django IntegerField max (2,147,483,647)."""
+        self.assertEqual(DNSZone.SOA_SERIAL_MAX, 2_147_483_647)

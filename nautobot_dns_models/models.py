@@ -222,42 +222,74 @@ class DNSZone(DNSModel):
     )
 
     # Fields that should trigger a serial increment when changed on the zone itself.
-    _SOA_SERIAL_WATCHED_FIELDS = frozenset({
-        "name", "ttl", "filename", "soa_mname", "soa_rname",
-        "soa_refresh", "soa_retry", "soa_expire", "soa_minimum",
-    })
+    _SOA_SERIAL_WATCHED_FIELDS = frozenset(
+        {
+            "name",
+            "ttl",
+            "filename",
+            "soa_mname",
+            "soa_rname",
+            "soa_refresh",
+            "soa_retry",
+            "soa_expire",
+            "soa_minimum",
+        }
+    )
 
-    # RFC 1982 maximum unsigned 32-bit serial value.
-    SOA_SERIAL_MAX = 4_294_967_295
+    # Maximum serial value for the soa_serial IntegerField (Django signed 32-bit).
+    # RFC 1982 defines serial as unsigned 32-bit (max 4,294,967,295), but
+    # Django's IntegerField is signed, capping at 2,147,483,647.
+    SOA_SERIAL_MAX = 2_147_483_647
 
     def increment_soa_serial(self):
         """Atomically increment soa_serial, respecting the constance config flag and RFC 1982 rollover.
 
-        Uses select_for_update() to prevent race conditions.  Transaction
-        coalescing ensures that multiple calls within the same atomic block
-        (e.g. bulk record operations) result in only one increment per zone.
+        Uses select_for_update() inside transaction.atomic() to prevent race
+        conditions and ensure compatibility with all code paths (GUI, API, MCP,
+        Jobs). Called exclusively by post_save/post_delete signal handlers
+        registered in signals.py.
+
+        Transaction coalescing via thread-local ``_increment_state`` ensures
+        that multiple signal fires within one atomic block (e.g. bulk record
+        operations) produce at most one serial bump per zone.
         """
         if not getattr(constance_config, "nautobot_dns_models__SOA_SERIAL_AUTO_INCREMENT", False):
             return
 
-        # Transaction coalescing — skip if already incremented in this atomic block.
-        incremented = getattr(_increment_state, "incremented_zones", None)
-        if incremented is not None and self.pk in incremented:
+        # Lazily initialize the thread-local tracking set.
+        if not hasattr(_increment_state, "incremented_zones"):
+            _increment_state.incremented_zones = set()
+
+        # Transaction coalescing — skip if already incremented in this scope.
+        if self.pk in _increment_state.incremented_zones:
             return
 
-        zone = DNSZone.objects.select_for_update().get(pk=self.pk)
-        if zone.soa_serial >= self.SOA_SERIAL_MAX:
-            zone.soa_serial = 0  # RFC 1982 rollover
-        else:
-            zone.soa_serial += 1
-        zone.save(update_fields=["soa_serial"])
+        with transaction.atomic():
+            zone = DNSZone.objects.select_for_update().get(pk=self.pk)
+            if zone.soa_serial >= self.SOA_SERIAL_MAX:
+                zone.soa_serial = 0  # RFC 1982 rollover
+            else:
+                zone.soa_serial += 1
+            zone.save(update_fields=["soa_serial"])
 
         # Refresh the in-memory serial so callers see the new value.
         self.soa_serial = zone.soa_serial
 
-        # Mark this zone as already incremented for the current transaction scope.
-        if incremented is not None:
-            incremented.add(self.pk)
+        # Mark this zone as already incremented for the current scope.
+        _increment_state.incremented_zones.add(self.pk)
+
+        # Clear the tracking flag after the outermost transaction commits so
+        # the next request can increment again.
+        def _clear_zone(pk=self.pk):
+            incremented = getattr(_increment_state, "incremented_zones", None)
+            if incremented is not None:
+                incremented.discard(pk)
+
+        try:
+            transaction.on_commit(_clear_zone)
+        except transaction.TransactionManagementError:
+            # No active outer transaction — clean up immediately.
+            _clear_zone()
 
     def save(self, *args, **kwargs):
         """Override save to detect zone self-changes and trigger serial increment."""
@@ -266,7 +298,8 @@ class DNSZone(DNSModel):
         # When update_fields is limited to soa_serial only, this is an internal
         # increment call — skip re-entrant increment.
         if update_fields and set(update_fields) == {"soa_serial"}:
-            return super().save(*args, **kwargs)
+            super().save(*args, **kwargs)
+            return
 
         # Detect whether watched fields changed (only for existing zones).
         should_increment = False
@@ -283,12 +316,10 @@ class DNSZone(DNSModel):
                 except DNSZone.DoesNotExist:
                     pass
 
-        result = super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
         if should_increment:
             self.increment_soa_serial()
-
-        return result
 
     class Meta:
         """Meta attributes for DNSZone."""
@@ -470,31 +501,6 @@ class DNSRecord(DNSModel):
     def ttl(self, value):
         """Set the TTL value for the record."""
         self._ttl = value
-
-    def save(self, *args, **kwargs):
-        """Save the record and increment the parent zone's SOA serial.
-
-        This acts as a safety net for code paths that call .save() directly
-        without triggering Django signals (e.g. some Job implementations).
-        Transaction coalescing in increment_soa_serial() prevents double-counting
-        when both this and the post_save signal fire in the same transaction.
-        """
-        result = super().save(*args, **kwargs)
-        if hasattr(self, "zone_id") and self.zone_id:
-            self.zone.increment_soa_serial()
-        return result
-
-    def delete(self, *args, **kwargs):
-        """Delete the record and increment the parent zone's SOA serial.
-
-        Safety net matching save() — ensures serial increment on direct .delete()
-        calls. Transaction coalescing prevents double-counting with post_delete signal.
-        """
-        zone = self.zone if hasattr(self, "zone_id") and self.zone_id else None
-        result = super().delete(*args, **kwargs)
-        if zone:
-            zone.increment_soa_serial()
-        return result
 
 
 @extras_features(

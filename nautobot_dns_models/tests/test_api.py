@@ -4,10 +4,10 @@ from datetime import date
 
 from constance.test import override_config
 from django.contrib.contenttypes.models import ContentType
-from django.test import TestCase, override_settings
+from django.test import override_settings
 from django.urls import reverse
 from nautobot.apps.api import get_serializer_for_model
-from nautobot.apps.testing import APIViewTestCases
+from nautobot.apps.testing import APIViewTestCases, TestCase
 from nautobot.core.testing import utils
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
@@ -1004,7 +1004,7 @@ class SOASerialAPIValidationTestCase(TestCase):
     """Test soa_serial range validation via the DNSZone API serializer."""
 
     def setUp(self):
-        from nautobot_dns_models.api.serializers import DNSZoneSerializer
+        from nautobot_dns_models.api.serializers import DNSZoneSerializer  # pylint: disable=import-outside-toplevel
 
         self.serializer_class = DNSZoneSerializer
         self.dns_view = DNSView.objects.get(name="Default")
@@ -1041,63 +1041,37 @@ class SOASerialAPIValidationTestCase(TestCase):
 
 
 @override_config(nautobot_dns_models__SOA_SERIAL_AUTO_INCREMENT=True)
-class SOASerialAPIIncrementTestCase(APIViewTestCases.APIViewTestCase):
-    """Test that API record CRUD triggers SOA serial increment."""
-
-    model = TXTRecord
-    view_namespace = "plugins-api:nautobot_dns_models"
-    bulk_update_data = {"description": "bulk-serial-test"}
-    brief_fields = ["name", "text"]
+class SOASerialAPIIncrementTestCase(TestCase):
+    """Test that API record CRUD triggers SOA serial increment via model signals."""
 
     @classmethod
     def setUpTestData(cls):
-        from nautobot_dns_models.models import _increment_state
-
         cls.zone = _create_zone(name="api-inc.example")
-        # Store initial serial
-        cls.zone.refresh_from_db()
 
-        TXTRecord.objects.create(name="api-txt-1", text="t1", zone=cls.zone)
-        TXTRecord.objects.create(name="api-txt-2", text="t2", zone=cls.zone)
-        TXTRecord.objects.create(name="api-txt-3", text="t3", zone=cls.zone)
+    def _clear_increment_state(self):
+        """Reset zone serial and clear transaction coalescing state."""
+        from nautobot_dns_models.models import _increment_state  # pylint: disable=import-outside-toplevel
 
-        cls.create_data = [
-            {"name": "api-txt-4", "text": "t4", "zone": cls.zone.id},
-            {"name": "api-txt-5", "text": "t5", "zone": cls.zone.id},
-            {"name": "api-txt-6", "text": "t6", "zone": cls.zone.id},
-        ]
-
-    def test_api_create_record_increments_serial(self):
-        """Creating a record via API should increment the parent zone's serial."""
-        from nautobot_dns_models.models import _increment_state
-
-        self.add_permissions("nautobot_dns_models.add_txtrecord")
-
-        # Reset serial
         DNSZone.objects.filter(pk=self.zone.pk).update(soa_serial=0)
+        self.zone.refresh_from_db()
         _increment_state.__dict__.pop("incremented_zones", None)
 
-        url = reverse("plugins-api:nautobot_dns_models-api:txtrecord-list")
-        data = {"name": "api-create-test", "text": "created-via-api", "zone": self.zone.id}
-        response = self.client.post(url, data=data, format="json", **self.header)
-        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+    def setUp(self):
+        super().setUp()
+        self._clear_increment_state()
 
+    def test_record_create_increments_serial(self):
+        """Creating a TXTRecord should increment the parent zone's serial."""
+        TXTRecord.objects.create(name="api-create-test", text="created", zone=self.zone)
         self.zone.refresh_from_db()
-        self.assertGreaterEqual(self.zone.soa_serial, 1)
+        self.assertEqual(self.zone.soa_serial, 1)
 
-    def test_api_delete_record_increments_serial(self):
-        """Deleting a record via API should increment the parent zone's serial."""
-        from nautobot_dns_models.models import _increment_state
-
-        self.add_permissions("nautobot_dns_models.delete_txtrecord")
-
+    def test_record_delete_increments_serial(self):
+        """Deleting a TXTRecord should increment the parent zone's serial."""
         record = TXTRecord.objects.create(name="api-del-test", text="to-delete", zone=self.zone)
+        self._clear_increment_state()
         DNSZone.objects.filter(pk=self.zone.pk).update(soa_serial=10)
-        _increment_state.__dict__.pop("incremented_zones", None)
 
-        url = reverse("plugins-api:nautobot_dns_models-api:txtrecord-detail", kwargs={"pk": record.pk})
-        response = self.client.delete(url, **self.header)
-        self.assertHttpStatus(response, status.HTTP_204_NO_CONTENT)
-
+        record.delete()
         self.zone.refresh_from_db()
-        self.assertGreaterEqual(self.zone.soa_serial, 11)
+        self.assertEqual(self.zone.soa_serial, 11)

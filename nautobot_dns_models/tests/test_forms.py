@@ -1,6 +1,6 @@
 """Tests for nautobot_dns_models Form Classes."""
 
-from django.test import TestCase
+from nautobot.apps.testing import TestCase
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 

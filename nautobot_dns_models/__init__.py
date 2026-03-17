@@ -101,7 +101,7 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
     def ready(self):
         """Connect signal handlers for SOA serial auto-increment."""
         super().ready()
-        from nautobot_dns_models.signals import connect_signals  # noqa: F401
+        from nautobot_dns_models.signals import connect_signals  # pylint: disable=import-outside-toplevel
 
         connect_signals()
 
