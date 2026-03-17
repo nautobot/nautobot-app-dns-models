@@ -38,10 +38,11 @@ RUN which poetry || curl -sSL https://install.python-poetry.org | python3 - && \
 # -------------------------------------------------------------------------------------
 # --> Start safe to modify section
 
-# Uncomment the lines below if you are apt-installing any package.
-# RUN apt-get -y update && apt-get -y install \
-#     libldap2-dev \
-#     && rm -rf /var/lib/apt/lists/*
+# Install MCP Models plugin from local source
+COPY --from=mcp-models-src / /tmp/mcp-models/
+RUN pip install /tmp/mcp-models/ && \
+    python -c "import nautobot_mcp_models; print(f'MCP installed: {nautobot_mcp_models.__version__}')" && \
+    rm -rf /tmp/mcp-models/
 
 # --> Stop safe to modify section
 # -------------------------------------------------------------------------------------

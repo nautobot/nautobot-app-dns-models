@@ -19,6 +19,7 @@ from nautobot_dns_models.models import (
     PTRRecord,
     SRVRecord,
     TXTRecord,
+    _increment_state,
     dns_wire_label_length,
 )
 
@@ -702,3 +703,87 @@ class DNSZoneNameLengthValidationTest(TestCase):
         with self.assertRaises(ValidationError) as context:
             zone.full_clean()
         self.assertIn("Empty labels are not allowed", str(context.exception))
+
+
+@override_config(nautobot_dns_models__SOA_SERIAL_AUTO_INCREMENT=True)
+class SOASerialIncrementModelTestCase(TestCase):
+    """Test DNSZone.increment_soa_serial() method directly."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZone.objects.create(
+            name="serial-model.example",
+            filename="serial-model.example.zone",
+            soa_mname="ns1.serial-model.example",
+            soa_rname="admin@serial-model.example",
+            soa_serial=0,
+        )
+
+    def setUp(self):
+        DNSZone.objects.filter(pk=self.zone.pk).update(soa_serial=0)
+        self.zone.refresh_from_db()
+        _increment_state.__dict__.pop("incremented_zones", None)
+
+    def test_basic_increment(self):
+        """increment_soa_serial() should increase serial by 1."""
+        self.zone.increment_soa_serial()
+        self.zone.refresh_from_db()
+        self.assertEqual(self.zone.soa_serial, 1)
+
+    def test_multiple_increments(self):
+        """Successive calls (outside coalescing) should each increase by 1."""
+        self.zone.increment_soa_serial()
+        _increment_state.__dict__.pop("incremented_zones", None)
+        self.zone.increment_soa_serial()
+        self.zone.refresh_from_db()
+        self.assertEqual(self.zone.soa_serial, 2)
+
+    def test_rfc1982_rollover_at_max(self):
+        """Serial at SOA_SERIAL_MAX (4,294,967,295) should roll over to 0."""
+        DNSZone.objects.filter(pk=self.zone.pk).update(soa_serial=DNSZone.SOA_SERIAL_MAX)
+        self.zone.refresh_from_db()
+        self.zone.increment_soa_serial()
+        self.zone.refresh_from_db()
+        self.assertEqual(self.zone.soa_serial, 0)
+
+    def test_rollover_then_increment(self):
+        """After rollover to 0, next increment should go to 1."""
+        DNSZone.objects.filter(pk=self.zone.pk).update(soa_serial=DNSZone.SOA_SERIAL_MAX)
+        self.zone.refresh_from_db()
+        self.zone.increment_soa_serial()
+        _increment_state.__dict__.pop("incremented_zones", None)
+        self.zone.increment_soa_serial()
+        self.zone.refresh_from_db()
+        self.assertEqual(self.zone.soa_serial, 1)
+
+    @override_config(nautobot_dns_models__SOA_SERIAL_AUTO_INCREMENT=False)
+    def test_no_increment_when_config_disabled(self):
+        """increment_soa_serial() should be a no-op when config is disabled."""
+        self.zone.increment_soa_serial()
+        self.zone.refresh_from_db()
+        self.assertEqual(self.zone.soa_serial, 0)
+
+    def test_zone_self_change_triggers_increment(self):
+        """Modifying a watched field on the zone itself should increment serial."""
+        self.zone.soa_refresh = 99999
+        self.zone.save()
+        self.zone.refresh_from_db()
+        self.assertEqual(self.zone.soa_serial, 1)
+
+    def test_zone_description_change_does_not_increment(self):
+        """Modifying a non-watched field should NOT increment serial."""
+        self.zone.description = "Updated description"
+        self.zone.save()
+        self.zone.refresh_from_db()
+        self.assertEqual(self.zone.soa_serial, 0)
+
+    def test_zone_name_change_triggers_increment(self):
+        """Changing the zone name (a watched field) should increment serial."""
+        self.zone.name = "renamed-serial.example"
+        self.zone.save()
+        self.zone.refresh_from_db()
+        self.assertEqual(self.zone.soa_serial, 1)
+
+    def test_soa_serial_max_constant(self):
+        """SOA_SERIAL_MAX should be 2^32 - 1 per RFC 1982."""
+        self.assertEqual(DNSZone.SOA_SERIAL_MAX, 4_294_967_295)

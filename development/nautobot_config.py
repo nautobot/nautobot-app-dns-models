@@ -119,13 +119,14 @@ if not _TESTING:
 #
 
 # Enable installed Apps. Add the name of each App to the list.
-PLUGINS = ["nautobot_dns_models"]
+PLUGINS = ["nautobot_dns_models", "nautobot_mcp_models"]
 
-# Apps configuration settings. These settings are used by various Apps that the user may have installed.
-# Each key in the dictionary is the name of an installed App and its value is a dictionary of settings.
-# PLUGINS_CONFIG = {
-#     'nautobot_dns_models': {
-#         'foo': 'bar',
-#         'buzz': 'bazz'
-#     }
-# }
+PLUGINS_CONFIG = {
+    "nautobot_mcp_models": {
+        "mcp_enabled": True,
+        "allowed_apps": [],
+        "blocked_apps": [],
+        "allowed_actions": ["list", "get", "create", "update", "delete"],
+        "max_page_size": 100,
+    },
+}

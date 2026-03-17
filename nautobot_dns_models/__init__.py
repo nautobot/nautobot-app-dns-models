@@ -91,7 +91,19 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
             help_text="Enforce CNAME exclusivity",
             field_type=bool,
         ),
+        "SOA_SERIAL_AUTO_INCREMENT": ConstanceConfigItem(
+            default=False,
+            help_text="Automatically increment SOA serial number when zone data changes.",
+            field_type=bool,
+        ),
     }
+
+    def ready(self):
+        """Connect signal handlers for SOA serial auto-increment."""
+        super().ready()
+        from nautobot_dns_models.signals import connect_signals  # noqa: F401
+
+        connect_signals()
 
 
 config = NautobotDnsModelsConfig  # pylint:disable=invalid-name

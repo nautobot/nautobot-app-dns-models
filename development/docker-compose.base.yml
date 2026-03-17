@@ -6,6 +6,8 @@ x-nautobot-build: &nautobot-build
       PYTHON_VER: "${PYTHON_VER}"
     context: "../"
     dockerfile: "development/Dockerfile"
+    additional_contexts:
+      mcp-models-src: "../../nautobot-app-mcp-models"
 x-nautobot-base: &nautobot-base
   image: "nautobot-dns-models/nautobot:${NAUTOBOT_VER}-py${PYTHON_VER}"
   env_file:

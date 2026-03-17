@@ -37,6 +37,45 @@ class DNSViewFormTestCase(TestCase):
         self.assertIn("This field is required.", form.errors["name"])
 
 
+class DNSZoneSOASerialFormValidationTestCase(TestCase):
+    """Test soa_serial range validation on DNSZoneForm."""
+
+    def _make_valid_zone_data(self, **overrides):
+        data = {
+            "name": "form-serial-test.example",
+            "dns_view": DNSView.objects.get(name="Default").id,
+            "ttl": 3600,
+            "filename": "form-serial-test.example.zone",
+            "soa_mname": "ns1.example.com",
+            "soa_rname": "admin@example.com",
+            "soa_refresh": 86400,
+            "soa_retry": 7200,
+            "soa_expire": 3600000,
+            "soa_serial": 0,
+            "soa_minimum": 3600,
+        }
+        data.update(overrides)
+        return data
+
+    def test_soa_serial_zero_is_valid(self):
+        form = forms.DNSZoneForm(data=self._make_valid_zone_data(soa_serial=0))
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_soa_serial_max_valid_value(self):
+        form = forms.DNSZoneForm(data=self._make_valid_zone_data(soa_serial=2147483647))
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_soa_serial_rejects_negative(self):
+        form = forms.DNSZoneForm(data=self._make_valid_zone_data(soa_serial=-1))
+        self.assertFalse(form.is_valid())
+        self.assertIn("soa_serial", form.errors)
+
+    def test_soa_serial_rejects_above_max(self):
+        form = forms.DNSZoneForm(data=self._make_valid_zone_data(soa_serial=2147483648))
+        self.assertFalse(form.is_valid())
+        self.assertIn("soa_serial", form.errors)
+
+
 class DNSZoneTest(TestCase):
     """Test DNSZone forms."""
 
