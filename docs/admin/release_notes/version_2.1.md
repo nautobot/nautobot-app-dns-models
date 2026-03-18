@@ -4,7 +4,8 @@ This document describes all new features and changes in the release. The format 
 
 ## Release Overview
 
-- This release adds the DNS Registrar and Registration model to document DNS registrations of zones. 
+- This release adds the DNS Registrar and Registration model to document DNS registrations of zones.
+- Added functionality to enforce CNAME exclusivity based on [RFC 1912](https://www.rfc-editor.org/rfc/rfc1912.html#section-2.4). This can be configured in settings and is False by default.
 - Multiple fixes were incorporated for various components, like filtering of models based on DNS Zone, adding missing fields into MXRecord table, etc.
 
 <!-- towncrier release notes start -->
