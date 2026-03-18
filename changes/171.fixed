@@ -1,1 +1,0 @@
-Fixed accessing django settings at runtime preventing the Python package from loading.
