@@ -6,6 +6,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
+from nautobot.extras.models import StatusField
 from nautobot.ipam.choices import IPAddressVersionChoices
 
 
@@ -63,9 +64,11 @@ class DNSModel(PrimaryModel):
 
         validation_level = getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL")
         if validation_level == "wire-format":
-            label_list = self.name.split(".")
-            for label in label_list:
-                self._validate_dns_label(label, field="name")
+            # Allow apex (empty) names; otherwise validate each non-empty label.
+            if self.name != "":
+                label_list = self.name.split(".")
+                for label in label_list:
+                    self._validate_dns_label(label, field="name")
 
 
 @extras_features(
@@ -102,26 +105,31 @@ class DNSView(PrimaryModel):
         return self.name
 
 
-@extras_features("graphql")
-class DNSViewPrefixAssignment(BaseModel):
-    """Through model for DNSView and Prefix many-to-many relationship."""
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
+class DNSRegistrar(PrimaryModel):
+    """Model for DNS Registrars."""
 
-    dns_view = ForeignKeyWithAutoRelatedName(
-        DNSView,
-        on_delete=models.CASCADE,
-    )
-    prefix = ForeignKeyWithAutoRelatedName(to="ipam.Prefix", on_delete=models.CASCADE)
+    name = models.CharField(max_length=200, help_text="Name of the Registrar.", unique=True)
+    url = models.URLField(max_length=500, blank=True, help_text="Registrar URL.")
+    account_number = models.CharField(max_length=100, blank=True, help_text="Registrar account number.")
 
     class Meta:
-        """Meta attributes for DNSViewPrefixAssignment."""
+        """Meta attributes for DNSRegistrar."""
 
-        unique_together = [["dns_view", "prefix"]]
-        verbose_name = "DNS View Prefix Assignment"
-        verbose_name_plural = "DNS View Prefix Assignments"
+        verbose_name = "DNS Registrar"
+        verbose_name_plural = "DNS Registrars"
 
     def __str__(self):
         """Stringify instance."""
-        return f"{self.dns_view}: {self.prefix}"
+        return self.name
 
 
 def get_default_view_pk():
@@ -214,6 +222,87 @@ class DNSZone(DNSModel):
         verbose_name_plural = "DNS Zones"
 
 
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "statuses",
+    "webhooks",
+)
+class DNSRegistration(PrimaryModel):
+    """Model representing the registration of a DNS zone with a registrar."""
+
+    dns_registrar = ForeignKeyWithAutoRelatedName(
+        DNSRegistrar,
+        on_delete=models.PROTECT,
+        help_text="Registrar used for this zone registration.",
+        verbose_name="Registrar",
+    )
+    dns_zone = ForeignKeyWithAutoRelatedName(
+        DNSZone,
+        on_delete=models.PROTECT,
+        help_text="Zone that is registered.",
+        verbose_name="Zone",
+    )
+    status = StatusField(
+        null=False,
+        on_delete=models.PROTECT,
+        help_text="Status of the DNS registration.",
+        to="extras.status",
+    )
+    expiration_date = models.DateField(null=True, blank=True, help_text="Domain expiration date.")
+    auto_renewal = models.BooleanField(default=False, help_text="Whether auto renewal is enabled.")
+    registry_locked = models.BooleanField(default=False, help_text="Whether registry lock is enabled.")
+    transfer_locked = models.BooleanField(default=False, help_text="Whether transfer lock is enabled.")
+    privacy_enabled = models.BooleanField(default=False, help_text="Whether privacy protection is enabled.")
+    website_forwarding_enabled = models.BooleanField(default=False, help_text="Whether website forwarding is enabled.")
+    renewal_term_months = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(1200)],
+        help_text="Renewal term in months.",
+    )
+    dnssec_enabled = models.BooleanField(
+        default=False, help_text="Whether DNSSEC is enabled.", verbose_name="DNSSEC Enabled"
+    )
+
+    class Meta:
+        """Meta attributes for DNSRegistration."""
+
+        unique_together = [["dns_registrar", "dns_zone"]]
+        verbose_name = "DNS Registration"
+        verbose_name_plural = "DNS Registrations"
+
+    def __str__(self):
+        """Stringify instance."""
+        return f"{self.dns_zone} @ {self.dns_registrar}"
+
+
+@extras_features("graphql")
+class DNSViewPrefixAssignment(BaseModel):
+    """Through model for DNSView and Prefix many-to-many relationship."""
+
+    dns_view = ForeignKeyWithAutoRelatedName(
+        DNSView,
+        on_delete=models.CASCADE,
+    )
+    prefix = ForeignKeyWithAutoRelatedName(to="ipam.Prefix", on_delete=models.CASCADE)
+
+    class Meta:
+        """Meta attributes for DNSViewPrefixAssignment."""
+
+        unique_together = [["dns_view", "prefix"]]
+        verbose_name = "DNS View Prefix Assignment"
+        verbose_name_plural = "DNS View Prefix Assignments"
+
+    def __str__(self):
+        """Stringify instance."""
+        return f"{self.dns_view}: {self.prefix}"
+
+
 class DNSRecord(DNSModel):
     """Primary Dns Record model for plugin."""
 
@@ -235,29 +324,59 @@ class DNSRecord(DNSModel):
 
         In addition to label checks, ensures the full DNS name (record + zone) does not exceed 255 bytes (octets) in wire format.
         """
+        # Normalize trailing-dot only when the record name is zone-qualified (e.g., "host.example.com.")
+        if (
+            isinstance(self.name, str)
+            and self.name.endswith(".")
+            and getattr(self, "zone", None)
+            and getattr(self.zone, "name", None)
+            and self.name.endswith(f"{self.zone.name}.")
+        ):
+            self.name = self.name[:-1]
+
         super().clean()
 
         if not hasattr(self, "zone"):
             raise ValidationError({"zone": "Zone is required"})
 
+        self._validate_total_wire_length_if_enabled()
+        self._enforce_cname_exclusivity_if_enabled()
+
+    def _validate_total_wire_length_if_enabled(self) -> None:
+        """Validate full DNS name (record + zone) total wire-format length if wire-format validation is enabled."""
         validation_level = getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL")
-        if validation_level == "wire-format":
-            record_label_list = self.name.split(".")
-            zone_label_list = self.zone.name.split(".")
+        if validation_level != "wire-format":
+            return
 
-            wire_length = 0
-            # Record labels
-            for label in record_label_list:
-                wire_length += 1 + dns_wire_label_length(label)
-            # Zone labels
-            for label in zone_label_list:
-                wire_length += 1 + dns_wire_label_length(label)
-            wire_length += 1  # Add the final zero byte for root
+        record_label_list = [] if self.name == "" else self.name.split(".")
+        zone_label_list = self.zone.name.split(".")
 
-            if wire_length > 255:
-                raise ValidationError(
-                    {"name": "Total length of DNS name cannot exceed 255 bytes (octets) in wire format."}
-                )
+        wire_length = 0
+        for label in record_label_list:
+            wire_length += 1 + dns_wire_label_length(label)
+        for label in zone_label_list:
+            wire_length += 1 + dns_wire_label_length(label)
+        wire_length += 1  # Final zero-length root label
+
+        if wire_length > 255:
+            raise ValidationError({"name": "Total length of DNS name cannot exceed 255 bytes (octets) in wire format."})
+
+    def _enforce_cname_exclusivity_if_enabled(self) -> None:
+        """Enforce mutual exclusivity between CNAME and other record types for exact (name, zone) matches."""
+        enforce = getattr(constance_config, "nautobot_dns_models__CNAME_RESTRICTION_ENABLED", True)
+        if not enforce or getattr(self, "name", None) is None or getattr(self, "zone_id", None) is None:
+            return
+
+        if isinstance(self, CNAMERecord):
+            conflicting_models = (NSRecord, ARecord, AAAARecord, MXRecord, TXTRecord, PTRRecord, SRVRecord)
+            for model in conflicting_models:
+                if model.objects.filter(name=self.name, zone_id=self.zone_id).exists():
+                    raise ValidationError(
+                        {"name": "CNAME cannot co-exist with other records of the same name in this zone."}
+                    )
+        else:
+            if CNAMERecord.objects.filter(name=self.name, zone_id=self.zone_id).exists():
+                raise ValidationError({"name": "Record cannot co-exist with a CNAME of the same name in this zone."})
 
     class Meta:
         """Meta attributes for DnsRecord."""

@@ -4,9 +4,12 @@ import django_filters
 from django.db.models import F
 from django.db.models.functions import Coalesce
 from nautobot.apps.filters import NautobotFilterSet, SearchFilter, TenancyModelFilterSetMixin
+from nautobot.core.filters import MultiValueCharFilter, NaturalKeyOrPKMultipleChoiceFilter
 from netaddr import IPAddress as NetIPAddress
 
 from nautobot_dns_models import models
+
+EXPIRATION_DATE_INPUT_FORMATS = ("%Y-%m-%d",)
 
 
 class DNSViewFilterSet(NautobotFilterSet):
@@ -41,6 +44,56 @@ class DNSViewPrefixAssignmentFilterSet(NautobotFilterSet):
         fields = "__all__"
 
 
+class DNSRegistrarFilterSet(NautobotFilterSet):
+    """Filter for DNSRegistrar."""
+
+    url = MultiValueCharFilter(lookup_expr="icontains")
+    account_number = MultiValueCharFilter(lookup_expr="icontains")
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "url": "icontains",
+            "account_number": "icontains",
+        }
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSRegistrar
+        fields = "__all__"
+
+
+class DNSRegistrationFilterSet(NautobotFilterSet):
+    """Filter for DNSRegistration."""
+
+    expiration_date__lte = django_filters.DateFilter(
+        field_name="expiration_date",
+        lookup_expr="lte",
+        input_formats=EXPIRATION_DATE_INPUT_FORMATS,
+    )
+    expiration_date__gte = django_filters.DateFilter(
+        field_name="expiration_date",
+        lookup_expr="gte",
+        input_formats=EXPIRATION_DATE_INPUT_FORMATS,
+    )
+
+    q = SearchFilter(
+        filter_predicates={
+            "dns_registrar__name": "icontains",
+            "dns_zone__name": "icontains",
+            "status__name": "icontains",
+        }
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSRegistration
+        fields = "__all__"
+
+
 class DNSZoneFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
     """Filter for DNSZone."""
 
@@ -63,6 +116,12 @@ class DNSZoneFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
 # pylint: disable=nb-no-model-found, nb-warn-dunder-filter-field
 class DNSRecordFilterSet(NautobotFilterSet):
     """Base filter for all DNSRecord models, with support for effective TTL."""
+
+    zone = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        label="Zone (name or ID)",
+    )
 
     ttl = django_filters.NumberFilter(method="filter_ttl", label="TTL")
     ttl__ne = django_filters.NumberFilter(method="filter_ttl_ne")
@@ -110,7 +169,7 @@ def ip_address_preprocessor(value):
     return value
 
 
-class ARecordFilterSet(NautobotFilterSet):
+class ARecordFilterSet(DNSRecordFilterSet):
     """Filter for ARecord."""
 
     q = SearchFilter(

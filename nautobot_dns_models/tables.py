@@ -48,6 +48,80 @@ class DNSViewTable(BaseTable):
         )
 
 
+class DNSRegistrarTable(BaseTable):
+    """Table for DNS Registrar list view."""
+
+    pk = ToggleColumn()
+    name = tables.Column(linkify=True)
+    actions = ButtonsColumn(
+        models.DNSRegistrar,
+        buttons=("changelog", "edit", "delete"),
+    )
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.DNSRegistrar
+        fields = (
+            "pk",
+            "name",
+            "url",
+            "account_number",
+            "actions",
+        )
+
+        default_columns = (
+            "pk",
+            "name",
+            "url",
+            "account_number",
+            "actions",
+        )
+
+
+class DNSRegistrationTable(BaseTable):
+    """Table for DNS Registration list view."""
+
+    pk = ToggleColumn()
+    dns_registrar = tables.Column(linkify=True)
+    dns_zone = tables.Column(linkify=True)
+    status = tables.Column(linkify=True)
+    actions = ButtonsColumn(
+        models.DNSRegistration,
+        buttons=("changelog", "edit", "delete"),
+    )
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.DNSRegistration
+        fields = (
+            "pk",
+            "dns_registrar",
+            "dns_zone",
+            "status",
+            "expiration_date",
+            "auto_renewal",
+            "registry_locked",
+            "transfer_locked",
+            "privacy_enabled",
+            "website_forwarding_enabled",
+            "renewal_term_months",
+            "dnssec_enabled",
+            "actions",
+        )
+
+        default_columns = (
+            "pk",
+            "dns_registrar",
+            "dns_zone",
+            "status",
+            "expiration_date",
+            "auto_renewal",
+            "actions",
+        )
+
+
 class DNSZoneTable(BaseTable):
     """Table for DNS Zone list view."""
 
@@ -81,7 +155,16 @@ class DNSZoneTable(BaseTable):
             "actions",
         )
 
-        default_columns = ("pk", "name", "dns_view", "ttl", "filename", "soa_expire", "soa_rname", "actions")
+        default_columns = (
+            "pk",
+            "name",
+            "dns_view",
+            "ttl",
+            "filename",
+            "soa_expire",
+            "soa_rname",
+            "actions",
+        )
 
 
 class NSRecordTable(DNSRecordTable):
@@ -240,6 +323,7 @@ class MXRecordTable(DNSRecordTable):
             "pk",
             "name",
             "mail_server",
+            "preference",
             "zone",
             "comment",
             "ttl",
@@ -252,6 +336,7 @@ class MXRecordTable(DNSRecordTable):
             "pk",
             "name",
             "mail_server",
+            "preference",
             "zone",
             "comment",
             "ttl",

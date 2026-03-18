@@ -12,12 +12,16 @@ Use the API or GUI to add DNS Zones and Record objects to Nautobot.
 
 ## Screenshots
 
-![Adding a DNS Zone](../images/getting_started-add-zone-3.png)
+![Adding a DNS Zone](../images/getting_started-add-zone-3-light.png#only-light){ .on-glb }
+![Adding a DNS Zone](../images/getting_started-add-zone-3-dark.png#only-dark){ .on-glb }
+[//]: # "`https://next.demo.nautobot.com/plugins/dns/dns-zones/add/`"
+
 /// caption
 Adding a DNS Zone
 ///
 
-![DNS Zone View](../images/getting_started-add-record-3.png)
+![DNS Zone View](../images/getting_started-add-record-3-light.png#only-light){ .on-glb }
+![DNS Zone View](../images/getting_started-add-record-3-dark.png#only-dark){ .on-glb }
 /// caption
 The DNS Zone View
 ///

@@ -6,6 +6,8 @@ from nautobot_dns_models.api.serializers import (
     AAAARecordSerializer,
     ARecordSerializer,
     CNAMERecordSerializer,
+    DNSRegistrarSerializer,
+    DNSRegistrationSerializer,
     DNSViewPrefixAssignmentSerializer,
     DNSViewSerializer,
     DNSZoneSerializer,
@@ -19,6 +21,8 @@ from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSRegistrarFilterSet,
+    DNSRegistrationFilterSet,
     DNSViewFilterSet,
     DNSViewPrefixAssignmentFilterSet,
     DNSZoneFilterSet,
@@ -32,6 +36,8 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSRegistrar,
+    DNSRegistration,
     DNSView,
     DNSViewPrefixAssignment,
     DNSZone,
@@ -61,6 +67,22 @@ class DNSViewPrefixAssignmentViewSet(NautobotModelViewSet):
     queryset = DNSViewPrefixAssignment.objects.all()
     serializer_class = DNSViewPrefixAssignmentSerializer
     filterset_class = DNSViewPrefixAssignmentFilterSet
+
+
+class DNSRegistrarViewSet(NautobotModelViewSet):
+    """DNSRegistrar API ViewSet."""
+
+    queryset = DNSRegistrar.objects.all()
+    serializer_class = DNSRegistrarSerializer
+    filterset_class = DNSRegistrarFilterSet
+
+
+class DNSRegistrationViewSet(NautobotModelViewSet):
+    """DNSRegistration API ViewSet."""
+
+    queryset = DNSRegistration.objects.all()
+    serializer_class = DNSRegistrationSerializer
+    filterset_class = DNSRegistrationFilterSet
 
 
 class DNSZoneViewSet(NautobotModelViewSet):

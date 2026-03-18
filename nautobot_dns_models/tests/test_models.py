@@ -10,6 +10,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSRegistrar,
     DNSView,
     DNSViewPrefixAssignment,
     DNSZone,
@@ -99,6 +100,43 @@ class TestDNSViewPrefixAssignment(ModelTestCases.BaseModelTestCase):
         self.assertEqual(assignment.prefix, self.prefixes[1])
 
 
+class TestDNSRegistrar(ModelTestCases.BaseModelTestCase):
+    """Test DNSRegistrar model."""
+
+    model = DNSRegistrar
+
+    @classmethod
+    def setUpTestData(cls):
+        """Create test data for DNSRegistrar Model."""
+        super().setUpTestData()
+        DNSRegistrar.objects.create(name="Registrar 1", url="https://registrar1.example", account_number="ACC-001")
+        DNSRegistrar.objects.create(name="Registrar 2", url="https://registrar2.example", account_number="ACC-002")
+        DNSRegistrar.objects.create(name="Registrar 3", url="https://registrar3.example", account_number="ACC-003")
+
+    def test_create_dnsregistrar_only_required(self):
+        """Create with only required fields."""
+        registrar = DNSRegistrar.objects.create(name="Test Registrar")
+        self.assertEqual(registrar.name, "Test Registrar")
+        self.assertEqual(registrar.url, "")
+        self.assertEqual(registrar.account_number, "")
+        self.assertEqual(str(registrar), "Test Registrar")
+
+    def test_create_dnsregistrar_all_fields_success(self):
+        """Create DNSRegistrar with all fields."""
+        registrar = DNSRegistrar.objects.create(
+            name="Another Registrar",
+            url="https://another-registrar.example",
+            account_number="ACCT-1234",
+        )
+        self.assertEqual(registrar.name, "Another Registrar")
+        self.assertEqual(registrar.url, "https://another-registrar.example")
+        self.assertEqual(registrar.account_number, "ACCT-1234")
+
+    def test_get_absolute_url(self):
+        registrar = DNSRegistrar.objects.get(name="Registrar 1")
+        self.assertEqual(registrar.get_absolute_url(), f"/plugins/dns/dns-registrars/{registrar.id}/")
+
+
 class TestDnsZone(ModelTestCases.BaseModelTestCase):
     """Test DnsZone model."""
 
@@ -122,9 +160,16 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
 
     def test_create_dnszone_all_fields_success(self):
         """Create DnsZoneModel with all fields."""
-        dnszone = DNSZone.objects.create(name="Development", description="Development Test")
+        dnszone = DNSZone.objects.create(
+            name="Development",
+            description="Development Test",
+            filename="development.zone",
+            soa_mname="ns1.development.example",
+            soa_rname="admin@development.example",
+        )
         self.assertEqual(dnszone.name, "Development")
         self.assertEqual(dnszone.description, "Development Test")
+        self.assertEqual(dnszone.filename, "development.zone")
 
     def test_get_absolute_url(self):
         dns_zone_model = DNSZone.objects.create(name="example.com")
@@ -365,6 +410,51 @@ class SRVRecordTestCase(TestCase):
             name="_sip._tcp.example.com", priority=10, weight=5, port=5060, target="sip.example.com", zone=self.dns_zone
         )
         self.assertEqual(srv_record.get_absolute_url(), f"/plugins/dns/srv-records/{srv_record.id}/")
+
+
+@override_config(nautobot_dns_models__CNAME_RESTRICTION_ENABLED=True)
+class CNAMEExclusivityModelTestCase(TestCase):
+    """Model-level tests for exact-match CNAME exclusivity."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZone.objects.create(name="example.com")
+        # IP setup for ARecord use
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="10.9.0.0/24", namespace=namespace, type="Pool", status=status)
+        cls.ipv4_1 = IPAddress.objects.create(address="10.9.0.1/32", namespace=namespace, status=status)
+        cls.ipv4_2 = IPAddress.objects.create(address="10.9.0.2/32", namespace=namespace, status=status)
+
+    def test_cname_blocked_when_arecord_exists(self):
+        ARecord.objects.create(name="app", ip_address=self.ipv4_1, zone=self.zone)
+        with self.assertRaises(ValidationError):
+            cname_record = CNAMERecord(name="app", alias="target.example.com", zone=self.zone)
+            cname_record.validated_save()
+
+    def test_non_cname_blocked_when_cname_exists(self):
+        CNAMERecord.objects.create(name="web", alias="web.example.com", zone=self.zone)
+        # TODO: remove `save` overwrite from ARecord model and revisit this test
+        with self.assertRaises(ValidationError):
+            ARecord.objects.create(name="web", ip_address=self.ipv4_2, zone=self.zone)
+
+    def test_zone_qualified_name_allowed(self):
+        """A(name='host') does NOT block CNAME(name='host.zone') since names must match exactly."""
+        ARecord.objects.create(name="testrecord", ip_address=self.ipv4_1, zone=self.zone)
+        # Allowed because name differs (zone-qualified vs relative)
+        CNAMERecord.objects.create(name=f"testrecord.{self.zone.name}", alias="x.example.com", zone=self.zone)
+
+    def test_trailing_dot_zone_qualified_allowed(self):
+        """A(name='host') does NOT block CNAME(name='host.zone.') (trailing dot normalized)."""
+        ARecord.objects.create(name="td", ip_address=self.ipv4_1, zone=self.zone)
+        # Trailing dot is removed to "td.zone", still zone-qualified and thus different from "td"
+        CNAMERecord.objects.create(name=f"td.{self.zone.name}.", alias="x.example.com", zone=self.zone)
+
+    @override_config(nautobot_dns_models__CNAME_RESTRICTION_ENABLED=False)
+    def test_opt_out_allows_coexistence(self):
+        ARecord.objects.create(name="opt", ip_address=self.ipv4_1, zone=self.zone)
+        # Should succeed when enforcement disabled
+        CNAMERecord.objects.create(name="opt", alias="opt.example.com", zone=self.zone)
 
 
 class DNSRecordNameLengthValidationTest(TestCase):

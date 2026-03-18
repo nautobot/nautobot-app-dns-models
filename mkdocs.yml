@@ -86,8 +86,10 @@ markdown_extensions:
   - "pymdownx.blocks.caption"
   - "pymdownx.details"
   - "footnotes"
+  - "meta"
 plugins:
   - "search"
+  - "glightbox"
   - "mkdocstrings":
       default_handler: "python"
       handlers:
@@ -114,6 +116,8 @@ nav:
       - External Interactions: "user/external_interactions.md"
       - Data Models:
           - DNS Zone: "models/dnszone.md"
+          - DNS Registrar: "models/dnsregistrar.md"
+          - DNS Registration: "models/dnsregistration.md"
           - DNS View: "models/dnsview.md"
           - DNS Record: "models/dnsrecord.md"
           - NS Record: "models/nsrecord.md"
@@ -132,6 +136,7 @@ nav:
       - Compatibility Matrix: "admin/compatibility_matrix.md"
       - Release Notes:
           - "admin/release_notes/index.md"
+          - v2.1: "admin/release_notes/version_2.1.md"
           - v2.0: "admin/release_notes/version_2.0.md"
           - v1.3: "admin/release_notes/version_1.3.md"
           - v1.2: "admin/release_notes/version_1.2.md"
