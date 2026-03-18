@@ -4,8 +4,8 @@ This document describes all new features and changes in the release. The format 
 
 ## Release Overview
 
-- Major features or milestones
-- Changes to compatibility with Nautobot and/or other apps, libraries etc.
+- This release adds the DNS Registrar and Registration model to document DNS registrations of zones. 
+- Multiple fixes were incorporated for various components, like filtering of models based on DNS Zone, adding missing fields into MXRecord table, etc.
 
 <!-- towncrier release notes start -->
 
