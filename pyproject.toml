@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nautobot-dns-models"
-version = "2.0.1a0"
+version = "2.1.1a0"
 description = "Nautobot DNS Models"
 authors = ["Network to Code, LLC <info@networktocode.com>"]
 license = "Apache-2.0"
@@ -170,7 +170,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.towncrier]
 package = "nautobot_dns_models"
 directory = "changes"
-filename = "docs/admin/release_notes/version_2.0.md"
+filename = "docs/admin/release_notes/version_2.1.md"
 template = "development/towncrier_template.j2"
 start_string = "<!-- towncrier release notes start -->"
 issue_format = "[#{issue}](https://github.com/nautobot/nautobot-app-dns-models/issues/{issue})"
