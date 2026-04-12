@@ -10,6 +10,12 @@ This document describes all new features and changes in the release. The format 
 
 <!-- towncrier release notes start -->
 
+## [v2.1.1 (2026-04-12)](https://github.com/nautobot/nautobot-app-dns-models/releases/tag/v2.1.1)
+
+### Housekeeping
+
+- Rebaked from the cookie `nautobot-app-v3.1.3`.
+
 ## [v2.1.0 (2026-03-18)](https://github.com/nautobot/nautobot-app-dns-models/releases/tag/v2.1.0)
 
 ### Added
