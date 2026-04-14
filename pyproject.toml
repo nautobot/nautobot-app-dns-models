@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nautobot-dns-models"
-version = "2.1.1"
+version = "2.1.2a0"
 description = "Nautobot DNS Models"
 authors = ["Network to Code, LLC <info@networktocode.com>"]
 license = "Apache-2.0"
