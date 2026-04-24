@@ -7,7 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 from django.urls import reverse
 from nautobot.apps.api import get_serializer_for_model
-from nautobot.apps.testing import APIViewTestCases
+from nautobot.apps.testing import APIViewTestCases, TestCase
 from nautobot.core.testing import utils
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
@@ -998,3 +998,80 @@ class CNAMEExclusivityAPITestCase(APIViewTestCases.APIViewTestCase):
         data_c = {"name": "opt", "alias": "opt.example.com", "zone": self.zone.id}
         response = self.client.post(url_c, data=data_c, format="json", **self.header)
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
+
+
+class SOASerialAPIValidationTestCase(TestCase):
+    """Test soa_serial range validation via the DNSZone API serializer."""
+
+    def setUp(self):
+        from nautobot_dns_models.api.serializers import DNSZoneSerializer  # pylint: disable=import-outside-toplevel
+
+        self.serializer_class = DNSZoneSerializer
+        self.dns_view = DNSView.objects.get(name="Default")
+
+    def _make_zone_payload(self, **overrides):
+        data = {
+            "name": "api-serial-test.example",
+            "dns_view": self.dns_view.pk,
+            "filename": "api-serial-test.example.zone",
+            "soa_mname": "ns1.api-serial-test.example",
+            "soa_rname": "admin@api-serial-test.example",
+            "soa_serial": 0,
+        }
+        data.update(overrides)
+        return data
+
+    def test_serializer_accepts_zero(self):
+        serializer = self.serializer_class(data=self._make_zone_payload(soa_serial=0))
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    def test_serializer_accepts_max_value(self):
+        serializer = self.serializer_class(data=self._make_zone_payload(soa_serial=2147483647))
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    def test_serializer_rejects_negative(self):
+        serializer = self.serializer_class(data=self._make_zone_payload(soa_serial=-1))
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("soa_serial", serializer.errors)
+
+    def test_serializer_rejects_above_max(self):
+        serializer = self.serializer_class(data=self._make_zone_payload(soa_serial=2147483648))
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("soa_serial", serializer.errors)
+
+
+@override_config(nautobot_dns_models__SOA_SERIAL_AUTO_INCREMENT=True)
+class SOASerialAPIIncrementTestCase(TestCase):
+    """Test that API record CRUD triggers SOA serial increment via model signals."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = _create_zone(name="api-inc.example")
+
+    def _clear_increment_state(self):
+        """Reset zone serial and clear transaction coalescing state."""
+        from nautobot_dns_models.models import _increment_state  # pylint: disable=import-outside-toplevel
+
+        DNSZone.objects.filter(pk=self.zone.pk).update(soa_serial=0)
+        self.zone.refresh_from_db()
+        _increment_state.__dict__.pop("incremented_zones", None)
+
+    def setUp(self):
+        super().setUp()
+        self._clear_increment_state()
+
+    def test_record_create_increments_serial(self):
+        """Creating a TXTRecord should increment the parent zone's serial."""
+        TXTRecord.objects.create(name="api-create-test", text="created", zone=self.zone)
+        self.zone.refresh_from_db()
+        self.assertEqual(self.zone.soa_serial, 1)
+
+    def test_record_delete_increments_serial(self):
+        """Deleting a TXTRecord should increment the parent zone's serial."""
+        record = TXTRecord.objects.create(name="api-del-test", text="to-delete", zone=self.zone)
+        self._clear_increment_state()
+        DNSZone.objects.filter(pk=self.zone.pk).update(soa_serial=10)
+
+        record.delete()
+        self.zone.refresh_from_db()
+        self.assertEqual(self.zone.soa_serial, 11)

@@ -58,6 +58,12 @@ class DNSZoneSerializer(NautobotModelSerializer):
     """DNSZone Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnszone-detail")
+    soa_serial = serializers.IntegerField(
+        min_value=0,
+        max_value=2147483647,
+        default=0,
+        help_text="SOA serial number (0–2,147,483,647).",
+    )
 
     class Meta:
         """Meta attributes."""

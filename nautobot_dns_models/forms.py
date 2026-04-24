@@ -234,6 +234,12 @@ class DNSZoneForm(NautobotModelForm, TenancyForm):
         queryset=models.DNSView.objects.all(),
         required=True,
     )
+    soa_serial = forms.IntegerField(
+        min_value=0,
+        max_value=2147483647,
+        initial=0,
+        help_text="SOA serial number (0–2,147,483,647).",
+    )
 
     class Meta:
         """Meta attributes."""

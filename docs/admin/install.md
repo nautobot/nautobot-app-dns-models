@@ -84,3 +84,8 @@ This setting controls the DNS validation level applied to zones and records:
     - A CNAME cannot co-exist with any other record type that has the exact same `name` in the same `zone`.
     - Conversely, a non‑CNAME record cannot co-exist where a CNAME with the exact same `name` exists in the same `zone`.
     - Name comparison is exact. A zone‑qualified `name` such as `host.example.com` is distinct from the relative `host` under zone `example.com`. A trailing dot is ignored (e.g., `host.example.com.` is treated as `host.example.com`).
+
+`SOA_SERIAL_AUTO_INCREMENT` (default: "False")
+
+- **Disabled** - SOA serial numbers are not automatically incremented. Users must manage serial numbers manually.
+- **Enabled** - Automatically increments the `soa_serial` field on a `DNSZone` by 1 whenever zone data changes (record create/update/delete, or modification of zone SOA fields). The increment is atomic and uses row-level locking to prevent race conditions. See the [DNS Zone model documentation](../models/dnszone.md#soa-serial-auto-increment) for full details.

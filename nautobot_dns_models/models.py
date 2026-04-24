@@ -1,13 +1,20 @@
 """Models for Nautobot DNS Models."""
 
+import threading
+
 from constance import config as constance_config
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
+from django.db import models, transaction
 from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 from nautobot.extras.models import StatusField
 from nautobot.ipam.choices import IPAddressVersionChoices
+
+# Thread-local storage for transaction coalescing: tracks which zone PKs have
+# already been incremented within the current atomic block so bulk operations
+# produce at most one serial bump per zone per transaction.
+_increment_state = threading.local()
 
 
 def dns_wire_label_length(label):
@@ -213,6 +220,106 @@ class DNSZone(DNSModel):
         blank=True,
         null=True,
     )
+
+    # Fields that should trigger a serial increment when changed on the zone itself.
+    _SOA_SERIAL_WATCHED_FIELDS = frozenset(
+        {
+            "name",
+            "ttl",
+            "filename",
+            "soa_mname",
+            "soa_rname",
+            "soa_refresh",
+            "soa_retry",
+            "soa_expire",
+            "soa_minimum",
+        }
+    )
+
+    # Maximum serial value for the soa_serial IntegerField (Django signed 32-bit).
+    # RFC 1982 defines serial as unsigned 32-bit (max 4,294,967,295), but
+    # Django's IntegerField is signed, capping at 2,147,483,647.
+    SOA_SERIAL_MAX = 2_147_483_647
+
+    def increment_soa_serial(self):
+        """Atomically increment soa_serial, respecting the constance config flag and RFC 1982 rollover.
+
+        Uses select_for_update() inside transaction.atomic() to prevent race
+        conditions and ensure compatibility with all code paths (GUI, API, MCP,
+        Jobs). Called exclusively by post_save/post_delete signal handlers
+        registered in signals.py.
+
+        Transaction coalescing via thread-local ``_increment_state`` ensures
+        that multiple signal fires within one atomic block (e.g. bulk record
+        operations) produce at most one serial bump per zone.
+        """
+        if not getattr(constance_config, "nautobot_dns_models__SOA_SERIAL_AUTO_INCREMENT", False):
+            return
+
+        # Lazily initialize the thread-local tracking set.
+        if not hasattr(_increment_state, "incremented_zones"):
+            _increment_state.incremented_zones = set()
+
+        # Transaction coalescing — skip if already incremented in this scope.
+        if self.pk in _increment_state.incremented_zones:
+            return
+
+        with transaction.atomic():
+            zone = DNSZone.objects.select_for_update().get(pk=self.pk)
+            if zone.soa_serial >= self.SOA_SERIAL_MAX:
+                zone.soa_serial = 0  # RFC 1982 rollover
+            else:
+                zone.soa_serial += 1
+            zone.save(update_fields=["soa_serial"])
+
+        # Refresh the in-memory serial so callers see the new value.
+        self.soa_serial = zone.soa_serial
+
+        # Mark this zone as already incremented for the current scope.
+        _increment_state.incremented_zones.add(self.pk)
+
+        # Clear the tracking flag after the outermost transaction commits so
+        # the next request can increment again.
+        def _clear_zone(pk=self.pk):
+            incremented = getattr(_increment_state, "incremented_zones", None)
+            if incremented is not None:
+                incremented.discard(pk)
+
+        try:
+            transaction.on_commit(_clear_zone)
+        except transaction.TransactionManagementError:
+            # No active outer transaction — clean up immediately.
+            _clear_zone()
+
+    def save(self, *args, **kwargs):
+        """Override save to detect zone self-changes and trigger serial increment."""
+        update_fields = kwargs.get("update_fields")
+
+        # When update_fields is limited to soa_serial only, this is an internal
+        # increment call — skip re-entrant increment.
+        if update_fields and set(update_fields) == {"soa_serial"}:
+            super().save(*args, **kwargs)
+            return
+
+        # Detect whether watched fields changed (only for existing zones).
+        should_increment = False
+        if self.pk and self.present_in_database:
+            if update_fields:
+                should_increment = bool(self._SOA_SERIAL_WATCHED_FIELDS & set(update_fields))
+            else:
+                try:
+                    existing = DNSZone.objects.values(*self._SOA_SERIAL_WATCHED_FIELDS).get(pk=self.pk)
+                    for field in self._SOA_SERIAL_WATCHED_FIELDS:
+                        if getattr(self, field) != existing[field]:
+                            should_increment = True
+                            break
+                except DNSZone.DoesNotExist:
+                    pass
+
+        super().save(*args, **kwargs)
+
+        if should_increment:
+            self.increment_soa_serial()
 
     class Meta:
         """Meta attributes for DNSZone."""
