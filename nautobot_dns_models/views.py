@@ -188,7 +188,7 @@ class DNSRegistrationUIViewSet(views.NautobotUIViewSet):
     filterset_form_class = DNSRegistrationFilterForm
     serializer_class = DNSRegistrationSerializer
     lookup_field = "pk"
-    queryset = DNSRegistration.objects.all()
+    queryset = DNSRegistration.objects.all().select_related("dns_registrar", "dns_zone", "status")
     table_class = DNSRegistrationTable
 
     object_detail_content = ObjectDetailContent(
@@ -211,7 +211,7 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
     filterset_form_class = DNSZoneFilterForm
     serializer_class = DNSZoneSerializer
     lookup_field = "pk"
-    queryset = DNSZone.objects.all()
+    queryset = DNSZone.objects.all().select_related("dns_view", "tenant")
     table_class = DNSZoneTable
 
     object_detail_content = ObjectDetailContent(
@@ -391,7 +391,7 @@ class NSRecordUIViewSet(views.NautobotUIViewSet):
     filterset_form_class = NSRecordFilterForm
     serializer_class = NSRecordSerializer
     lookup_field = "pk"
-    queryset = NSRecord.objects.all()
+    queryset = NSRecord.objects.all().select_related("zone")
     table_class = NSRecordTable
     object_detail_content = ObjectDetailContent(
         panels=[
@@ -409,7 +409,7 @@ class ARecordUIViewSet(views.NautobotUIViewSet):
     filterset_form_class = ARecordFilterForm
     serializer_class = ARecordSerializer
     lookup_field = "pk"
-    queryset = ARecord.objects.all()
+    queryset = ARecord.objects.all().select_related("zone", "ip_address")
     table_class = ARecordTable
     object_detail_content = ObjectDetailContent(
         panels=[
@@ -427,7 +427,7 @@ class AAAARecordUIViewSet(views.NautobotUIViewSet):
     filterset_form_class = AAAARecordFilterForm
     serializer_class = AAAARecordSerializer
     lookup_field = "pk"
-    queryset = AAAARecord.objects.all()
+    queryset = AAAARecord.objects.all().select_related("zone", "ip_address")
     table_class = AAAARecordTable
     object_detail_content = ObjectDetailContent(
         panels=[
@@ -445,7 +445,7 @@ class CNAMERecordUIViewSet(views.NautobotUIViewSet):
     filterset_form_class = CNAMERecordFilterForm
     serializer_class = CNAMERecordSerializer
     lookup_field = "pk"
-    queryset = CNAMERecord.objects.all()
+    queryset = CNAMERecord.objects.all().select_related("zone")
     table_class = CNAMERecordTable
     object_detail_content = ObjectDetailContent(
         panels=[
@@ -463,7 +463,7 @@ class MXRecordUIViewSet(views.NautobotUIViewSet):
     filterset_form_class = MXRecordFilterForm
     serializer_class = MXRecordSerializer
     lookup_field = "pk"
-    queryset = MXRecord.objects.all()
+    queryset = MXRecord.objects.all().select_related("zone")
     table_class = MXRecordTable
     object_detail_content = ObjectDetailContent(
         panels=[
@@ -481,7 +481,7 @@ class TXTRecordUIViewSet(views.NautobotUIViewSet):
     filterset_form_class = TXTRecordFilterForm
     serializer_class = TXTRecordSerializer
     lookup_field = "pk"
-    queryset = TXTRecord.objects.all()
+    queryset = TXTRecord.objects.all().select_related("zone")
     table_class = TXTRecordTable
     object_detail_content = ObjectDetailContent(
         panels=[
@@ -499,7 +499,7 @@ class PTRRecordUIViewSet(views.NautobotUIViewSet):
     filterset_form_class = PTRRecordFilterForm
     serializer_class = PTRRecordSerializer
     lookup_field = "pk"
-    queryset = PTRRecord.objects.all()
+    queryset = PTRRecord.objects.all().select_related("zone")
     table_class = PTRRecordTable
     object_detail_content = ObjectDetailContent(
         panels=[
@@ -517,7 +517,7 @@ class SRVRecordUIViewSet(views.NautobotUIViewSet):
     filterset_form_class = SRVRecordFilterForm
     serializer_class = SRVRecordSerializer
     lookup_field = "pk"
-    queryset = SRVRecord.objects.all()
+    queryset = SRVRecord.objects.all().select_related("zone")
     table_class = SRVRecordTable
     object_detail_content = ObjectDetailContent(
         panels=[

@@ -64,7 +64,7 @@ class DNSViewViewSet(NautobotModelViewSet):
 class DNSViewPrefixAssignmentViewSet(NautobotModelViewSet):
     """DNSViewPrefixAssignment API ViewSet."""
 
-    queryset = DNSViewPrefixAssignment.objects.all()
+    queryset = DNSViewPrefixAssignment.objects.all().select_related("dns_view", "prefix")
     serializer_class = DNSViewPrefixAssignmentSerializer
     filterset_class = DNSViewPrefixAssignmentFilterSet
 
@@ -80,7 +80,7 @@ class DNSRegistrarViewSet(NautobotModelViewSet):
 class DNSRegistrationViewSet(NautobotModelViewSet):
     """DNSRegistration API ViewSet."""
 
-    queryset = DNSRegistration.objects.all()
+    queryset = DNSRegistration.objects.all().select_related("dns_registrar", "dns_zone", "status")
     serializer_class = DNSRegistrationSerializer
     filterset_class = DNSRegistrationFilterSet
 
@@ -88,7 +88,7 @@ class DNSRegistrationViewSet(NautobotModelViewSet):
 class DNSZoneViewSet(NautobotModelViewSet):
     """DNSZone API ViewSet."""
 
-    queryset = DNSZone.objects.all()
+    queryset = DNSZone.objects.all().select_related("dns_view", "tenant")
     serializer_class = DNSZoneSerializer
     filterset_class = DNSZoneFilterSet
 
@@ -98,7 +98,7 @@ class DNSZoneViewSet(NautobotModelViewSet):
 class NSRecordViewSet(NautobotModelViewSet):
     """NSRecord API ViewSet."""
 
-    queryset = NSRecord.objects.all()
+    queryset = NSRecord.objects.all().select_related("zone")
     serializer_class = NSRecordSerializer
     filterset_class = NSRecordFilterSet
 
@@ -108,7 +108,7 @@ class NSRecordViewSet(NautobotModelViewSet):
 class ARecordViewSet(NautobotModelViewSet):
     """ARecord API ViewSet."""
 
-    queryset = ARecord.objects.all()
+    queryset = ARecord.objects.all().select_related("zone", "ip_address")
     serializer_class = ARecordSerializer
     filterset_class = ARecordFilterSet
 
@@ -118,7 +118,7 @@ class ARecordViewSet(NautobotModelViewSet):
 class AAAARecordViewSet(NautobotModelViewSet):
     """AAAARecord API ViewSet."""
 
-    queryset = AAAARecord.objects.all()
+    queryset = AAAARecord.objects.all().select_related("zone", "ip_address")
     serializer_class = AAAARecordSerializer
     filterset_class = AAAARecordFilterSet
 
@@ -128,7 +128,7 @@ class AAAARecordViewSet(NautobotModelViewSet):
 class CNameRecordViewSet(NautobotModelViewSet):
     """CNameRecord API ViewSet."""
 
-    queryset = CNAMERecord.objects.all()
+    queryset = CNAMERecord.objects.all().select_related("zone")
     serializer_class = CNAMERecordSerializer
     filterset_class = CNAMERecordFilterSet
 
@@ -138,7 +138,7 @@ class CNameRecordViewSet(NautobotModelViewSet):
 class MXRecordViewSet(NautobotModelViewSet):
     """MXRecord API ViewSet."""
 
-    queryset = MXRecord.objects.all()
+    queryset = MXRecord.objects.all().select_related("zone")
     serializer_class = MXRecordSerializer
     filterset_class = MXRecordFilterSet
 
@@ -148,7 +148,7 @@ class MXRecordViewSet(NautobotModelViewSet):
 class TXTRecordViewSet(NautobotModelViewSet):
     """TXTRecord API ViewSet."""
 
-    queryset = TXTRecord.objects.all()
+    queryset = TXTRecord.objects.all().select_related("zone")
     serializer_class = TXTRecordSerializer
     filterset_class = TXTRecordFilterSet
 
@@ -158,7 +158,7 @@ class TXTRecordViewSet(NautobotModelViewSet):
 class PTRRecordViewSet(NautobotModelViewSet):
     """PTRRecord API ViewSet."""
 
-    queryset = PTRRecord.objects.all()
+    queryset = PTRRecord.objects.all().select_related("zone")
     serializer_class = PTRRecordSerializer
     filterset_class = PTRRecordFilterSet
 
@@ -168,7 +168,7 @@ class PTRRecordViewSet(NautobotModelViewSet):
 class SRVRecordViewSet(NautobotModelViewSet):
     """SRVRecord API ViewSet."""
 
-    queryset = SRVRecord.objects.all()
+    queryset = SRVRecord.objects.all().select_related("zone")
     serializer_class = SRVRecordSerializer
     filterset_class = SRVRecordFilterSet
 
