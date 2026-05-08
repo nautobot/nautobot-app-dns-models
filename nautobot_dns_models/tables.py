@@ -152,6 +152,7 @@ class DNSZoneTable(BaseTable):
             "soa_serial",
             "soa_minimum",
             "tenant",
+            "auto_create_ptr",
             "actions",
         )
 
