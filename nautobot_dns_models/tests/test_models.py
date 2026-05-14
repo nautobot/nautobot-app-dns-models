@@ -736,9 +736,8 @@ class AutoCreatePTRRecordTestCase(TestCase):
     def test_auto_ptr_creates_record_when_enabled(self):
         """auto_create_ptr=True with matching reverse zone in same view creates a PTR."""
         ARecord.objects.create(name="host1", ip_address=self.ipv4, zone=self.fwd_on)
-        ptr = PTRRecord.objects.get(ptrdname="1.0.0.10.in-addr.arpa")
-        self.assertEqual(ptr.zone, self.reverse_zone)
-        self.assertEqual(ptr.name, "host1")
+        ptr = PTRRecord.objects.get(zone=self.reverse_zone, name="1")
+        self.assertEqual(ptr.ptrdname, "host1.auto.example.com")
 
     def test_auto_ptr_raises_when_no_reverse_zone(self):
         """No matching reverse zone in same view raises ValidationError pre-insert; A record is not persisted."""
@@ -756,22 +755,21 @@ class AutoCreatePTRRecordTestCase(TestCase):
         self.assertFalse(PTRRecord.objects.exists())
 
     def test_auto_ptr_idempotent_when_ptr_already_exists(self):
-        """If a PTR with the same (ptrdname, zone) already exists, no duplicate is created."""
-        existing = PTRRecord.objects.create(name="host1", ptrdname="1.0.0.10.in-addr.arpa", zone=self.reverse_zone)
+        """If a PTR with the same owner name already exists in the reverse zone, no duplicate is created."""
+        existing = PTRRecord.objects.create(name="1", ptrdname="host1.auto.example.com", zone=self.reverse_zone)
         ARecord.objects.create(name="host1", ip_address=self.ipv4, zone=self.fwd_on)
-        ptrs = PTRRecord.objects.filter(ptrdname="1.0.0.10.in-addr.arpa", zone=self.reverse_zone)
+        ptrs = PTRRecord.objects.filter(name="1", zone=self.reverse_zone)
         self.assertEqual(ptrs.count(), 1)
         self.assertEqual(ptrs.first().pk, existing.pk)
 
     def test_auto_ptr_for_aaaa_record(self):
         """AAAARecord triggers PTR creation similarly when flag is on."""
-        ptrdname = ipaddress_address("2001:db8::1", "reverse_pointer")
-        parent_zone_name = ".".join(ptrdname.split(".")[1:])
+        full_reverse = ipaddress_address("2001:db8::1", "reverse_pointer")
+        parent_zone_name = ".".join(full_reverse.split(".")[1:])
         reverse_v6 = DNSZone.objects.create(name=parent_zone_name, dns_view=self.view)
         AAAARecord.objects.create(name="v6host", ip_address=self.ipv6, zone=self.fwd_on)
-        ptr = PTRRecord.objects.get(ptrdname=ptrdname)
-        self.assertEqual(ptr.zone, reverse_v6)
-        self.assertEqual(ptr.name, "v6host")
+        ptr = PTRRecord.objects.get(zone=reverse_v6, name="1")
+        self.assertEqual(ptr.ptrdname, "v6host.auto.example.com")
 
 
 class TestDNSZoneFindForPtrdname(TestCase):
