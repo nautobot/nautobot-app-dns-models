@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from nautobot.apps.testing import ModelTestCases, TestCase
 from nautobot.extras.models import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
+from netutils.ip import ipaddress_address
 
 from nautobot_dns_models.models import (
     AAAARecord,
@@ -702,3 +703,100 @@ class DNSZoneNameLengthValidationTest(TestCase):
         with self.assertRaises(ValidationError) as context:
             zone.full_clean()
         self.assertIn("Empty labels are not allowed", str(context.exception))
+
+
+class AutoCreatePTRRecordTestCase(TestCase):
+    """Test the per-zone auto_create_ptr flag for ARecord/AAAARecord."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.status = Status.objects.get(name="Active")
+        cls.namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="10.0.0.0/24", namespace=cls.namespace, type="Pool", status=cls.status)
+        cls.ipv4 = IPAddress.objects.create(address="10.0.0.1/32", namespace=cls.namespace, status=cls.status)
+        cls.ipv4_other = IPAddress.objects.create(address="10.0.0.2/32", namespace=cls.namespace, status=cls.status)
+        Prefix.objects.create(prefix="192.168.1.0/24", namespace=cls.namespace, type="Pool", status=cls.status)
+        cls.ipv4_unmatched = IPAddress.objects.create(
+            address="192.168.1.1/32", namespace=cls.namespace, status=cls.status
+        )
+        Prefix.objects.create(prefix="2001:db8::/32", namespace=cls.namespace, type="Pool", status=cls.status)
+        cls.ipv6 = IPAddress.objects.create(address="2001:db8::1/128", namespace=cls.namespace, status=cls.status)
+
+        cls.view = DNSView.objects.create(name="View Default")
+        cls.other_view = DNSView.objects.create(name="View Other")
+        cls.fwd_off = DNSZone.objects.create(name="example.com", dns_view=cls.view, auto_create_ptr=False)
+        cls.fwd_on = DNSZone.objects.create(name="auto.example.com", dns_view=cls.view, auto_create_ptr=True)
+        cls.reverse_zone = DNSZone.objects.create(name="0.0.10.in-addr.arpa", dns_view=cls.view)
+
+    def test_no_auto_ptr_when_flag_disabled(self):
+        """auto_create_ptr=False: no PTR is created even if a matching reverse zone exists."""
+        ARecord.objects.create(name="host1", ip_address=self.ipv4, zone=self.fwd_off)
+        self.assertFalse(PTRRecord.objects.exists())
+
+    def test_auto_ptr_creates_record_when_enabled(self):
+        """auto_create_ptr=True with matching reverse zone in same view creates a PTR."""
+        ARecord.objects.create(name="host1", ip_address=self.ipv4, zone=self.fwd_on)
+        ptr = PTRRecord.objects.get(zone=self.reverse_zone, name="1")
+        self.assertEqual(ptr.ptrdname, "host1.auto.example.com")
+
+    def test_auto_ptr_raises_when_no_reverse_zone(self):
+        """No matching reverse zone in same view raises ValidationError pre-insert; A record is not persisted."""
+        with self.assertRaises(ValidationError):
+            ARecord.objects.create(name="host2", ip_address=self.ipv4_unmatched, zone=self.fwd_on)
+        self.assertFalse(ARecord.objects.filter(name="host2").exists())
+        self.assertFalse(PTRRecord.objects.exists())
+
+    def test_auto_ptr_does_not_use_reverse_zone_in_different_view(self):
+        """A reverse zone in a different DNS view is NOT used; raises ValidationError."""
+        DNSZone.objects.create(name="1.168.192.in-addr.arpa", dns_view=self.other_view)
+        with self.assertRaises(ValidationError):
+            ARecord.objects.create(name="host3", ip_address=self.ipv4_unmatched, zone=self.fwd_on)
+        self.assertFalse(ARecord.objects.filter(name="host3").exists())
+        self.assertFalse(PTRRecord.objects.exists())
+
+    def test_auto_ptr_idempotent_when_ptr_already_exists(self):
+        """If a PTR with the same owner name already exists in the reverse zone, no duplicate is created."""
+        existing = PTRRecord.objects.create(name="1", ptrdname="host1.auto.example.com", zone=self.reverse_zone)
+        ARecord.objects.create(name="host1", ip_address=self.ipv4, zone=self.fwd_on)
+        ptrs = PTRRecord.objects.filter(name="1", zone=self.reverse_zone)
+        self.assertEqual(ptrs.count(), 1)
+        self.assertEqual(ptrs.first().pk, existing.pk)
+
+    def test_auto_ptr_for_aaaa_record(self):
+        """AAAARecord triggers PTR creation similarly when flag is on."""
+        full_reverse = ipaddress_address("2001:db8::1", "reverse_pointer")
+        parent_zone_name = ".".join(full_reverse.split(".")[1:])
+        reverse_v6 = DNSZone.objects.create(name=parent_zone_name, dns_view=self.view)
+        AAAARecord.objects.create(name="v6host", ip_address=self.ipv6, zone=self.fwd_on)
+        ptr = PTRRecord.objects.get(zone=reverse_v6, name="1")
+        self.assertEqual(ptr.ptrdname, "v6host.auto.example.com")
+
+
+class TestDNSZoneFindForPtrdname(TestCase):
+    """Test DNSZone.find_for_ptrdname classmethod."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.view_a = DNSView.objects.create(name="View A")
+        cls.view_b = DNSView.objects.create(name="View B")
+
+    def test_finds_most_specific_match(self):
+        specific = DNSZone.objects.create(name="0.0.10.in-addr.arpa", dns_view=self.view_a)
+        DNSZone.objects.create(name="10.in-addr.arpa", dns_view=self.view_a)
+        self.assertEqual(DNSZone.find_reverse_zone_for_ptrdname("1.0.0.10.in-addr.arpa"), specific)
+
+    def test_falls_back_to_less_specific_match(self):
+        broad = DNSZone.objects.create(name="10.in-addr.arpa", dns_view=self.view_a)
+        self.assertEqual(DNSZone.find_reverse_zone_for_ptrdname("1.0.0.10.in-addr.arpa"), broad)
+
+    def test_returns_none_when_nothing_matches(self):
+        self.assertIsNone(DNSZone.find_reverse_zone_for_ptrdname("1.2.3.4.in-addr.arpa"))
+
+    def test_dns_view_scoping(self):
+        """When dns_view is provided, only zones in that view are considered."""
+        specific = DNSZone.objects.create(name="0.0.10.in-addr.arpa", dns_view=self.view_a)
+        self.assertIsNone(DNSZone.find_reverse_zone_for_ptrdname("1.0.0.10.in-addr.arpa", dns_view=self.view_b))
+        self.assertEqual(
+            DNSZone.find_reverse_zone_for_ptrdname("1.0.0.10.in-addr.arpa", dns_view=self.view_a),
+            specific,
+        )
