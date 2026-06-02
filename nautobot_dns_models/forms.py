@@ -233,6 +233,7 @@ class DNSZoneForm(NautobotModelForm, TenancyForm):
     dns_view = DynamicModelChoiceField(
         queryset=models.DNSView.objects.all(),
         required=True,
+        label="View",
     )
 
     class Meta:

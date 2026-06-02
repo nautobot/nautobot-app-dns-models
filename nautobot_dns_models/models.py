@@ -276,6 +276,10 @@ class DNSZone(DNSModel):
         verbose_name = "DNS Zone"
         verbose_name_plural = "DNS Zones"
 
+    def __str__(self):
+        """Stringify instance."""
+        return f"{self.name} ({self.dns_view})"
+
     @classmethod
     def find_reverse_zone_for_ptrdname(cls, ptrdname, dns_view=None):
         """Return the most-specific reverse DNSZone whose name matches a tail of `ptrdname`, otherwise None."""
