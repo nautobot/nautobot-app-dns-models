@@ -57,7 +57,8 @@ class ForwardDNSRecordsTablePanel(ObjectsTablePanel):
             name, zone = ip_address.dns_name.split(".", 1)
         except ValueError:
             name = zone = ""
-        # TODO:If multiple zones exist with the same name, this will just get the first one.
+
+        # If multiple zones exist with the same name, this will just get the first one.
         # This is a best effort to autopopulate the zone field, but it won't be perfect in all cases.
         zone_obj = DNSZone.objects.filter(name=zone).first()
         if zone_obj:
