@@ -1,8 +1,8 @@
 """Filtering for nautobot_dns_models."""
 
 import django_filters
-from django.db.models import F
-from django.db.models.functions import Coalesce
+from django.db.models import CharField, F, Value
+from django.db.models.functions import Coalesce, Concat
 from nautobot.apps.filters import NautobotFilterSet, SearchFilter, TenancyModelFilterSetMixin
 from nautobot.core.filters import MultiValueCharFilter, NaturalKeyOrPKMultipleChoiceFilter
 from netaddr import IPAddress as NetIPAddress
@@ -142,6 +142,17 @@ class DNSRecordFilterSet(NautobotFilterSet):
         return queryset.exclude(effective_ttl=value)
 
 
+class FqdnSearchMixin:
+    """Make a DNS record filterset searchable by full FQDN."""
+
+    def __init__(self, *args, **kwargs):
+        """Annotate the base queryset with the computed FQDN."""
+        super().__init__(*args, **kwargs)
+        self.queryset = self.queryset.annotate(
+            fqdn=Concat(F("name"), Value("."), F("zone__name"), output_field=CharField()),
+        )
+
+
 class NSRecordFilterSet(DNSRecordFilterSet):
     """Filter for NSRecord."""
 
@@ -169,13 +180,14 @@ def ip_address_preprocessor(value):
     return value
 
 
-class ARecordFilterSet(DNSRecordFilterSet):
+class ARecordFilterSet(FqdnSearchMixin, DNSRecordFilterSet):
     """Filter for ARecord."""
 
     q = SearchFilter(
         filter_predicates={
             "name": "icontains",
             "zone__name": "icontains",
+            "fqdn": "icontains",
             "ip_address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
         }
     )
@@ -187,13 +199,14 @@ class ARecordFilterSet(DNSRecordFilterSet):
         fields = "__all__"
 
 
-class AAAARecordFilterSet(DNSRecordFilterSet):
+class AAAARecordFilterSet(FqdnSearchMixin, DNSRecordFilterSet):
     """Filter for AAAARecord."""
 
     q = SearchFilter(
         filter_predicates={
             "name": "icontains",
             "zone__name": "icontains",
+            "fqdn": "icontains",
             "ip_address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
         }
     )
