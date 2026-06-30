@@ -1,7 +1,9 @@
 """Filtering for nautobot_dns_models."""
 
+import uuid
+
 import django_filters
-from django.db.models import CharField, F, Value
+from django.db.models import CharField, F, Q, Value
 from django.db.models.functions import Coalesce, Concat
 from nautobot.apps.filters import NautobotFilterSet, SearchFilter, TenancyModelFilterSetMixin
 from nautobot.core.filters import MultiValueCharFilter, NaturalKeyOrPKMultipleChoiceFilter
@@ -142,17 +144,6 @@ class DNSRecordFilterSet(NautobotFilterSet):
         return queryset.exclude(effective_ttl=value)
 
 
-class FqdnSearchMixin:
-    """Make a DNS record filterset searchable by full FQDN."""
-
-    def __init__(self, *args, **kwargs):
-        """Annotate the base queryset with the computed FQDN."""
-        super().__init__(*args, **kwargs)
-        self.queryset = self.queryset.annotate(
-            fqdn=Concat(F("name"), Value("."), F("zone__name"), output_field=CharField()),
-        )
-
-
 class NSRecordFilterSet(DNSRecordFilterSet):
     """Filter for NSRecord."""
 
@@ -180,17 +171,34 @@ def ip_address_preprocessor(value):
     return value
 
 
-class ARecordFilterSet(FqdnSearchMixin, DNSRecordFilterSet):
+def search_address_record(queryset, name, value):  # pylint: disable=unused-argument
+    """Search A/AAAA records by name, zone, full FQDN, or IP address."""
+    queryset = queryset.annotate(
+        fqdn=Concat("name", Value("."), "zone__name", output_field=CharField()),
+    )
+    query = Q(name__icontains=value) | Q(zone__name__icontains=value) | Q(fqdn__icontains=value)
+
+    try:
+        uuid.UUID(value)
+    except (ValueError, TypeError, AttributeError):
+        pass
+    else:
+        query |= Q(id=value)
+
+    try:
+        ip_value = ip_address_preprocessor(value)
+    except ValueError:
+        pass
+    else:
+        query |= Q(ip_address__host__net_host=ip_value)
+
+    return queryset.filter(query).distinct()
+
+
+class ARecordFilterSet(DNSRecordFilterSet):
     """Filter for ARecord."""
 
-    q = SearchFilter(
-        filter_predicates={
-            "name": "icontains",
-            "zone__name": "icontains",
-            "fqdn": "icontains",
-            "ip_address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
-        }
-    )
+    q = django_filters.CharFilter(method=search_address_record, label="Search")
 
     class Meta:
         """Meta attributes for filter."""
@@ -199,17 +207,10 @@ class ARecordFilterSet(FqdnSearchMixin, DNSRecordFilterSet):
         fields = "__all__"
 
 
-class AAAARecordFilterSet(FqdnSearchMixin, DNSRecordFilterSet):
+class AAAARecordFilterSet(DNSRecordFilterSet):
     """Filter for AAAARecord."""
 
-    q = SearchFilter(
-        filter_predicates={
-            "name": "icontains",
-            "zone__name": "icontains",
-            "fqdn": "icontains",
-            "ip_address__host": {"lookup_expr": "net_host", "preprocessor": ip_address_preprocessor},
-        }
-    )
+    q = django_filters.CharFilter(method=search_address_record, label="Search")
 
     class Meta:
         """Meta attributes for filter."""
