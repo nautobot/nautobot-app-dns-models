@@ -892,7 +892,9 @@ def djlint(context, target=None):
     command = "djlint --lint "
     command += " ".join(target)
 
-    exit_code = 0 if run_command(context, command, warn=True) else 1
+    # djlint exits 1 when there are no files to lint, treat that result as success.
+    result = run_command(context, command, warn=True)
+    exit_code = 0 if result or "No files to check" in result.stdout else 1
     if exit_code != 0:
         raise Exit(code=exit_code)
 
