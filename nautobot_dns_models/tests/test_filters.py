@@ -535,6 +535,9 @@ class ARecordFilterTestCase(TestCase):
         self.assertEqual(self.filterset({"q": "a-record"}, self.queryset).qs.count(), 3)
         self.assertEqual(self.filterset({"q": self.ip_addresses[0].host}, self.queryset).qs.count(), 1)
         self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 3)
+        # Full FQDN (record name + zone name) should match the single record.
+        self.assertEqual(self.filterset({"q": "a-record-01.example.com"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "a-record-01.example2.com"}, self.queryset).qs.count(), 0)
 
 
 class AAAARecordFilterTestCase(TestCase):
@@ -595,6 +598,9 @@ class AAAARecordFilterTestCase(TestCase):
         self.assertEqual(self.filterset({"q": "aaaa-record"}, self.queryset).qs.count(), 3)
         self.assertEqual(self.filterset({"q": self.ip_addresses[0].host}, self.queryset).qs.count(), 1)
         self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 3)
+        # Full FQDN (record name + zone name) should match the single record.
+        self.assertEqual(self.filterset({"q": "aaaa-record-01.example.com"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"q": "aaaa-record-01.nonexistent.com"}, self.queryset).qs.count(), 0)
 
 
 class CNAMERecordFilterTestCase(TestCase):
