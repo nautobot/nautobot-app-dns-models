@@ -1,1 +1,0 @@
-Re-sync invoke lint tasks with cookiecutter by adding `pylint` `target`/`recursive` options and `ruff` `--diff` support.
