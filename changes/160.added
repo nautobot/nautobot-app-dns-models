@@ -1,1 +1,0 @@
-Added functionality to auto-create PTR records in reverse zone when an A or AAAA record is created in the zone.
