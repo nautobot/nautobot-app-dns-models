@@ -233,6 +233,7 @@ class DNSZoneForm(NautobotModelForm, TenancyForm):
     dns_view = DynamicModelChoiceField(
         queryset=models.DNSView.objects.all(),
         required=True,
+        label="View",
     )
 
     class Meta:
@@ -251,6 +252,7 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
         queryset=Tenant.objects.all(),
         required=False,
     )
+    auto_create_ptr = forms.NullBooleanField(required=False, label="Auto-create PTR Records")
 
     class Meta:
         """Meta attributes."""

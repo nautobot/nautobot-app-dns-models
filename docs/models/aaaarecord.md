@@ -9,5 +9,7 @@ The AAAA Record model is used to represent IPv6 address records in DNS. It maps 
 - `comment` (string): Comment for the record.
 - `ip_address` (IPAddress): IPv6 address for the record (AAAA records must use IPv6).
 
+When the parent `DNSZone` has `auto_create_ptr` enabled, creating an AAAA record automatically creates a matching PTR record in the most-specific reverse zone within the same DNS view. See [DNS Zone](dnszone.md) for details.
+
 +++ 2.0.0
     `address` field in AAAA Record is now `ip_address`

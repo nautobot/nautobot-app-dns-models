@@ -8,6 +8,10 @@ from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 from nautobot.extras.models import StatusField
 from nautobot.ipam.choices import IPAddressVersionChoices
+from netutils.ip import ipaddress_address
+
+# Reverse-DNS roots per RFC 1035 §3.5 and RFC 3596 §2.5
+RESERVED_ROOTS = {"in-addr.arpa", "ip6.arpa", "arpa"}
 
 
 def dns_wire_label_length(label):
@@ -16,6 +20,52 @@ def dns_wire_label_length(label):
         return len(label)
 
     return len("xn--" + label.encode("punycode").decode("ascii"))
+
+
+def prior_checks_ptr_record_creation(record):
+    """Check if there is a matching reverse zone for this A/AAAA record's PTR record before creating it.
+
+    Called from clean() so the failure surfaces before any DB write.
+    """
+    ptrdname = ipaddress_address(record.ip_address.host, "reverse_pointer")
+    if DNSZone.find_reverse_zone_for_ptrdname(ptrdname, dns_view=record.zone.dns_view) is None:
+        raise ValidationError(
+            {
+                "ip_address": (
+                    f"Cannot auto-create PTR record: no matching reverse zone found "
+                    f"in view '{record.zone.dns_view}' for {record.ip_address}."
+                )
+            }
+        )
+
+
+def create_auto_ptr_record(record):
+    """Create a PTR record for the given A/AAAA record's IP address.
+
+    Raises ValidationError if no matching reverse zone is found in the same DNS view.
+    Skips creation silently if a PTR with the same owner name already exists in that reverse zone.
+    """
+    ptr_name = ipaddress_address(record.ip_address.host, "reverse_pointer")
+    reverse_zone = DNSZone.find_reverse_zone_for_ptrdname(ptr_name, dns_view=record.zone.dns_view)
+    if reverse_zone is None:
+        raise ValidationError(
+            {
+                "ip_address": (
+                    f"Cannot auto-create PTR record: no matching reverse zone found "
+                    f"in view '{record.zone.dns_view}' for {record.ip_address}."
+                )
+            }
+        )
+    # RFC 1035 §3.5: PTR owner name is the reverse pointer, which is relative to the reverse zone.
+    # As an example name is 20 and the whole fqdn `20.1.168.192.in-addr.arpa`
+    relative_name = ptr_name.removesuffix(f".{reverse_zone.name}")
+    # RFC 1035 §3.3.12: PTR RDATA (PTRDNAME) is the FQDN of the forward name.
+    # Creating a PTR record for A record www in example.com, this should be `www.example.com`
+    forward_fqdn = f"{record.name}.{record.zone.name}"
+    if PTRRecord.objects.filter(name=relative_name, zone=reverse_zone).exists():
+        return
+
+    PTRRecord(name=relative_name, ptrdname=forward_fqdn, zone=reverse_zone).validated_save()
 
 
 class DNSModel(PrimaryModel):
@@ -213,6 +263,11 @@ class DNSZone(DNSModel):
         blank=True,
         null=True,
     )
+    auto_create_ptr = models.BooleanField(
+        default=False,
+        help_text="Automatically create PTR records when A/AAAA records are created in this zone.",
+        verbose_name="Auto-create PTR Records",
+    )
 
     class Meta:
         """Meta attributes for DNSZone."""
@@ -220,6 +275,28 @@ class DNSZone(DNSModel):
         unique_together = [["name", "dns_view"]]
         verbose_name = "DNS Zone"
         verbose_name_plural = "DNS Zones"
+
+    def __str__(self):
+        """Stringify instance."""
+        return f"{self.name} ({self.dns_view})"
+
+    @classmethod
+    def find_reverse_zone_for_ptrdname(cls, ptrdname, dns_view=None):
+        """Return the most-specific reverse DNSZone whose name matches a tail of `ptrdname`, otherwise None."""
+        labels = ptrdname.split(".")
+        for i in range(1, len(labels)):
+            zone_name = ".".join(labels[i:])
+            # We shouldn't match those cause are reserved to IANA
+            if zone_name in RESERVED_ROOTS:
+                break
+
+            zones = cls.objects.filter(name=zone_name)
+            if dns_view is not None:
+                zones = zones.filter(dns_view=dns_view)
+            zone = zones.first()
+            if zone:
+                return zone
+        return None
 
 
 @extras_features(
@@ -454,11 +531,16 @@ class ARecord(DNSRecord):
             return
         if self.ip_address.ip_version != IPAddressVersionChoices.VERSION_4:
             raise ValidationError({"ip_address": "ARecord must reference an IPv4 address."})
+        if self._state.adding and self.zone.auto_create_ptr:  # pylint: disable=no-member
+            prior_checks_ptr_record_creation(self)
 
     def save(self, *args, **kwargs):
-        """Ensure model validation runs on direct ORM writes."""
+        """Validate, save, and auto-create a PTR if the forward zone has auto_create_ptr enabled."""
+        is_new = self._state.adding
         self.clean()
-        return super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
+        if is_new and self.zone.auto_create_ptr:  # pylint: disable=no-member
+            create_auto_ptr_record(self)
 
 
 @extras_features(
@@ -498,11 +580,16 @@ class AAAARecord(DNSRecord):
             return
         if self.ip_address.ip_version != IPAddressVersionChoices.VERSION_6:
             raise ValidationError({"ip_address": "AAAARecord must reference an IPv6 address."})
+        if self._state.adding and self.zone.auto_create_ptr:  # pylint: disable=no-member
+            prior_checks_ptr_record_creation(self)
 
     def save(self, *args, **kwargs):
-        """Ensure model validation runs on direct ORM writes."""
+        """Validate, save, and auto-create a PTR if the forward zone has auto_create_ptr enabled."""
+        is_new = self._state.adding
         self.clean()
-        return super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
+        if is_new and self.zone.auto_create_ptr:  # pylint: disable=no-member
+            create_auto_ptr_record(self)
 
 
 @extras_features(
