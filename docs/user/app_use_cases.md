@@ -10,6 +10,14 @@ Generally, this App is to used to keep track of DNS Zones and their related data
 
 Use the API or GUI to add DNS Zones and Record objects to Nautobot.
 
+### SOA Serial Number Auditing
+
+When `SOA_SERIAL_AUTO_INCREMENT` is [enabled](../admin/install.md#app-configuration), the app automatically tracks zone changes by incrementing the SOA serial number on every record create, update, or delete. This allows operators to:
+
+- **Detect zone drift** — Compare the serial in Nautobot with the serial served by your authoritative DNS servers to identify zones that are out of sync.
+- **Audit change frequency** — Use the serial number as a proxy for how actively a zone is being modified.
+- **Trigger downstream automation** — Use Nautobot webhooks on `DNSZone` changes to notify external systems (e.g., DNS provisioning pipelines) when a zone's serial increments, indicating new data is ready to be pushed.
+
 ## Screenshots
 
 ![Adding a DNS Zone](../images/getting_started-add-zone-3-light.png#only-light){ .on-glb }

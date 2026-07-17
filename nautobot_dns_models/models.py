@@ -3,7 +3,7 @@
 from constance import config as constance_config
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
+from django.db import models, transaction
 from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 from nautobot.extras.models import StatusField
@@ -12,6 +12,71 @@ from netutils.ip import ipaddress_address
 
 # Reverse-DNS roots per RFC 1035 §3.5 and RFC 3596 §2.5
 RESERVED_ROOTS = {"in-addr.arpa", "ip6.arpa", "arpa"}
+
+
+def _get_dirty_zones():
+    """Return the per-transaction set of zone PKs already incremented in this scope.
+
+    State lives on ``transaction.get_connection()._dns_dirty_zones`` and is
+    cleared via a ``transaction.on_commit`` hook. The connection's
+    ``run_on_commit`` queue is inspected to detect when the outer atomic
+    block has ended — on rollback the hook is discarded but the attribute
+    survives on the reused connection wrapper, so the freshness check
+    treats that state as stale and rebuilds it. This prevents the prior
+    thread-local leak where a rolled-back transaction left the dedup set
+    populated on a reused worker thread.
+
+    .. note::
+        ``BaseDatabaseWrapper.run_on_commit`` is a Django internal (no
+        underscore prefix but not documented as a public API). The
+        freshness guard above relies on its current shape — a list of
+        ``(savepoint_ids, func, robust)`` tuples in Django 4.2 — and may
+        need revisiting on future Django upgrades. Covered by
+        ``SOASerialRollbackIsolationTestCase`` /
+        ``SOASerialThreadReuseTestCase``.
+    """
+    conn = transaction.get_connection()
+    state = getattr(conn, "_dns_dirty_zones", None)
+
+    if state is not None and not any(entry[1] is state["hook"] for entry in conn.run_on_commit):
+        # Outer atomic ended (commit drained the hook, rollback dropped it).
+        try:
+            delattr(conn, "_dns_dirty_zones")
+        except AttributeError:
+            pass
+        state = None
+
+    if state is None:
+        pks = set()
+
+        def _clear():
+            current = getattr(conn, "_dns_dirty_zones", None)
+            if current is not None and current["hook"] is _clear:
+                try:
+                    delattr(conn, "_dns_dirty_zones")
+                except AttributeError:
+                    pass
+
+        try:
+            transaction.on_commit(_clear)
+        except transaction.TransactionManagementError:
+            # No outer atomic to register against; coalescing is moot in
+            # autocommit mode (each save fires exactly one increment).
+            pass
+
+        state = {"pks": pks, "hook": _clear}
+        setattr(conn, "_dns_dirty_zones", state)
+
+    return state["pks"]
+
+
+def _reset_dirty_zones_for_testing():
+    """Clear the connection-bound dedup state. Test-only helper."""
+    conn = transaction.get_connection()
+    try:
+        delattr(conn, "_dns_dirty_zones")
+    except AttributeError:
+        pass
 
 
 def dns_wire_label_length(label):
@@ -243,8 +308,8 @@ class DNSZone(DNSModel):
         help_text="Number of seconds after which secondary name servers should stop answering request for this zone if the master does not respond. This value must be bigger than the sum of Refresh and Retry.",
         verbose_name="SOA Expire",
     )
-    soa_serial = models.IntegerField(
-        validators=[MinValueValidator(0), MaxValueValidator(2147483647)],
+    soa_serial = models.PositiveBigIntegerField(
+        validators=[MaxValueValidator(4_294_967_295)],
         default=0,
         help_text="Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.",
         verbose_name="SOA Serial",
@@ -268,6 +333,84 @@ class DNSZone(DNSModel):
         help_text="Automatically create PTR records when A/AAAA records are created in this zone.",
         verbose_name="Auto-create PTR Records",
     )
+
+    # Fields that should trigger a serial increment when changed on the zone itself.
+    _SOA_SERIAL_WATCHED_FIELDS = frozenset(
+        {
+            "name",
+            "ttl",
+            "filename",
+            "soa_mname",
+            "soa_rname",
+            "soa_refresh",
+            "soa_retry",
+            "soa_expire",
+            "soa_minimum",
+        }
+    )
+
+    # RFC 1982 §7: SOA SERIAL is an unsigned 32-bit integer in the range [0..2^32 - 1].
+    SOA_SERIAL_MAX = 4_294_967_295
+
+    def increment_soa_serial(self):
+        """Atomically increment soa_serial, respecting the constance config flag and RFC 1982 rollover.
+
+        Uses select_for_update() inside transaction.atomic() to prevent race
+        conditions and ensure compatibility with all code paths (GUI, API, MCP,
+        Jobs). Called from DNSRecord.save()/delete() and DNSZone.save().
+
+        Transaction coalescing is provided by ``_get_dirty_zones`` — multiple
+        save()/delete() calls within one atomic block produce at most one serial bump
+        per zone, and rolled-back transactions cannot leak dedup state into
+        the next request on a reused worker thread.
+        """
+        if not getattr(constance_config, "nautobot_dns_models__SOA_SERIAL_AUTO_INCREMENT", False):
+            return
+
+        dirty = _get_dirty_zones()
+        if self.pk in dirty:
+            return
+
+        with transaction.atomic():
+            zone = DNSZone.objects.select_for_update().get(pk=self.pk)
+            if zone.soa_serial >= self.SOA_SERIAL_MAX:
+                zone.soa_serial = 0  # RFC 1982 rollover
+            else:
+                zone.soa_serial += 1
+            zone.save(update_fields=["soa_serial"])
+
+        self.soa_serial = zone.soa_serial
+        dirty.add(self.pk)
+
+    def save(self, *args, **kwargs):
+        """Override save to detect zone self-changes and trigger serial increment."""
+        update_fields = kwargs.get("update_fields")
+
+        # When update_fields is limited to soa_serial only, this is an internal
+        # increment call — skip re-entrant increment.
+        if update_fields and set(update_fields) == {"soa_serial"}:
+            super().save(*args, **kwargs)
+            return
+
+        # Detect whether watched fields changed (only for existing zones).
+        should_increment = False
+        if self.pk and self.present_in_database:
+            if update_fields:
+                should_increment = bool(self._SOA_SERIAL_WATCHED_FIELDS & set(update_fields))
+            else:
+                try:
+                    existing = DNSZone.objects.values(*self._SOA_SERIAL_WATCHED_FIELDS).get(pk=self.pk)
+                    for field in self._SOA_SERIAL_WATCHED_FIELDS:
+                        if getattr(self, field) != existing[field]:
+                            should_increment = True
+                            break
+                except DNSZone.DoesNotExist:
+                    pass
+
+        super().save(*args, **kwargs)
+
+        if should_increment:
+            self.increment_soa_serial()
 
     class Meta:
         """Meta attributes for DNSZone."""
@@ -394,6 +537,25 @@ class DNSRecord(DNSModel):
     )
     description = models.TextField(help_text="Description of the Record.", blank=True)
     comment = models.CharField(max_length=200, help_text="Comment for the Record.", blank=True)
+
+    def save(self, *args, **kwargs):
+        """Increment the parent zone's SOA serial after every record save."""
+        result = super().save(*args, **kwargs)
+        if getattr(self, "zone_id", None):
+            self.zone.increment_soa_serial()
+        return result
+
+    def delete(self, *args, **kwargs):
+        """Increment the parent zone's SOA serial after a record is deleted.
+
+        Note: QuerySet.delete() bypasses this method; bulk deletes will not
+        trigger a serial increment.
+        """
+        zone = getattr(self, "zone", None)
+        result = super().delete(*args, **kwargs)
+        if zone is not None:
+            zone.increment_soa_serial()
+        return result
 
     def clean(self):
         """

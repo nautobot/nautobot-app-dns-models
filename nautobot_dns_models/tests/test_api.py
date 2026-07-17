@@ -1,5 +1,7 @@
 """Unit tests for nautobot_dns_models."""
 
+# pylint: disable=too-many-lines  # test_api covers all record types; long-file is the project convention, matches Nautobot Core test layout.
+
 from datetime import date
 
 from constance.test import override_config
@@ -28,6 +30,7 @@ from nautobot_dns_models.models import (
     PTRRecord,
     SRVRecord,
     TXTRecord,
+    _reset_dirty_zones_for_testing,
 )
 
 
@@ -500,6 +503,61 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
 
         self.assertEqual(zone.dns_view, expected_default_view)
 
+    def _build_zone_payload(self, name, **overrides):
+        """Return a minimal valid DNSZone POST payload with ``overrides`` merged in."""
+        dns_view = DNSView.objects.get(name="Default")
+        payload = {
+            "name": name,
+            "dns_view": dns_view.id,
+            "filename": f"{name}.zone",
+            "soa_mname": f"ns1.{name}",
+            "soa_rname": f"admin@{name}",
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_post_dnszone_accepts_soa_serial_zero(self):
+        """POST DNSZone with soa_serial=0 succeeds."""
+        self.add_permissions("nautobot_dns_models.add_dnszone", "nautobot_dns_models.view_dnsview")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnszone-list")
+        data = self._build_zone_payload("zone-serial-zero.example", soa_serial=0)
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+
+    def test_post_dnszone_accepts_soa_serial_max(self):
+        """POST DNSZone with soa_serial at the RFC 1982 §7 uint32 ceiling succeeds."""
+        self.add_permissions("nautobot_dns_models.add_dnszone", "nautobot_dns_models.view_dnsview")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnszone-list")
+        data = self._build_zone_payload("zone-serial-max.example", soa_serial=DNSZone.SOA_SERIAL_MAX)
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+
+    def test_post_dnszone_rejects_soa_serial_negative(self):
+        """POST DNSZone with soa_serial=-1 is rejected with field error on soa_serial."""
+        self.add_permissions("nautobot_dns_models.add_dnszone", "nautobot_dns_models.view_dnsview")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnszone-list")
+        data = self._build_zone_payload("zone-serial-neg.example", soa_serial=-1)
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("soa_serial", response.data)
+
+    def test_post_dnszone_rejects_soa_serial_above_max(self):
+        """POST DNSZone with soa_serial=SOA_SERIAL_MAX+1 is rejected."""
+        self.add_permissions("nautobot_dns_models.add_dnszone", "nautobot_dns_models.view_dnsview")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnszone-list")
+        data = self._build_zone_payload("zone-serial-over.example", soa_serial=DNSZone.SOA_SERIAL_MAX + 1)
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("soa_serial", response.data)
+
 
 class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):
     """Test the Nautobot NSRecord API."""
@@ -610,6 +668,32 @@ class ARecordAPITestCase(APIViewTestCases.APIViewTestCase):
         response = self.client.post(url, data=data, format="json", **self.header)
 
         self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+
+    @override_config(nautobot_dns_models__SOA_SERIAL_AUTO_INCREMENT=True)
+    def test_post_arecord_increments_parent_zone_serial(self):
+        """POST'ing an ARecord via the API bumps the parent zone's soa_serial.
+
+        Proves the signal wiring is uniform across record types (not TXTRecord-specific).
+        """
+        self.add_permissions(
+            "nautobot_dns_models.add_arecord",
+            "nautobot_dns_models.view_dnszone",
+            "ipam.view_ipaddress",
+        )
+
+        zone = DNSZone.objects.get(name="example.com")
+        ip = IPAddress.objects.get(address="10.0.0.2/32")
+        DNSZone.objects.filter(pk=zone.pk).update(soa_serial=0)
+        _reset_dirty_zones_for_testing()
+
+        url = reverse("plugins-api:nautobot_dns_models-api:arecord-list")
+        data = {"name": "a-inc-api.example.com", "ip_address": ip.id, "zone": zone.id}
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+
+        zone.refresh_from_db()
+        self.assertEqual(zone.soa_serial, 1)
 
 
 class AAAARecordAPITestCase(APIViewTestCases.APIViewTestCase):
@@ -799,6 +883,42 @@ class TXTRecordAPITestCase(APIViewTestCases.APIViewTestCase):
                 "zone": dns_zone.id,
             },
         ]
+
+    @override_config(nautobot_dns_models__SOA_SERIAL_AUTO_INCREMENT=True)
+    def test_post_txtrecord_increments_parent_zone_serial(self):
+        """POST'ing a TXTRecord via the API bumps the parent zone's soa_serial via the post_save signal."""
+        self.add_permissions("nautobot_dns_models.add_txtrecord", "nautobot_dns_models.view_dnszone")
+
+        zone = DNSZone.objects.get(name="example.com")
+        DNSZone.objects.filter(pk=zone.pk).update(soa_serial=0)
+        _reset_dirty_zones_for_testing()
+
+        url = reverse("plugins-api:nautobot_dns_models-api:txtrecord-list")
+        data = {"name": "txt-inc-api", "text": "increment-on-post", "zone": zone.id}
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+
+        zone.refresh_from_db()
+        self.assertEqual(zone.soa_serial, 1)
+
+    @override_config(nautobot_dns_models__SOA_SERIAL_AUTO_INCREMENT=True)
+    def test_delete_txtrecord_increments_parent_zone_serial(self):
+        """DELETE'ing a TXTRecord via the API bumps the parent zone's soa_serial via the post_delete signal."""
+        self.add_permissions("nautobot_dns_models.delete_txtrecord", "nautobot_dns_models.view_txtrecord")
+
+        zone = DNSZone.objects.get(name="example.com")
+        record = TXTRecord.objects.create(name="txt-del-api", text="to-delete", zone=zone)
+        _reset_dirty_zones_for_testing()
+        DNSZone.objects.filter(pk=zone.pk).update(soa_serial=10)
+
+        url = reverse("plugins-api:nautobot_dns_models-api:txtrecord-detail", kwargs={"pk": record.pk})
+
+        response = self.client.delete(url, **self.header)
+        self.assertHttpStatus(response, status.HTTP_204_NO_CONTENT)
+
+        zone.refresh_from_db()
+        self.assertEqual(zone.soa_serial, 11)
 
 
 class PTRRecordAPITestCase(APIViewTestCases.APIViewTestCase):

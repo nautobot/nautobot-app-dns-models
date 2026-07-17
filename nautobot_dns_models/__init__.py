@@ -91,7 +91,16 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
             help_text="Enforce CNAME exclusivity",
             field_type=bool,
         ),
+        "SOA_SERIAL_AUTO_INCREMENT": ConstanceConfigItem(
+            default=False,
+            help_text="Automatically increment SOA serial number when zone data changes.",
+            field_type=bool,
+        ),
     }
+
+    def ready(self):
+        """App ready hook."""
+        super().ready()
 
 
 config = NautobotDnsModelsConfig  # pylint:disable=invalid-name

@@ -13,7 +13,7 @@ Domain registration attributes are modeled separately in `DNSRegistration`.
 - `soa_refresh`: (integer): Time in seconds for secondary name servers to query the master for the SOA record.
 - `soa_retry`: (integer): Time in seconds for secondary name servers to retry to request the serial number from the master.
 - `soa_expire`: (integer): Time in seconds for secondary name servers to stop answering requests if the master does not respond. This value must be bigger than the sum of refresh and retry.
-- `soa_serial`: (integer): Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.
+- `soa_serial`: (integer): Serial number of the zone (0–4,294,967,295, per [RFC 1982 §3](https://datatracker.ietf.org/doc/html/rfc1982#section-3)). This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated. See [SOA Serial Auto-Increment](#soa-serial-auto-increment) below.
 - `soa_minimum`: (integer): Minimum TTL for records in this zone.
 - `tenant` (Tenant, optional): Reference to the Tenant model for multi-tenancy support.
 - `auto_create_ptr` (boolean, default `False`): When enabled, creating an A or AAAA record in this zone automatically creates a matching PTR record in the most-specific reverse zone within the same DNS view. If no matching reverse zone exists, the A/AAAA creation fails with a validation error.
@@ -26,3 +26,19 @@ Domain registration attributes are modeled separately in `DNSRegistration`.
     - Empty labels (e.g., consecutive dots or leading/trailing dots) are not allowed
 
     See the [installation guide](../admin/install.md#app-configuration) for configuration options.
+
++++ 2.1.0 "SOA serial auto-increment"
+
+    ## SOA Serial Auto-Increment
+
+    When enabled via the `SOA_SERIAL_AUTO_INCREMENT` [configuration option](../admin/install.md#app-configuration), the `soa_serial` field is automatically incremented by 1 whenever zone data changes. This includes:
+
+    - **Record changes** — Creating, updating, or deleting any record type (A, AAAA, PTR, CNAME, NS, MX, SRV, TXT) in the zone.
+    - **Zone self-changes** — Modifying zone fields such as `name`, `ttl`, `filename`, `soa_mname`, `soa_rname`, `soa_refresh`, `soa_retry`, `soa_expire`, or `soa_minimum`.
+
+    Changes to `description` or `tenant` do **not** trigger a serial increment, as these fields are not part of the DNS zone data served to secondary name servers.
+
+    The `soa_serial` field is a Django `PositiveBigIntegerField` with a valid range of 0–4,294,967,295 (unsigned 32-bit, per [RFC 1982 §3](https://datatracker.ietf.org/doc/html/rfc1982#section-3)) for user-supplied values in both the GUI and API. The bound is enforced at the model layer via `MaxValueValidator`; the GUI form and REST API serializer derive their bounds from the model so the limit is consistent across all entry points. The auto-increment wraps around to 0 when the serial reaches its maximum value, consistent with [RFC 1982 (Serial Number Arithmetic)](https://datatracker.ietf.org/doc/html/rfc1982).
+
+    !!! note
+        `QuerySet.bulk_create()`, `QuerySet.bulk_update()`, `QuerySet.update()`, and raw SQL all bypass auto-increment because Django does not fire `post_save` / `post_delete` signals for those code paths. Use individual `.save()` / `.delete()` calls or the REST API for operations that require serial tracking.
