@@ -6,7 +6,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("nautobot_dns_models", "0007_dnsregistrar_dnsregistration"),
+        ("nautobot_dns_models", "0008_dnszone_auto_create_ptr"),
     ]
 
     operations = [
