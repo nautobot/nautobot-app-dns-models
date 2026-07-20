@@ -673,7 +673,7 @@ class ARecordAPITestCase(APIViewTestCases.APIViewTestCase):
     def test_post_arecord_increments_parent_zone_serial(self):
         """POST'ing an ARecord via the API bumps the parent zone's soa_serial.
 
-        Proves the signal wiring is uniform across record types (not TXTRecord-specific).
+        Proves the model-method behavior is uniform across record types (not TXTRecord-specific).
         """
         self.add_permissions(
             "nautobot_dns_models.add_arecord",
@@ -886,7 +886,7 @@ class TXTRecordAPITestCase(APIViewTestCases.APIViewTestCase):
 
     @override_config(nautobot_dns_models__SOA_SERIAL_AUTO_INCREMENT=True)
     def test_post_txtrecord_increments_parent_zone_serial(self):
-        """POST'ing a TXTRecord via the API bumps the parent zone's soa_serial via the post_save signal."""
+        """POST'ing a TXTRecord via the API bumps the parent zone's soa_serial."""
         self.add_permissions("nautobot_dns_models.add_txtrecord", "nautobot_dns_models.view_dnszone")
 
         zone = DNSZone.objects.get(name="example.com")
@@ -904,7 +904,7 @@ class TXTRecordAPITestCase(APIViewTestCases.APIViewTestCase):
 
     @override_config(nautobot_dns_models__SOA_SERIAL_AUTO_INCREMENT=True)
     def test_delete_txtrecord_increments_parent_zone_serial(self):
-        """DELETE'ing a TXTRecord via the API bumps the parent zone's soa_serial via the post_delete signal."""
+        """DELETE'ing a TXTRecord via the API bumps the parent zone's soa_serial."""
         self.add_permissions("nautobot_dns_models.delete_txtrecord", "nautobot_dns_models.view_txtrecord")
 
         zone = DNSZone.objects.get(name="example.com")
@@ -919,6 +919,30 @@ class TXTRecordAPITestCase(APIViewTestCases.APIViewTestCase):
 
         zone.refresh_from_db()
         self.assertEqual(zone.soa_serial, 11)
+
+    @override_config(nautobot_dns_models__SOA_SERIAL_AUTO_INCREMENT=True)
+    def test_patch_txtrecord_zone_increments_old_and_new_zone_serials(self):
+        """Moving a TXTRecord through the API bumps both affected zones."""
+        self.add_permissions("nautobot_dns_models.change_txtrecord", "nautobot_dns_models.view_dnszone")
+
+        old_zone = DNSZone.objects.get(name="example.com")
+        new_zone = _create_zone(name="txt-move-target.example")
+        record = TXTRecord.objects.get(name="txt")
+        DNSZone.objects.filter(pk__in=[old_zone.pk, new_zone.pk]).update(soa_serial=0)
+        _reset_dirty_zones_for_testing()
+
+        response = self.client.patch(
+            self._get_detail_url(record),
+            data={"zone": new_zone.pk},
+            format="json",
+            **self.header,
+        )
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+
+        old_zone.refresh_from_db()
+        new_zone.refresh_from_db()
+        self.assertEqual(old_zone.soa_serial, 1)
+        self.assertEqual(new_zone.soa_serial, 1)
 
 
 class PTRRecordAPITestCase(APIViewTestCases.APIViewTestCase):

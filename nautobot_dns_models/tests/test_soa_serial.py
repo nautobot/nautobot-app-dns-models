@@ -114,6 +114,25 @@ class SOASerialRecordCRUDTestCase(TestCase):
         record.delete()
         self.assertEqual(_refresh_serial(self.zone), serial_after_create + 1)
 
+    def test_record_zone_change_increments_old_and_new_zones(self):
+        """Moving a record increments both the zone losing it and the zone receiving it."""
+        other_zone = DNSZone.objects.create(
+            name="move-target.example",
+            filename="move-target.example.zone",
+            soa_mname="ns1.move-target.example",
+            soa_rname="admin@move-target.example",
+            soa_serial=100,
+        )
+        record = TXTRecord.objects.create(name="move", text="moving", zone=self.zone)
+        serial_after_create = _refresh_serial(self.zone)
+
+        _reset_dirty_zones_for_testing()
+        record.zone = other_zone
+        record.save()
+
+        self.assertEqual(_refresh_serial(self.zone), serial_after_create + 1)
+        self.assertEqual(_refresh_serial(other_zone), 101)
+
     # ── config disabled ──
 
     @override_config(nautobot_dns_models__SOA_SERIAL_AUTO_INCREMENT=False)

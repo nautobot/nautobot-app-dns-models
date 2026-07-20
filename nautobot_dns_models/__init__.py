@@ -99,5 +99,4 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
     }
 
 
-
 config = NautobotDnsModelsConfig  # pylint:disable=invalid-name

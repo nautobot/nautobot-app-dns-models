@@ -539,8 +539,15 @@ class DNSRecord(DNSModel):
     comment = models.CharField(max_length=200, help_text="Comment for the Record.", blank=True)
 
     def save(self, *args, **kwargs):
-        """Increment the parent zone's SOA serial after every record save."""
+        """Increment the affected zones' SOA serials after every record save."""
+        previous_zone_id = None
+        if not self._state.adding:
+            previous_zone_id = type(self).objects.filter(pk=self.pk).values_list("zone_id", flat=True).first()
+
         super().save(*args, **kwargs)
+
+        if previous_zone_id is not None and previous_zone_id != self.zone_id:
+            DNSZone.objects.get(pk=previous_zone_id).increment_soa_serial()
         if getattr(self, "zone_id", None):
             self.zone.increment_soa_serial()
 

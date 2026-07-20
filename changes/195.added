@@ -1,4 +1,4 @@
 Added `SOA_SERIAL_AUTO_INCREMENT` constance configuration option to automatically increment SOA serial numbers when zone data changes.
 Added `increment_soa_serial()` method to `DNSZone` model with atomic row-level locking.
-Added `post_save` and `post_delete` signal handlers for all DNS record types to trigger serial increment.
+Added `save()` and `delete()` overrides to the abstract `DNSRecord` model so all DNS record types trigger serial increments.
 Widened `soa_serial` to `PositiveBigIntegerField` with a `MaxValueValidator` of 4,294,967,295 (the full unsigned 32-bit range per [RFC 1982 §3](https://datatracker.ietf.org/doc/html/rfc1982#section-3)). The bound is enforced at the model layer and inherited by the GUI form and REST API serializer.
