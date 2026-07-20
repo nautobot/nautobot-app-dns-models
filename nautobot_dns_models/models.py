@@ -540,10 +540,9 @@ class DNSRecord(DNSModel):
 
     def save(self, *args, **kwargs):
         """Increment the parent zone's SOA serial after every record save."""
-        result = super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
         if getattr(self, "zone_id", None):
             self.zone.increment_soa_serial()
-        return result
 
     def delete(self, *args, **kwargs):
         """Increment the parent zone's SOA serial after a record is deleted.
@@ -554,7 +553,7 @@ class DNSRecord(DNSModel):
         zone = getattr(self, "zone", None)
         result = super().delete(*args, **kwargs)
         if zone is not None:
-            zone.increment_soa_serial()
+            zone.increment_soa_serial()  # pylint: disable=no-member
         return result
 
     def clean(self):

@@ -98,9 +98,6 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
         ),
     }
 
-    def ready(self):
-        """App ready hook."""
-        super().ready()
 
 
 config = NautobotDnsModelsConfig  # pylint:disable=invalid-name
