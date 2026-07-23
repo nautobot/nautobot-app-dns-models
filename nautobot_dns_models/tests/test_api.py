@@ -1,4 +1,5 @@
 """Unit tests for nautobot_dns_models."""
+# pylint: disable=too-many-lines
 
 from datetime import date
 
@@ -516,29 +517,64 @@ class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        dns_zone = _create_zone(name="example.com")
+        cls.ns_zone = _create_zone(name="example.com")
 
-        NSRecord.objects.create(name="ns1", server="ns1.example.com.", zone=dns_zone)
-        NSRecord.objects.create(name="ns2", server="ns2.example.com.", zone=dns_zone)
-        NSRecord.objects.create(name="ns3", server="ns3.example.com.", zone=dns_zone)
+        NSRecord.objects.create(name="ns1", server="ns1.example.com.", zone=cls.ns_zone)
+        NSRecord.objects.create(name="ns2", server="ns2.example.com.", zone=cls.ns_zone)
+        NSRecord.objects.create(name="ns3", server="ns3.example.com.", zone=cls.ns_zone)
 
         cls.create_data = [
             {
                 "name": "ns4",
                 "server": "ns4.example.com.",
-                "zone": dns_zone.id,
+                "zone": cls.ns_zone.id,
             },
             {
                 "name": "ns5",
                 "server": "ns5.example.com.",
-                "zone": dns_zone.id,
+                "zone": cls.ns_zone.id,
             },
             {
                 "name": "ns6",
                 "server": "ns6.example.com.",
-                "zone": dns_zone.id,
+                "zone": cls.ns_zone.id,
             },
         ]
+
+    def _post_ns_with_ttl(self, name, ttl):
+        """POST an NS record with an explicit TTL value."""
+        self.add_permissions("nautobot_dns_models.add_nsrecord")
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+        url = reverse("plugins-api:nautobot_dns_models-api:nsrecord-list")
+        return self.client.post(
+            url,
+            data={"name": name, "server": "ns1.example.com.", "zone": self.ns_zone.id, "ttl": ttl},
+            format="json",
+            **self.header,
+        )
+
+    def test_api_accepts_ttl_zero(self):
+        """TTL of 0 is valid per RFC 8767 §4."""
+        response = self._post_ns_with_ttl("ns-zero", 0)
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["ttl"], 0)
+
+    def test_api_accepts_sub_300_ttl(self):
+        """Sub-300 TTL is valid; the old MinValueValidator(300) floor was incorrect."""
+        response = self._post_ns_with_ttl("ns-sub300", 60)
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["ttl"], 60)
+
+    def test_api_accepts_uint32_max_ttl(self):
+        """RFC 8767 §4 TTL maximum (4294967295) is accepted."""
+        response = self._post_ns_with_ttl("ns-max", 4294967295)
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["ttl"], 4294967295)
+
+    def test_api_rejects_ttl_above_uint32_max(self):
+        """Values above unsigned 32-bit maximum are rejected at the serializer layer."""
+        response = self._post_ns_with_ttl("ns-overflow", 4294967296)
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
 
 
 class ARecordAPITestCase(APIViewTestCases.APIViewTestCase):

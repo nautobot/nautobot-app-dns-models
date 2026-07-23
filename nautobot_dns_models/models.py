@@ -13,6 +13,12 @@ from netutils.ip import ipaddress_address
 # Reverse-DNS roots per RFC 1035 §3.5 and RFC 3596 §2.5
 RESERVED_ROOTS = {"in-addr.arpa", "ip6.arpa", "arpa"}
 
+# All DNS integer fields use the full unsigned 32-bit range (0..4294967295).
+# RFC 8767 §4 defines TTL as a 32-bit unsigned integer (updating RFC 2181).
+# RFC 1035 §3.3.13 defines SOA fields as 32-bit values, explicitly unsigned for SERIAL and MINIMUM;
+# RFC 1982 §7 specifies SERIAL's uint32 range and arithmetic.
+UINT32_MAX = 2**32 - 1
+
 
 def dns_wire_label_length(label):
     """Return the wire-format (IDNA/Punycode) length of a DNS label."""
@@ -75,8 +81,9 @@ class DNSModel(PrimaryModel):
     # name is effectively a NOOP here; it's overridden in both subclasses but
     # is here so that linters don't complain about it being used in clean().
     name = models.CharField(max_length=200)
-    ttl = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+    # RFC 8767 §4 updated RFC 2181: TTL is an unsigned 32-bit integer (0..4294967295).
+    ttl = models.PositiveBigIntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(UINT32_MAX)], default=3600, help_text="Time To Live."
     )
 
     class Meta:
@@ -210,8 +217,9 @@ class DNSZone(DNSModel):
         verbose_name="View",
         default=get_default_view_pk,
     )
-    ttl = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+    # RFC 8767 §4 updated RFC 2181: TTL is an unsigned 32-bit integer (0..4294967295).
+    ttl = models.PositiveBigIntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(UINT32_MAX)],
         default=3600,
         help_text="Time To Live.",
         verbose_name="TTL",
@@ -225,32 +233,34 @@ class DNSZone(DNSModel):
         verbose_name="SOA MNAME",
     )
     soa_rname = models.EmailField(help_text="Admin Email for the Zone in the form", verbose_name="SOA RNAME")
-    soa_refresh = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+    # RFC 1035 §3.3.13: SOA fields are 32-bit values, explicitly unsigned for SERIAL and MINIMUM.
+    # RFC 1982 §7 specifies SERIAL's uint32 range (0..UINT32_MAX) and arithmetic.
+    soa_refresh = models.PositiveBigIntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(UINT32_MAX)],
         default=86400,
         help_text="Number of seconds after which secondary name servers should query the master for the SOA record, to detect zone changes.",
         verbose_name="SOA Refresh",
     )
-    soa_retry = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+    soa_retry = models.PositiveBigIntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(UINT32_MAX)],
         default=7200,
         help_text="Number of seconds after which secondary name servers should retry to request the serial number from the master if the master does not respond.",
         verbose_name="SOA Retry",
     )
-    soa_expire = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+    soa_expire = models.PositiveBigIntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(UINT32_MAX)],
         default=3600000,
         help_text="Number of seconds after which secondary name servers should stop answering request for this zone if the master does not respond. This value must be bigger than the sum of Refresh and Retry.",
         verbose_name="SOA Expire",
     )
-    soa_serial = models.IntegerField(
-        validators=[MinValueValidator(0), MaxValueValidator(2147483647)],
+    soa_serial = models.PositiveBigIntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(UINT32_MAX)],
         default=0,
         help_text="Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.",
         verbose_name="SOA Serial",
     )
-    soa_minimum = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+    soa_minimum = models.PositiveBigIntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(UINT32_MAX)],
         default=3600,
         help_text="Minimum TTL for records in this zone.",
         verbose_name="SOA Minimum",
@@ -385,8 +395,9 @@ class DNSRecord(DNSModel):
 
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
     zone = ForeignKeyWithAutoRelatedName(DNSZone, on_delete=models.PROTECT)
-    _ttl = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+    # RFC 8767 §4 updated RFC 2181: TTL is an unsigned 32-bit integer (0..4294967295).
+    _ttl = models.PositiveBigIntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(UINT32_MAX)],
         help_text="Time To Live (if no value is given, the Zone TTL will be used).",
         blank=True,
         null=True,
@@ -463,7 +474,7 @@ class DNSRecord(DNSModel):
     @property
     def ttl(self):
         """Return the TTL value for the record."""
-        if not self._ttl:
+        if self._ttl is None:
             return self.zone.ttl  # pylint: disable=no-member
         return self._ttl
 
