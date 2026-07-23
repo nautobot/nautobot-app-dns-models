@@ -2,13 +2,15 @@
 
 from django import forms
 from nautobot.apps.forms import (
+    DynamicModelChoiceField,
     DynamicModelMultipleChoiceField,
     NautobotBulkEditForm,
     NautobotModelForm,
     TagsBulkEditFormMixin,
 )
 from nautobot.extras.forms import NautobotFilterForm
-from nautobot.ipam.models import Prefix
+from nautobot.ipam.choices import IPAddressVersionChoices
+from nautobot.ipam.models import IPAddress, Prefix
 
 from nautobot_dns_models import models
 
@@ -146,6 +148,12 @@ class NSRecordFilterForm(NautobotFilterForm):
 class ARecordForm(NautobotModelForm):
     """ARecord creation/edit form."""
 
+    address = DynamicModelChoiceField(
+        queryset=IPAddress.objects.all(),
+        required=True,
+        query_params={"ip_version": IPAddressVersionChoices.VERSION_4},
+    )
+
     class Meta:
         """Meta attributes."""
 
@@ -188,6 +196,12 @@ class ARecordFilterForm(NautobotFilterForm):
 
 class AAAARecordForm(NautobotModelForm):
     """AAAARecord creation/edit form."""
+
+    address = DynamicModelChoiceField(
+        queryset=IPAddress.objects.all(),
+        required=True,
+        query_params={"ip_version": IPAddressVersionChoices.VERSION_6},
+    )
 
     class Meta:
         """Meta attributes."""
