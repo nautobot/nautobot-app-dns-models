@@ -474,6 +474,18 @@ def createsuperuser(context, user="admin"):
     run_command(context, command)
 
 
+@task
+def add_example_data(context):
+    """Populate Nautobot with example DNS Models data to showcase the app.
+
+    Creates a coherent set of DNS objects (view, registrar, forward/reverse zones,
+    registration, and one of every record type) plus the core Nautobot IPAM objects
+    they depend on. Idempotent: safe to run more than once.
+    """
+    start(context, service=["nautobot"])
+    nbshell(context, file="development/example_data.py", plain=True)
+
+
 @task(
     help={
         "name": "name of the migration to be created; if unspecified, will autogenerate a name",
