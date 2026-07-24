@@ -254,7 +254,7 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     pk = forms.ModelMultipleChoiceField(queryset=models.DNSZone.objects.all(), widget=forms.MultipleHiddenInput)
     dns_view = DynamicModelChoiceField(
         queryset=models.DNSView.objects.all(),
-        required=True,
+        required=False,
         label="View",
     )
     ttl = forms.IntegerField(
