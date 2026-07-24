@@ -296,6 +296,32 @@ This will safely shut down all of your running Docker containers for this projec
 !!! warning
 	If you're wanting to reset the database and configuration settings, you can use the `invoke destroy` command, but **you will lose any data stored in those containers**, so make sure that is what you want to do.
 
+
+### Invoke - Create Example DNS Model Objects
+
+Adds 4 zones worth of DNS Model objects and prerequisite core objects.
+
+```bash
+invoke add-example-data
+
+[...]
+
+  [exists ] NSRecord @ -> ns1.contoso.io.
+  [exists ] ARecord www -> 10.40.0.10
+  [exists ] ARecord app -> 10.40.0.20
+  [exists ] AAAARecord www -> 2001:db8:abcd:42::10
+  [exists ] CNAMERecord docs -> www.contoso.io
+  [exists ] MXRecord @ -> mail.contoso.io (pref 10)
+  [exists ] TXTRecord @ (SPF)
+  [exists ] SRVRecord _sip._tcp -> sip.contoso.io:5060
+  [exists ] PTRRecord 10 -> www.contoso.io
+>>> >>> >>> >>> 
+Done. 0 object(s) created, 77 already existed (77 total).
+>>> 
+now exiting InteractiveConsole...
+
+```
+
 ### Real-Time Updates? How Cool!
 
 Your environment should now be fully setup, all necessary Docker containers are created and running, and you're logged into Nautobot in your web browser. Now what?
