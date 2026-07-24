@@ -252,6 +252,56 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     """DNSZone bulk edit form."""
 
     pk = forms.ModelMultipleChoiceField(queryset=models.DNSZone.objects.all(), widget=forms.MultipleHiddenInput)
+    dns_view = DynamicModelChoiceField(
+        queryset=models.DNSView.objects.all(),
+        required=True,
+        label="View",
+    )
+    ttl = forms.IntegerField(
+        required=False,
+        min_value=300,
+        max_value=2147483647,
+        help_text="Time To Live.",
+    )
+    soa_mname = forms.CharField(
+        required=False,
+        max_length=200,
+        help_text="FQDN of the Authoritative Name Server for Zone.",
+    )
+    soa_rname = forms.EmailField(
+        required=False,
+        help_text="Admin Email for the Zone in the form",
+    )
+    soa_refresh = forms.IntegerField(
+        required=False,
+        min_value=300,
+        max_value=2147483647,
+        help_text="Number of seconds after which secondary name servers should query the master for the SOA record, to detect zone changes.",
+    )
+    soa_retry = forms.IntegerField(
+        required=False,
+        min_value=300,
+        max_value=2147483647,
+        help_text="Number of seconds after which secondary name servers should retry to request the serial number from the master if the master does not respond.",
+    )
+    soa_expire = forms.IntegerField(
+        required=False,
+        min_value=300,
+        max_value=2147483647,
+        help_text="Number of seconds after which secondary name servers should stop answering request for this zone if the master does not respond. This value must be bigger than the sum of Refresh and Retry.",
+    )
+    soa_serial = forms.IntegerField(
+        required=False,
+        min_value=0,
+        max_value=2147483647,
+        help_text="Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.",
+    )
+    soa_minimum = forms.IntegerField(
+        required=False,
+        min_value=300,
+        max_value=2147483647,
+        help_text="Minimum TTL for records in this zone.",
+    )
     description = forms.CharField(required=False)
     tenant = DynamicModelChoiceField(
         queryset=Tenant.objects.all(),
