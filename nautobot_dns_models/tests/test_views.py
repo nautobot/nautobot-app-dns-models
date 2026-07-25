@@ -176,6 +176,7 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             "soa_expire": 3600000,
             "soa_serial": 0,
             "soa_minimum": 172800,
+            "enabled": True,
         }
 
         cls.csv_data = (
@@ -183,7 +184,7 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             f"Test 3, {dns_view.id}, 3600, Description 3, filename 3, auth-server, admin@example_three.com, 86400, 7200, 3600000, 0, 172800",
         )
 
-        cls.bulk_edit_data = {"description": "Bulk edit views"}
+        cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}
 
 
 class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):

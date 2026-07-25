@@ -447,6 +447,7 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "filename",
@@ -466,6 +467,7 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
                 "name": "example.com",
                 "dns_view": dns_view.id,
                 "filename": "example.com.zone",
+                "enabled": False,
                 "soa_mname": "ns1.example.com",
                 "soa_rname": "admin@example.com",
                 "soa_refresh": 3600,
@@ -505,6 +507,25 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
         # Single-label placeholder is stored without a trailing dot
         self.assertEqual(response.data["soa_rname"], "invalid")
+
+    def test_update_enabled(self):
+        """Partial update should allow toggling enabled on a DNSZone."""
+        self.add_permissions("nautobot_dns_models.change_dnszone")
+
+        dns_view = DNSView.objects.get(name="Default")
+        zone = _create_zone(name="publish.example", dns_view=dns_view)
+        self.assertTrue(zone.enabled)
+
+        response = self.client.patch(
+            self._get_detail_url(zone),
+            data={"enabled": False},
+            format="json",
+            **self.header,
+        )
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+
+        zone.refresh_from_db()
+        self.assertFalse(zone.enabled)
 
     def test_create_zone_helper_uses_supplied_dns_view(self):
         """_create_zone should use the DNSView explicitly provided by the caller."""

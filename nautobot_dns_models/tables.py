@@ -1,7 +1,7 @@
 """Tables for nautobot_dns_models."""
 
 import django_tables2 as tables
-from nautobot.apps.tables import BaseTable, ButtonsColumn, ToggleColumn
+from nautobot.apps.tables import BaseTable, BooleanColumn, ButtonsColumn, ToggleColumn
 from nautobot.tenancy.tables import TenantColumn
 
 from nautobot_dns_models import models
@@ -129,6 +129,7 @@ class DNSZoneTable(BaseTable):
     name = tables.Column(linkify=True)
     tenant = TenantColumn()
     dns_view = tables.Column(linkify=True)
+    enabled = BooleanColumn()
     actions = ButtonsColumn(
         models.DNSZone,
         buttons=("changelog", "edit", "delete"),
@@ -142,6 +143,7 @@ class DNSZoneTable(BaseTable):
             "pk",
             "name",
             "dns_view",
+            "enabled",
             "ttl",
             "filename",
             "description",
@@ -160,6 +162,7 @@ class DNSZoneTable(BaseTable):
             "pk",
             "name",
             "dns_view",
+            "enabled",
             "ttl",
             "filename",
             "soa_expire",

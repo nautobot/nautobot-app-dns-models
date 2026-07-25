@@ -2,14 +2,19 @@
 
 from django import forms
 from nautobot.apps.forms import (
+    BulkEditNullBooleanSelect,
     DatePicker,
     DynamicModelChoiceField,
     DynamicModelMultipleChoiceField,
     NautobotBulkEditForm,
     NautobotFilterForm,
     NautobotModelForm,
+    StaticSelect2,
     TagsBulkEditFormMixin,
 )
+
+# This should be updated after https://github.com/nautobot/nautobot/issues/9301 is fixed
+from nautobot.core.forms.constants import BOOLEAN_WITH_BLANK_CHOICES
 from nautobot.extras.models import Status
 from nautobot.ipam.choices import IPAddressVersionChoices
 from nautobot.ipam.models import IPAddress, Prefix
@@ -253,6 +258,7 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
         required=False,
     )
     auto_create_ptr = forms.NullBooleanField(required=False, label="Auto-create PTR Records")
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -272,12 +278,17 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
         help_text="Search within Name, Filename, SOA MNAME, and SOA RNAME.",
     )
     name = forms.CharField(required=False, label="Name")
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     filename = forms.CharField(required=False, label="Filename")
     model = models.DNSZone
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "filename",
     ]
 

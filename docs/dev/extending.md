@@ -52,6 +52,7 @@ erDiagram
     DNSZone {
         charfield name UK
         DNSView dns_view FK
+        boolean enabled
         integer ttl
         charfield filename
         textfield description

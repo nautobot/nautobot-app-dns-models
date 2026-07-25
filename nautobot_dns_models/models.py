@@ -250,6 +250,10 @@ class DNSZone(DNSModel):
         verbose_name="View",
         default=get_default_view_pk,
     )
+    enabled = models.BooleanField(
+        default=True,
+        help_text="Whether this zone is eligible for publication by external integrations.",
+    )
     ttl = models.PositiveBigIntegerField(
         validators=[MaxValueValidator(UINT32_MAX)],
         default=3600,
