@@ -8,6 +8,7 @@ from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from netutils.ip import ipaddress_address
 
 from nautobot_dns_models.models import (
+    UINT32_MAX,
     AAAARecord,
     ARecord,
     CNAMERecord,
@@ -802,13 +803,6 @@ class TestDNSZoneFindForPtrdname(TestCase):
         )
 
 
-# All DNS integer fields use the full unsigned 32-bit range (0..4294967295).
-# RFC 8767 §4 defines TTL as a 32-bit unsigned integer (updating RFC 2181).
-# RFC 1035 §3.3.13 defines SOA fields as 32-bit values, explicitly unsigned for SERIAL and MINIMUM;
-# RFC 1982 §7 specifies SERIAL's uint32 range and arithmetic.
-UINT32_MAX = 2**32 - 1
-
-
 class DNSZoneIntegerFieldBoundaryTest(TestCase):
     """Boundary tests for integer fields on DNSZone.
 
@@ -834,89 +828,103 @@ class DNSZoneIntegerFieldBoundaryTest(TestCase):
         return DNSZone(**defaults)
 
     def test_ttl_accepts_zero(self):
+        """TTL floor is 0; PositiveBigIntegerField enforces the minimum without a separate validator."""
         zone = self._make_zone(name="ttl-zero.example", ttl=0)
         zone.full_clean()
 
-    def test_ttl_accepts_sub_300(self):
-        zone = self._make_zone(name="ttl-sub300.example", ttl=60)
-        zone.full_clean()
-
     def test_ttl_accepts_uint32_max(self):
+        """RFC 8767 §4 unsigned 32-bit maximum is accepted."""
         zone = self._make_zone(name="ttl-max.example", ttl=UINT32_MAX)
         zone.full_clean()
 
     def test_ttl_rejects_above_uint32_max(self):
+        """Values above unsigned 32-bit maximum are rejected by MaxValueValidator."""
         zone = self._make_zone(name="ttl-overflow.example", ttl=UINT32_MAX + 1)
         with self.assertRaises(ValidationError):
             zone.full_clean()
 
     def test_soa_refresh_accepts_zero(self):
+        """SOA REFRESH floor is 0."""
         zone = self._make_zone(name="refresh-zero.example", soa_refresh=0)
         zone.full_clean()
 
     def test_soa_refresh_accepts_uint32_max(self):
+        """SOA REFRESH unsigned 32-bit maximum is accepted."""
         zone = self._make_zone(name="refresh-max.example", soa_refresh=UINT32_MAX)
         zone.full_clean()
 
     def test_soa_refresh_rejects_above_uint32_max(self):
+        """SOA REFRESH values above unsigned 32-bit maximum are rejected."""
         zone = self._make_zone(name="refresh-overflow.example", soa_refresh=UINT32_MAX + 1)
         with self.assertRaises(ValidationError):
             zone.full_clean()
 
     def test_soa_retry_accepts_zero(self):
+        """SOA RETRY floor is 0."""
         zone = self._make_zone(name="retry-zero.example", soa_retry=0)
         zone.full_clean()
 
     def test_soa_retry_accepts_uint32_max(self):
+        """SOA RETRY unsigned 32-bit maximum is accepted."""
         zone = self._make_zone(name="retry-max.example", soa_retry=UINT32_MAX)
         zone.full_clean()
 
     def test_soa_retry_rejects_above_uint32_max(self):
+        """SOA RETRY values above unsigned 32-bit maximum are rejected."""
         zone = self._make_zone(name="retry-overflow.example", soa_retry=UINT32_MAX + 1)
         with self.assertRaises(ValidationError):
             zone.full_clean()
 
     def test_soa_expire_accepts_zero(self):
+        """SOA EXPIRE floor is 0."""
         zone = self._make_zone(name="expire-zero.example", soa_expire=0)
         zone.full_clean()
 
     def test_soa_expire_accepts_uint32_max(self):
+        """SOA EXPIRE unsigned 32-bit maximum is accepted."""
         zone = self._make_zone(name="expire-max.example", soa_expire=UINT32_MAX)
         zone.full_clean()
 
     def test_soa_expire_rejects_above_uint32_max(self):
+        """SOA EXPIRE values above unsigned 32-bit maximum are rejected."""
         zone = self._make_zone(name="expire-overflow.example", soa_expire=UINT32_MAX + 1)
         with self.assertRaises(ValidationError):
             zone.full_clean()
 
     def test_soa_serial_accepts_zero(self):
+        """SOA SERIAL floor is 0 (RFC 1982 §7)."""
         zone = self._make_zone(name="serial-zero.example", soa_serial=0)
         zone.full_clean()
 
     def test_soa_serial_accepts_uint32_max(self):
+        """SOA SERIAL unsigned 32-bit maximum is accepted (RFC 1982 §7)."""
         zone = self._make_zone(name="serial-max.example", soa_serial=UINT32_MAX)
         zone.full_clean()
 
     def test_soa_serial_rejects_above_uint32_max(self):
+        """SOA SERIAL values above unsigned 32-bit maximum are rejected."""
         zone = self._make_zone(name="serial-overflow.example", soa_serial=UINT32_MAX + 1)
         with self.assertRaises(ValidationError):
             zone.full_clean()
 
     def test_soa_minimum_accepts_zero(self):
+        """SOA MINIMUM floor is 0."""
         zone = self._make_zone(name="minimum-zero.example", soa_minimum=0)
         zone.full_clean()
 
     def test_soa_minimum_accepts_uint32_max(self):
+        """SOA MINIMUM unsigned 32-bit maximum is accepted."""
         zone = self._make_zone(name="minimum-max.example", soa_minimum=UINT32_MAX)
         zone.full_clean()
 
     def test_soa_minimum_rejects_above_uint32_max(self):
+        """SOA MINIMUM values above unsigned 32-bit maximum are rejected."""
         zone = self._make_zone(name="minimum-overflow.example", soa_minimum=UINT32_MAX + 1)
         with self.assertRaises(ValidationError):
             zone.full_clean()
 
 
-class DNSRecordTtlBoundaryTest(TestCase):
+class DNSRecordTTLBoundaryTest(TestCase):
     """Boundary tests for the record-level TTL field (RFC 8767 §4: unsigned 32-bit, 0..4294967295)."""
 
     @classmethod
@@ -924,27 +932,28 @@ class DNSRecordTtlBoundaryTest(TestCase):
         cls.zone = DNSZone.objects.create(name="ttl-boundary.example", ttl=3600)
 
     def test_record_ttl_accepts_zero(self):
+        """TTL floor is 0; the old MinValueValidator(300) was incorrect."""
         record = NSRecord(name="ns1", server="ns1.example.com.", zone=self.zone, _ttl=0)
         record.full_clean()
 
-    def test_record_ttl_zero_round_trips(self):
+    def test_record_ttl_zero_not_replaced_by_zone_ttl(self):
+        """TTL of 0 must not be treated as unset and silently replaced by the zone TTL (guards against falsy-check regression)."""
         record = NSRecord.objects.create(name="ns-zero", server="ns1.example.com.", zone=self.zone, _ttl=0)
         record.refresh_from_db()
         self.assertEqual(record.ttl, 0)
 
-    def test_record_ttl_accepts_sub_300(self):
-        record = NSRecord(name="ns1", server="ns1.example.com.", zone=self.zone, _ttl=60)
-        record.full_clean()
-
     def test_record_ttl_accepts_uint32_max(self):
+        """RFC 8767 §4 unsigned 32-bit maximum is accepted."""
         record = NSRecord(name="ns1", server="ns1.example.com.", zone=self.zone, _ttl=UINT32_MAX)
         record.full_clean()
 
     def test_record_ttl_rejects_above_uint32_max(self):
+        """Values above unsigned 32-bit maximum are rejected by MaxValueValidator."""
         record = NSRecord(name="ns1", server="ns1.example.com.", zone=self.zone, _ttl=UINT32_MAX + 1)
         with self.assertRaises(ValidationError):
             record.full_clean()
 
     def test_record_inherits_zone_ttl_when_no_record_ttl_set(self):
+        """When no record-level TTL is set, the zone TTL is returned by the ttl property."""
         record = NSRecord.objects.create(name="ns1", server="ns1.example.com.", zone=self.zone)
         self.assertEqual(record.ttl, self.zone.ttl)

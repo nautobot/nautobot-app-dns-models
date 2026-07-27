@@ -559,12 +559,6 @@ class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
         self.assertEqual(response.data["ttl"], 0)
 
-    def test_api_accepts_sub_300_ttl(self):
-        """Sub-300 TTL is valid; the old MinValueValidator(300) floor was incorrect."""
-        response = self._post_ns_with_ttl("ns-sub300", 60)
-        self.assertHttpStatus(response, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["ttl"], 60)
-
     def test_api_accepts_uint32_max_ttl(self):
         """RFC 8767 §4 TTL maximum (4294967295) is accepted."""
         response = self._post_ns_with_ttl("ns-max", 4294967295)
