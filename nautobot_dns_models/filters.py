@@ -3,7 +3,7 @@
 import django_filters
 from django.db.models import F
 from django.db.models.functions import Coalesce
-from nautobot.apps.filters import NautobotFilterSet, NaturalKeyOrPKMultipleChoiceFilter, SearchFilter
+from nautobot.apps.filters import NaturalKeyOrPKMultipleChoiceFilter, NautobotFilterSet, SearchFilter
 from netaddr import IPAddress as NetIPAddress
 
 from nautobot_dns_models import models
