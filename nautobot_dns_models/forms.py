@@ -13,7 +13,7 @@ from nautobot.apps.forms import (
     TagsBulkEditFormMixin,
 )
 
-# This should be updated after https://github.com/nautobot/nautobot/issues/9301 is fixed
+# This should be updated after https://github.com/nautobot/nautobot/issues/9302 is resolved
 from nautobot.core.forms.constants import BOOLEAN_WITH_BLANK_CHOICES
 from nautobot.extras.models import Status
 from nautobot.ipam.choices import IPAddressVersionChoices
