@@ -261,6 +261,7 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
         required=False,
         min_value=300,
         max_value=2147483647,
+        label="TTL",
         help_text="Time To Live.",
     )
     soa_mname = forms.CharField(
