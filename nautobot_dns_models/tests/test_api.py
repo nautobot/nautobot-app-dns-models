@@ -554,19 +554,19 @@ class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):
         )
 
     def test_api_accepts_ttl_zero(self):
-        """TTL of 0 is valid per RFC 8767 §4."""
+        """TTL of 0 is valid."""
         response = self._post_ns_with_ttl("ns-zero", 0)
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
         self.assertEqual(response.data["ttl"], 0)
 
     def test_api_accepts_uint32_max_ttl(self):
-        """RFC 8767 §4 TTL maximum (4294967295) is accepted."""
+        """TTL at the uint32 maximum is accepted."""
         response = self._post_ns_with_ttl("ns-max", 4294967295)
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
         self.assertEqual(response.data["ttl"], 4294967295)
 
     def test_api_rejects_ttl_above_uint32_max(self):
-        """Values above unsigned 32-bit maximum are rejected at the serializer layer."""
+        """TTL above the uint32 maximum is rejected."""
         response = self._post_ns_with_ttl("ns-overflow", 4294967296)
         self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
 
