@@ -93,6 +93,27 @@ class DNSZoneTest(TestCase):
         self.assertTrue(form.is_valid())
         self.assertTrue(form.save())
 
+    def test_soa_rname_accepts_value_without_at_sign(self):
+        form = forms.DNSZoneForm(
+            data={
+                "name": "Catalog",
+                "dns_view": DNSView.objects.get(name="Default").id,
+                "ttl": 3600,
+                "filename": "catalog.zone",
+                "soa_mname": "invalid.",
+                "soa_rname": "invalid.",
+                "soa_refresh": 10800,
+                "soa_retry": 3600,
+                "soa_expire": 604800,
+                "soa_serial": 202,
+                "soa_minimum": 3600,
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        # Single-label placeholder is stored without a trailing dot
+        self.assertEqual(form.save().soa_rname, "invalid")
+
     def test_validate_name_dnszone_is_required(self):
         form = forms.DNSZoneForm(data={"ttl": "1010101"})
         self.assertFalse(form.is_valid())

@@ -2,7 +2,7 @@
 
 from constance import config as constance_config
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, validate_email
 from django.db import models
 from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
@@ -26,6 +26,40 @@ def dns_wire_label_length(label):
         return len(label)
 
     return len("xn--" + label.encode("punycode").decode("ascii"))
+
+
+def _find_unescaped_dot(value):
+    """Return the position of the first unescaped dot, or None."""
+    character_is_escaped = False
+    for index, character in enumerate(value):
+        if character_is_escaped:
+            character_is_escaped = False
+            continue
+
+        if character == "\\":
+            character_is_escaped = True
+        elif character == ".":
+            return index
+
+    return None
+
+
+def normalize_soa_rname(value):
+    """Normalize a basic DNS-style SOA RNAME mailbox to email form."""
+    if not value or "@" in value:
+        return value
+
+    value_without_root = value.removesuffix(".")
+    separator = _find_unescaped_dot(value_without_root)
+    if separator is None:
+        return value_without_root
+
+    local_part = value_without_root[:separator].replace(r"\.", ".")
+    domain = value_without_root[separator + 1 :]
+    if not local_part or not domain or "\\" in local_part or "\\" in domain or "" in domain.split("."):
+        return value
+
+    return f"{local_part}@{domain}"
 
 
 def prior_checks_ptr_record_creation(record):
@@ -230,7 +264,11 @@ class DNSZone(DNSModel):
         null=False,
         verbose_name="SOA MNAME",
     )
-    soa_rname = models.EmailField(help_text="Admin Email for the Zone in the form", verbose_name="SOA RNAME")
+    soa_rname = models.CharField(
+        max_length=254,
+        help_text="Mailbox of the person responsible for the zone or a single-label placeholder.",
+        verbose_name="SOA RNAME",
+    )
     soa_refresh = models.PositiveBigIntegerField(
         validators=[MaxValueValidator(UINT32_MAX)],
         default=86400,
@@ -285,6 +323,34 @@ class DNSZone(DNSModel):
     def __str__(self):
         """Stringify instance."""
         return f"{self.name} ({self.dns_view})"
+
+    def clean(self):
+        """Normalize plain DNS-style RNAME mailboxes to email form."""
+        super().clean()
+
+        invalid_rname_message = (
+            "SOA RNAME must be a valid email address, a basic DNS-style mailbox with a fully qualified domain, "
+            "or a single-label placeholder."
+        )
+        normalized_soa_rname = normalize_soa_rname(self.soa_rname)
+        if "@" in normalized_soa_rname:
+            try:
+                validate_email(normalized_soa_rname)
+            except ValidationError as exc:
+                raise ValidationError({"soa_rname": invalid_rname_message}) from exc
+        else:
+            if not normalized_soa_rname or "." in normalized_soa_rname or "\\" in normalized_soa_rname:
+                raise ValidationError({"soa_rname": invalid_rname_message})
+            self._validate_dns_label(normalized_soa_rname, field="soa_rname")
+
+        # Keep the in-memory instance canonical for callers of clean() or full_clean()
+        # that do not immediately save it.
+        self.soa_rname = normalized_soa_rname
+
+    def save(self, *args, **kwargs):
+        """Normalize the RNAME before saving through the ORM."""
+        self.soa_rname = normalize_soa_rname(self.soa_rname)
+        return super().save(*args, **kwargs)
 
     @classmethod
     def find_reverse_zone_for_ptrdname(cls, ptrdname, dns_view=None):
