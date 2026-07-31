@@ -5,6 +5,7 @@ from nautobot.apps.api import NautobotModelSerializer, ValidatedModelSerializer
 from rest_framework import serializers
 
 from nautobot_dns_models import models
+from nautobot_dns_models.models import UINT32_MAX
 
 
 class DNSViewSerializer(NautobotModelSerializer):
@@ -70,8 +71,9 @@ class DNSRecordSerializer(NautobotModelSerializer):
     """DNSRecord Serializer."""
 
     ttl = serializers.SerializerMethodField(read_only=True)
+    # RFC 8767 §4: TTL is unsigned 32-bit (0..4294967295). https://datatracker.ietf.org/doc/html/rfc8767#section-4
     _ttl = serializers.IntegerField(
-        required=False, allow_null=True, min_value=300, max_value=2147483647, help_text="Record-specific TTL."
+        required=False, allow_null=True, min_value=0, max_value=UINT32_MAX, help_text="Record-specific TTL."
     )
 
     class Meta:

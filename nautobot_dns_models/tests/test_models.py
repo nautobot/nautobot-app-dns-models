@@ -8,6 +8,7 @@ from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from netutils.ip import ipaddress_address
 
 from nautobot_dns_models.models import (
+    UINT32_MAX,
     AAAARecord,
     ARecord,
     CNAMERecord,
@@ -800,3 +801,87 @@ class TestDNSZoneFindForPtrdname(TestCase):
             DNSZone.find_reverse_zone_for_ptrdname("1.0.0.10.in-addr.arpa", dns_view=self.view_a),
             specific,
         )
+
+
+class DNSZoneIntegerFieldBoundaryTest(TestCase):
+    """Boundary tests for integer fields on DNSZone.
+
+    TTL (RFC 8767 §4): unsigned 32-bit, 0..4294967295.
+    SOA fields (RFC 1035 §3.3.13): 32-bit values, explicitly unsigned for SERIAL and MINIMUM.
+    RFC 1982 §7 governs SERIAL's uint32 range and arithmetic.
+    """
+
+    _INTEGER_FIELDS = ("ttl", "soa_refresh", "soa_retry", "soa_expire", "soa_serial", "soa_minimum")
+
+    def _make_zone(self, **kwargs):
+        defaults = {
+            "name": "boundary-test.example",
+            "filename": "boundary-test.zone",
+            "soa_mname": "ns1.boundary-test.example.",
+            "soa_rname": "admin@boundary-test.example",
+            "ttl": 3600,
+            "soa_refresh": 86400,
+            "soa_retry": 7200,
+            "soa_expire": 3600000,
+            "soa_serial": 0,
+            "soa_minimum": 3600,
+        }
+        defaults.update(kwargs)
+        return DNSZone(**defaults)
+
+    def test_all_fields_accept_zero(self):
+        """All DNS integer zone fields accept 0 as a valid value."""
+        for field in self._INTEGER_FIELDS:
+            with self.subTest(field=field):
+                zone = self._make_zone(name=f"{field}-zero.example", **{field: 0})
+                zone.full_clean()
+
+    def test_all_fields_accept_uint32_max(self):
+        """All DNS integer zone fields accept the uint32 maximum."""
+        for field in self._INTEGER_FIELDS:
+            with self.subTest(field=field):
+                zone = self._make_zone(name=f"{field}-max.example", **{field: UINT32_MAX})
+                zone.full_clean()
+
+    def test_all_fields_reject_above_uint32_max(self):
+        """All DNS integer zone fields reject values above the uint32 maximum."""
+        for field in self._INTEGER_FIELDS:
+            with self.subTest(field=field):
+                zone = self._make_zone(name=f"{field}-overflow.example", **{field: UINT32_MAX + 1})
+                with self.assertRaises(ValidationError):
+                    zone.full_clean()
+
+
+class DNSRecordTTLBoundaryTest(TestCase):
+    """Boundary tests for the record-level TTL field (RFC 8767 §4: unsigned 32-bit, 0..4294967295)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZone.objects.create(name="ttl-boundary.example", ttl=3600)
+
+    def test_record_ttl_accepts_zero(self):
+        """Record TTL of 0 is valid."""
+        record = NSRecord(name="ns1", server="ns1.example.com.", zone=self.zone, _ttl=0)
+        record.full_clean()
+
+    def test_record_ttl_zero_not_replaced_by_zone_ttl(self):
+        """TTL of 0 must not be treated as unset and silently replaced by the zone TTL (guards against falsy-check regression)."""
+        record = NSRecord.objects.create(name="ns-zero", server="ns1.example.com.", zone=self.zone, _ttl=0)
+        record.refresh_from_db()
+        self.assertEqual(record.ttl, 0)
+
+    def test_record_ttl_accepts_uint32_max(self):
+        """Record TTL at the uint32 maximum is accepted."""
+        record = NSRecord(name="ns1", server="ns1.example.com.", zone=self.zone, _ttl=UINT32_MAX)
+        record.full_clean()
+
+    def test_record_ttl_rejects_above_uint32_max(self):
+        """Record TTL above the uint32 maximum is rejected."""
+        record = NSRecord(name="ns1", server="ns1.example.com.", zone=self.zone, _ttl=UINT32_MAX + 1)
+        with self.assertRaises(ValidationError):
+            record.full_clean()
+
+    def test_record_inherits_zone_ttl_when_no_record_ttl_set(self):
+        """When no record-level TTL is set, the zone TTL is returned by the ttl property."""
+        record = NSRecord.objects.create(name="ns1", server="ns1.example.com.", zone=self.zone)
+        self.assertEqual(record.ttl, self.zone.ttl)
