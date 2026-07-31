@@ -268,40 +268,47 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
         required=False,
         max_length=200,
         help_text="FQDN of the Authoritative Name Server for Zone.",
+        label="SOA MNAME",
     )
     soa_rname = forms.EmailField(
         required=False,
         help_text="Admin Email for the Zone in the form",
+        label="SOA RNAME",
     )
     soa_refresh = forms.IntegerField(
         required=False,
         min_value=300,
         max_value=2147483647,
         help_text="Number of seconds after which secondary name servers should query the master for the SOA record, to detect zone changes.",
+        label="SOA Refresh",
     )
     soa_retry = forms.IntegerField(
         required=False,
         min_value=300,
         max_value=2147483647,
         help_text="Number of seconds after which secondary name servers should retry to request the serial number from the master if the master does not respond.",
+        label="SOA Refresh",
     )
     soa_expire = forms.IntegerField(
         required=False,
         min_value=300,
         max_value=2147483647,
         help_text="Number of seconds after which secondary name servers should stop answering request for this zone if the master does not respond. This value must be bigger than the sum of Refresh and Retry.",
+        label="SOA Expire",
     )
     soa_serial = forms.IntegerField(
         required=False,
         min_value=0,
         max_value=2147483647,
         help_text="Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.",
+        label="SOA Serial",
     )
     soa_minimum = forms.IntegerField(
         required=False,
         min_value=300,
         max_value=2147483647,
         help_text="Minimum TTL for records in this zone.",
+        label="SOA Minimum",
     )
     description = forms.CharField(required=False)
     tenant = DynamicModelChoiceField(
