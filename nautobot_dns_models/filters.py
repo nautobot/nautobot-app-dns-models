@@ -3,7 +3,7 @@
 import django_filters
 from django.db.models import F
 from django.db.models.functions import Coalesce
-from nautobot.apps.filters import NautobotFilterSet, SearchFilter
+from nautobot.apps.filters import NaturalKeyOrPKMultipleChoiceFilter, NautobotFilterSet, SearchFilter
 from netaddr import IPAddress as NetIPAddress
 
 from nautobot_dns_models import models
@@ -63,6 +63,12 @@ class DNSZoneFilterSet(NautobotFilterSet):
 # pylint: disable=nb-no-model-found, nb-warn-dunder-filter-field
 class DNSRecordFilterSet(NautobotFilterSet):
     """Base filter for all DNSRecord models, with support for effective TTL."""
+
+    zone = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        label="Zone (name or ID)",
+    )
 
     ttl = django_filters.NumberFilter(method="filter_ttl", label="TTL")
     ttl__ne = django_filters.NumberFilter(method="filter_ttl_ne")
