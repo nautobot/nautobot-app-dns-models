@@ -1,0 +1,1 @@
+Added an `enabled` boolean field to `DNSZone` (default `True`) to indicate whether a zone is eligible for publication by external integrations.

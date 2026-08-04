@@ -158,6 +158,7 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
         dnszone = DNSZone.objects.create(name="Development")
         self.assertEqual(dnszone.name, "Development")
         self.assertEqual(dnszone.description, "")
+        self.assertTrue(dnszone.enabled)
         self.assertEqual(str(dnszone), "Development (Default)")
 
     def test_create_dnszone_all_fields_success(self):
