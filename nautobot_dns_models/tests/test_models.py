@@ -568,6 +568,63 @@ class DNSRecordNameLengthValidationTest(TestCase):
         self.assertIn("Empty labels are not allowed", str(context.exception))
 
 
+class DNSZoneSOARNameTest(TestCase):
+    """Test SOA RNAME normalization and validation."""
+
+    def test_save_normalizes_soa_rname(self):
+        test_cases = {
+            "john.example.com": "john@example.com",
+            "john.example.com.": "john@example.com",
+            r"john\.smith.example.com": "john.smith@example.com",
+            r"john\.smith.example.com.": "john.smith@example.com",
+            r"john_smith.example.com": "john_smith@example.com",
+            r"john_smith.example.com.": "john_smith@example.com",
+            "invalid": "invalid",
+            "invalid.": "invalid",
+        }
+        for index, (value, expected) in enumerate(test_cases.items()):
+            with self.subTest(value=value):
+                zone = DNSZone.objects.create(
+                    name=f"rname-{index}.example",
+                    filename=f"rname-{index}.example.zone",
+                    soa_mname=f"ns1.rname-{index}.example.",
+                    soa_rname=value,
+                )
+                self.assertEqual(zone.soa_rname, expected)
+
+    def test_save_rejects_invalid_soa_rname(self):
+        invalid_values = (
+            "",
+            "john@example",
+            "john.example",
+            "john@",
+            "@example.com",
+            "john@@example.com",
+            ".example.com",
+            "john..example.com",
+            r"john\\.smith.example.com",
+            r"john\\.smith.example.com.",
+            r"john\\\.smith.example.com",
+            r"john\\\.smith.example.com.",
+            r"john\046example.com.",
+            r"john.example\.com.",
+            "a" * 64,
+        )
+        for index, value in enumerate(invalid_values):
+            with self.subTest(value=value):
+                zone = DNSZone(
+                    name=f"invalid-rname-{index}.example",
+                    filename=f"invalid-rname-{index}.example.zone",
+                    soa_mname=f"ns1.invalid-rname-{index}.example.",
+                    soa_rname=value,
+                )
+
+                with self.assertRaises(ValidationError) as context:
+                    zone.validated_save()
+
+                self.assertIn("soa_rname", context.exception.message_dict)
+
+
 class DNSZoneNameLengthValidationTest(TestCase):
     """Test DNS zone name validation rules from RFC 1035 §3.1.
 
