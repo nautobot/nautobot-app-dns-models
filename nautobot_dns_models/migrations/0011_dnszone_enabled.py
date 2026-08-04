@@ -11,7 +11,7 @@ def set_default_enabled(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("nautobot_dns_models", "0009_alter_aaaarecord__ttl_alter_arecord__ttl_and_more"),
+        ("nautobot_dns_models", "0010_alter_dnszone_soa_rname"),
     ]
 
     operations = [
