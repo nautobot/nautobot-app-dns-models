@@ -259,7 +259,7 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     )
     ttl = forms.IntegerField(
         required=False,
-        max_value=2147483647,
+        max_value=models.UINT32_MAX,
         label="TTL",
         help_text="Time To Live.",
     )
@@ -276,13 +276,13 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     )
     soa_refresh = forms.IntegerField(
         required=False,
-        max_value=2147483647,
+        max_value=models.UINT32_MAX,
         help_text="Number of seconds after which secondary name servers should query the master for the SOA record, to detect zone changes.",
         label="SOA Refresh",
     )
     soa_retry = forms.IntegerField(
         required=False,
-        max_value=2147483647,
+        max_value=models.UINT32_MAX,
         help_text="Number of seconds after which secondary name servers should retry to request the serial number from the master if the master does not respond.",
         label="SOA Refresh",
     )
@@ -295,13 +295,13 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     soa_serial = forms.IntegerField(
         required=False,
         min_value=0,
-        max_value=2147483647,
+        max_value=models.UINT32_MAX,
         help_text="Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.",
         label="SOA Serial",
     )
     soa_minimum = forms.IntegerField(
         required=False,
-        max_value=2147483647,
+        max_value=models.UINT32_MAX,
         help_text="Minimum TTL for records in this zone.",
         label="SOA Minimum",
     )
