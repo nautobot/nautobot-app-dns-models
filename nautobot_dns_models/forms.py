@@ -288,7 +288,7 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     )
     soa_expire = forms.IntegerField(
         required=False,
-        max_value=2147483647,
+        max_value=models.UINT32_MAX,
         help_text="Number of seconds after which secondary name servers should stop answering request for this zone if the master does not respond. This value must be bigger than the sum of Refresh and Retry.",
         label="SOA Expire",
     )
