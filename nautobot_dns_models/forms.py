@@ -257,7 +257,9 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
         queryset=Tenant.objects.all(),
         required=False,
     )
-    auto_create_ptr = forms.NullBooleanField(required=False, label="Auto-create PTR Records")
+    auto_create_ptr = forms.NullBooleanField(
+        required=False, label="Auto-create PTR Records", widget=BulkEditNullBooleanSelect
+    )
     enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
