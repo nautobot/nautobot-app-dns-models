@@ -864,14 +864,7 @@ def pylint(context, target=None, recursive=False):
     if target is not None:
         for target_item in target:
             target_item_normalized = Path(target_item).resolve()
-<<<<<<< HEAD
             if target_item_normalized in (app_dir, migrations_dir) or target_item == migrations_target_module:
-=======
-            if (
-                target_item_normalized in (app_dir, migrations_dir)
-                or target_item == migrations_target_module
-            ):
->>>>>>> 4d2308e (Cookie updated targeting develop by NetworkToCode Cookie Drift Manager Tool)
                 run_migrations_check = True
                 break
 
@@ -880,11 +873,7 @@ def pylint(context, target=None, recursive=False):
             migrations_pylint_command = (
                 f"{base_pylint_command} --load-plugins=pylint_django.checkers.migrations"
                 " --disable=all --enable=fatal,new-db-field-with-default,missing-backwards-migration-callable"
-<<<<<<< HEAD
                 f" {migrations_target_module}"
-=======
-                " nautobot_dns_models.migrations"
->>>>>>> 4d2308e (Cookie updated targeting develop by NetworkToCode Cookie Drift Manager Tool)
             )
             if not run_command(context, migrations_pylint_command, warn=True):
                 exit_code = 1
@@ -907,20 +896,12 @@ def autoformat(context):
         "action": "Available values are `['lint', 'format']`. Can be used multiple times. (default: `--action lint --action format`)",
         "target": "File or directory to inspect, repeatable (default: all files in the project will be inspected)",
         "fix": "Automatically fix selected actions. May not be able to fix all issues found. (default: False)",
-<<<<<<< HEAD
-        "diff": "Show diff of changes. (default: False)",
-=======
         "diff": "Show diffs of changes. (default: False)",
->>>>>>> 4d2308e (Cookie updated targeting develop by NetworkToCode Cookie Drift Manager Tool)
         "output_format": "See https://docs.astral.sh/ruff/settings/#output-format for details. (default: `concise`)",
     },
     iterable=["action", "target"],
 )
-<<<<<<< HEAD
-def ruff(context, action=None, target=None, fix=False, diff=False, output_format="concise"):
-=======
 def ruff(context, action=None, target=None, fix=False, diff=False, output_format="concise"):  # noqa: PLR0913
->>>>>>> 4d2308e (Cookie updated targeting develop by NetworkToCode Cookie Drift Manager Tool)
     """Run ruff to perform code formatting and/or linting."""
     if not action:
         action = ["lint", "format"]
@@ -968,13 +949,6 @@ def djlint(context, target=None):
     command = "djlint --lint "
     command += " ".join(target)
 
-<<<<<<< HEAD
-    # djlint exits 1 when there are no files to lint, treat that result as success.
-    result = run_command(context, command, warn=True)
-    exit_code = 0 if result or "No files to check" in result.stdout else 1
-    if exit_code != 0:
-        raise Exit(code=exit_code)
-=======
     # As of djlint 1.39.5, djlint returns a non-zero exit code when no files match the lint run
     # (https://github.com/djlint/djLint/issues/1112)
     result = run_command(context, command, warn=True, hide="both", pty=False)
@@ -986,7 +960,6 @@ def djlint(context, target=None):
         return
     print(result.stderr, end="")
     raise Exit(code=result.return_code or 1)
->>>>>>> 4d2308e (Cookie updated targeting develop by NetworkToCode Cookie Drift Manager Tool)
 
 
 @task(
@@ -1162,17 +1135,7 @@ def tests(context, failfast=False, keepdb=False, no_input=False, lint_only=False
     validate_app_config(context)
     if not lint_only:
         print("Running unit tests...")
-<<<<<<< HEAD
-        unittest(
-            context,
-            failfast=failfast,
-            keepdb=keepdb,
-            coverage=True,
-            skip_docs_build=True,
-        )
-=======
         unittest(context, failfast=failfast, keepdb=keepdb, no_input=no_input, coverage=True, skip_docs_build=True)
->>>>>>> 4d2308e (Cookie updated targeting develop by NetworkToCode Cookie Drift Manager Tool)
         unittest_coverage(context)
         coverage_lcov(context)
     print("All tests have passed!")
