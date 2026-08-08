@@ -147,9 +147,7 @@ def docker_compose(context, command, **kwargs):
         context.nautobot_dns_models.ephemeral_ports
         and context.nautobot_dns_models.compose_files == ORIGINAL_COMPOSE_FILES
     ):
-        compose_file_path = os.path.join(
-            context.nautobot_dns_models.compose_dir, "docker-compose.ephemeral-ports.yml"
-        )
+        compose_file_path = os.path.join(context.nautobot_dns_models.compose_dir, "docker-compose.ephemeral-ports.yml")
         compose_command_tokens.append(f' -f "{compose_file_path}"')
 
     compose_command_tokens.append(command)
