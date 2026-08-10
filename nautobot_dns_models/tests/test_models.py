@@ -943,3 +943,82 @@ class DNSRecordTTLBoundaryTest(TestCase):
         """When no record-level TTL is set, the zone TTL is returned by the ttl property."""
         record = NSRecord.objects.create(name="ns1", server="ns1.example.com.", zone=self.zone)
         self.assertEqual(record.ttl, self.zone.ttl)
+
+
+class DNSModelEnabledFieldTest(TestCase):
+    """Tests for the `enabled` field that DNSZone and every record type inherit from DNSModel."""
+
+    @classmethod
+    def setUpTestData(cls):
+        # Populate the required zone fields so the zone can be re-saved with validated_save().
+        cls.zone = DNSZone.objects.create(
+            name="enabled.example",
+            filename="enabled.example.zone",
+            soa_mname="ns1.enabled.example",
+            soa_rname="admin@enabled.example",
+        )
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="10.10.0.0/24", namespace=namespace, type="Pool", status=status)
+        cls.ip_address = IPAddress.objects.create(address="10.10.0.1/32", namespace=namespace, status=status)
+        Prefix.objects.create(prefix="2001:db8:abcd:77::/64", namespace=namespace, type="Pool", status=status)
+        cls.ipv6_address = IPAddress.objects.create(
+            address="2001:db8:abcd:77::1/128", namespace=namespace, status=status
+        )
+
+    def _records(self, suffix, **kwargs):
+        """Return one unsaved record of every type, all named after `suffix`."""
+        return [
+            NSRecord(name=f"ns-{suffix}", server="ns1.example.com.", zone=self.zone, **kwargs),
+            ARecord(name=f"a-{suffix}", ip_address=self.ip_address, zone=self.zone, **kwargs),
+            AAAARecord(name=f"aaaa-{suffix}", ip_address=self.ipv6_address, zone=self.zone, **kwargs),
+            CNAMERecord(name=f"cname-{suffix}", alias="www.example.com", zone=self.zone, **kwargs),
+            MXRecord(name=f"mx-{suffix}", mail_server="mail.example.com", zone=self.zone, **kwargs),
+            TXTRecord(name=f"txt-{suffix}", text="v=spf1 -all", zone=self.zone, **kwargs),
+            PTRRecord(name=f"ptr-{suffix}", ptrdname="www.example.com", zone=self.zone, **kwargs),
+            SRVRecord(
+                name=f"srv-{suffix}",
+                priority=10,
+                weight=5,
+                port=5060,
+                target="sip.example.com",
+                zone=self.zone,
+                **kwargs,
+            ),
+        ]
+
+    def test_zone_is_enabled_by_default(self):
+        """A zone is eligible for publication unless explicitly disabled."""
+        self.assertTrue(DNSZone.objects.create(name="default.example").enabled)
+
+    def test_zone_can_be_disabled(self):
+        """A zone's enabled flag can be set to False."""
+        zone = DNSZone.objects.create(name="disabled.example", enabled=False)
+        zone.refresh_from_db()
+        self.assertFalse(zone.enabled)
+
+    def test_records_are_enabled_by_default(self):
+        """Every record type inherits enabled=True from DNSModel."""
+        for record in self._records("default"):
+            with self.subTest(model=type(record).__name__):
+                record.validated_save()
+                record.refresh_from_db()
+                self.assertTrue(record.enabled)
+
+    def test_records_can_be_disabled(self):
+        """Every record type can be created with enabled=False."""
+        for record in self._records("disabled", enabled=False):
+            with self.subTest(model=type(record).__name__):
+                record.validated_save()
+                record.refresh_from_db()
+                self.assertFalse(record.enabled)
+
+    def test_disabling_zone_does_not_disable_its_records(self):
+        """The zone and record flags are independent; this app does not cascade them."""
+        record = NSRecord.objects.create(name="ns-cascade", server="ns1.example.com.", zone=self.zone)
+
+        self.zone.enabled = False
+        self.zone.validated_save()
+
+        record.refresh_from_db()
+        self.assertTrue(record.enabled)

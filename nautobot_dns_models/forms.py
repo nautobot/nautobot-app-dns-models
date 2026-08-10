@@ -363,6 +363,7 @@ class NSRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.NSRecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -388,11 +389,16 @@ class NSRecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.NSRecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "description",
     ]
 
@@ -418,6 +424,7 @@ class ARecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.ARecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -442,11 +449,16 @@ class ARecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.ARecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "description",
     ]
 
@@ -472,6 +484,7 @@ class AAAARecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.AAAARecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -496,11 +509,16 @@ class AAAARecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.AAAARecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "description",
     ]
 
@@ -520,6 +538,7 @@ class CNAMERecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.CNAMERecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -544,11 +563,16 @@ class CNAMERecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.CNAMERecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "description",
     ]
 
@@ -568,6 +592,7 @@ class MXRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.MXRecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -592,11 +617,16 @@ class MXRecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.MXRecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "preference",
         "description",
     ]
@@ -617,6 +647,7 @@ class TXTRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.TXTRecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -641,11 +672,16 @@ class TXTRecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.TXTRecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "description",
     ]
 
@@ -665,6 +701,7 @@ class PTRRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.PTRRecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -689,11 +726,16 @@ class PTRRecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.PTRRecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "ttl",
         "comment",
         "description",
@@ -715,6 +757,7 @@ class SRVRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.SRVRecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -739,11 +782,16 @@ class SRVRecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.SRVRecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "priority",
         "weight",
         "port",

@@ -14,6 +14,7 @@ class DNSRecordTable(BaseTable):  # pylint: disable=nb-no-model-found
     name = tables.Column(linkify=True)
     zone = tables.LinkColumn()
     ttl = tables.Column(accessor="ttl", verbose_name="TTL", orderable=False)
+    enabled = BooleanColumn()
 
 
 class DNSViewTable(BaseTable):
@@ -191,6 +192,7 @@ class NSRecordTable(DNSRecordTable):
             "description",
             "comment",
             "ttl",
+            "enabled",
             "actions",
         )
 
@@ -200,6 +202,7 @@ class NSRecordTable(DNSRecordTable):
             "server",
             "zone",
             "ttl",
+            "enabled",
             "actions",
         )
 
@@ -225,6 +228,7 @@ class ARecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
+            "enabled",
             "actions",
         )
 
@@ -236,6 +240,7 @@ class ARecordTable(DNSRecordTable):
             "zone",
             "comment",
             "ttl",
+            "enabled",
             "actions",
         )
 
@@ -261,6 +266,7 @@ class AAAARecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
+            "enabled",
             "actions",
         )
 
@@ -272,6 +278,7 @@ class AAAARecordTable(DNSRecordTable):
             "zone",
             "comment",
             "ttl",
+            "enabled",
             "actions",
         )
 
@@ -296,6 +303,7 @@ class CNAMERecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
+            "enabled",
             "actions",
         )
 
@@ -307,6 +315,7 @@ class CNAMERecordTable(DNSRecordTable):
             "zone",
             "comment",
             "ttl",
+            "enabled",
             "actions",
         )
 
@@ -332,6 +341,7 @@ class MXRecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
+            "enabled",
             "actions",
         )
 
@@ -344,6 +354,7 @@ class MXRecordTable(DNSRecordTable):
             "zone",
             "comment",
             "ttl",
+            "enabled",
             "actions",
         )
 
@@ -368,6 +379,7 @@ class TXTRecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
+            "enabled",
             "actions",
         )
 
@@ -379,6 +391,7 @@ class TXTRecordTable(DNSRecordTable):
             "zone",
             "comment",
             "ttl",
+            "enabled",
             "actions",
         )
 
@@ -403,6 +416,7 @@ class PTRRecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
+            "enabled",
             "actions",
         )
 
@@ -414,6 +428,7 @@ class PTRRecordTable(DNSRecordTable):
             "zone",
             "comment",
             "ttl",
+            "enabled",
             "actions",
         )
 
@@ -440,6 +455,7 @@ class SRVRecordTable(DNSRecordTable):
             "comment",
             "ttl",
             "description",
+            "enabled",
             "actions",
         )
 
@@ -452,5 +468,6 @@ class SRVRecordTable(DNSRecordTable):
             "port",
             "target",
             "zone",
+            "enabled",
             "actions",
         )

@@ -11,6 +11,7 @@ Title: DNS Models Entity Relation Diagram
 ---
 erDiagram
     DNSModel {
+        boolean enabled
     }
 
     DNSView {
@@ -71,6 +72,7 @@ erDiagram
         charfield name UK
         DNSZone zone FK
         integer ttl
+        boolean enabled
         textfield description
         charfield comment
     }
