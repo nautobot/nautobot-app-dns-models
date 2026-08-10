@@ -1,1 +1,1 @@
-Added an `enabled` boolean field to `DNSModel` (default `True`), inherited by `DNSZone` and every DNS record type, to indicate whether an object is eligible for publication by external integrations.
+Added an `enabled` boolean field to `DNSZone` (default `True`) to indicate whether a zone is eligible for publication by external integrations.
