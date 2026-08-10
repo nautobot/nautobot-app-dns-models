@@ -24,11 +24,7 @@
             "pull_request_strategy": "create",
             "post_actions": [],
             "draft": false,
-<<<<<<< HEAD
-            "baked_commit_ref": "45574da2502a2bbff6149f4e6caecbd559d29016",
-=======
             "baked_commit_ref": "29de124cc498690d5f74177d8f52c8ce2d91c68a",
->>>>>>> fca65a9 (Cookie updated targeting ltm-2.4 by NetworkToCode Cookie Drift Manager Tool)
             "drift_managed_branch": "ltm-2.4"
         }
     }
