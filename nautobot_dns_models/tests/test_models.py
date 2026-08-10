@@ -1,4 +1,5 @@
 """Test DNSZone."""
+# pylint: disable=too-many-lines
 
 from constance.test import override_config
 from django.core.exceptions import ValidationError
