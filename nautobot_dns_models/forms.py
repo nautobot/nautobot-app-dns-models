@@ -26,6 +26,17 @@ from nautobot_dns_models import models
 EXPIRATION_DATE_INPUT_FORMATS = ("%Y-%m-%d",)
 
 
+class EnabledAfterNameMixin:
+    """Render the `enabled` field right after `name` on create/edit forms.
+
+    `enabled` is declared on the abstract `DNSModel` base while the concrete models override
+    `name`, so with `fields = "__all__"` Django's declaration order puts `enabled` first.
+    Must be listed before the form base class so this `field_order` wins over `BaseForm`'s.
+    """
+
+    field_order = ["name", "enabled"]
+
+
 class DNSViewForm(NautobotModelForm):
     """DNSView creation/edit form."""
 
@@ -232,7 +243,7 @@ class DNSRegistrationFilterForm(NautobotFilterForm):
     ]
 
 
-class DNSZoneForm(NautobotModelForm, TenancyForm):
+class DNSZoneForm(EnabledAfterNameMixin, NautobotModelForm, TenancyForm):
     """DNSZone creation/edit form."""
 
     dns_view = DynamicModelChoiceField(
@@ -348,7 +359,7 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
     ]
 
 
-class NSRecordForm(NautobotModelForm):
+class NSRecordForm(EnabledAfterNameMixin, NautobotModelForm):
     """NSRecord creation/edit form."""
 
     class Meta:
@@ -403,7 +414,7 @@ class NSRecordFilterForm(NautobotFilterForm):
     ]
 
 
-class ARecordForm(NautobotModelForm):
+class ARecordForm(EnabledAfterNameMixin, NautobotModelForm):
     """ARecord creation/edit form."""
 
     ip_address = DynamicModelChoiceField(
@@ -463,7 +474,7 @@ class ARecordFilterForm(NautobotFilterForm):
     ]
 
 
-class AAAARecordForm(NautobotModelForm):
+class AAAARecordForm(EnabledAfterNameMixin, NautobotModelForm):
     """AAAARecord creation/edit form."""
 
     ip_address = DynamicModelChoiceField(
@@ -523,7 +534,7 @@ class AAAARecordFilterForm(NautobotFilterForm):
     ]
 
 
-class CNAMERecordForm(NautobotModelForm):
+class CNAMERecordForm(EnabledAfterNameMixin, NautobotModelForm):
     """CNAMERecord creation/edit form."""
 
     class Meta:
@@ -577,7 +588,7 @@ class CNAMERecordFilterForm(NautobotFilterForm):
     ]
 
 
-class MXRecordForm(NautobotModelForm):
+class MXRecordForm(EnabledAfterNameMixin, NautobotModelForm):
     """MXRecord creation/edit form."""
 
     class Meta:
@@ -632,7 +643,7 @@ class MXRecordFilterForm(NautobotFilterForm):
     ]
 
 
-class TXTRecordForm(NautobotModelForm):
+class TXTRecordForm(EnabledAfterNameMixin, NautobotModelForm):
     """TXTRecord creation/edit form."""
 
     class Meta:
@@ -686,7 +697,7 @@ class TXTRecordFilterForm(NautobotFilterForm):
     ]
 
 
-class PTRRecordForm(NautobotModelForm):
+class PTRRecordForm(EnabledAfterNameMixin, NautobotModelForm):
     """PTRRecord creation/edit form."""
 
     class Meta:
@@ -742,7 +753,7 @@ class PTRRecordFilterForm(NautobotFilterForm):
     ]
 
 
-class SRVRecordForm(NautobotModelForm):
+class SRVRecordForm(EnabledAfterNameMixin, NautobotModelForm):
     """SRVRecord creation/edit form."""
 
     class Meta:
