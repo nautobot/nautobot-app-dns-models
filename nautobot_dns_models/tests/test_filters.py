@@ -451,7 +451,7 @@ class NSRecordFilterTestCase(TestCase):
         """enabled filter should match only records with the given enabled value."""
         record = NSRecord.objects.get(name="ns-01")
         record.enabled = False
-        record.save()
+        record.validated_save()
 
         self.assertEqual(self.filterset({"enabled": "false"}, self.queryset).qs.count(), 1)
         self.assertEqual(self.filterset({"enabled": "true"}, self.queryset).qs.count(), 2)
