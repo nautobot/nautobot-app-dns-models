@@ -5,130 +5,157 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('nautobot_dns_models', '0008_dnszone_auto_create_ptr'),
+        ("nautobot_dns_models", "0008_dnszone_auto_create_ptr"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='aaaarecord',
-            name='enabled',
+            model_name="aaaarecord",
+            name="enabled",
             field=models.BooleanField(default=True),
         ),
         migrations.AddField(
-            model_name='arecord',
-            name='enabled',
+            model_name="arecord",
+            name="enabled",
             field=models.BooleanField(default=True),
         ),
         migrations.AddField(
-            model_name='cnamerecord',
-            name='enabled',
+            model_name="cnamerecord",
+            name="enabled",
             field=models.BooleanField(default=True),
         ),
         migrations.AddField(
-            model_name='dnszone',
-            name='enabled',
+            model_name="dnszone",
+            name="enabled",
             field=models.BooleanField(default=True),
         ),
         migrations.AddField(
-            model_name='mxrecord',
-            name='enabled',
+            model_name="mxrecord",
+            name="enabled",
             field=models.BooleanField(default=True),
         ),
         migrations.AddField(
-            model_name='nsrecord',
-            name='enabled',
+            model_name="nsrecord",
+            name="enabled",
             field=models.BooleanField(default=True),
         ),
         migrations.AddField(
-            model_name='ptrrecord',
-            name='enabled',
+            model_name="ptrrecord",
+            name="enabled",
             field=models.BooleanField(default=True),
         ),
         migrations.AddField(
-            model_name='srvrecord',
-            name='enabled',
+            model_name="srvrecord",
+            name="enabled",
             field=models.BooleanField(default=True),
         ),
         migrations.AddField(
-            model_name='txtrecord',
-            name='enabled',
+            model_name="txtrecord",
+            name="enabled",
             field=models.BooleanField(default=True),
         ),
         migrations.AlterField(
-            model_name='aaaarecord',
-            name='_ttl',
-            field=models.PositiveBigIntegerField(blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]),
+            model_name="aaaarecord",
+            name="_ttl",
+            field=models.PositiveBigIntegerField(
+                blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]
+            ),
         ),
         migrations.AlterField(
-            model_name='arecord',
-            name='_ttl',
-            field=models.PositiveBigIntegerField(blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]),
+            model_name="arecord",
+            name="_ttl",
+            field=models.PositiveBigIntegerField(
+                blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]
+            ),
         ),
         migrations.AlterField(
-            model_name='cnamerecord',
-            name='_ttl',
-            field=models.PositiveBigIntegerField(blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]),
+            model_name="cnamerecord",
+            name="_ttl",
+            field=models.PositiveBigIntegerField(
+                blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]
+            ),
         ),
         migrations.AlterField(
-            model_name='dnszone',
-            name='soa_expire',
-            field=models.PositiveBigIntegerField(default=3600000, validators=[django.core.validators.MaxValueValidator(4294967295)]),
+            model_name="dnszone",
+            name="soa_expire",
+            field=models.PositiveBigIntegerField(
+                default=3600000, validators=[django.core.validators.MaxValueValidator(4294967295)]
+            ),
         ),
         migrations.AlterField(
-            model_name='dnszone',
-            name='soa_minimum',
-            field=models.PositiveBigIntegerField(default=3600, validators=[django.core.validators.MaxValueValidator(4294967295)]),
+            model_name="dnszone",
+            name="soa_minimum",
+            field=models.PositiveBigIntegerField(
+                default=3600, validators=[django.core.validators.MaxValueValidator(4294967295)]
+            ),
         ),
         migrations.AlterField(
-            model_name='dnszone',
-            name='soa_refresh',
-            field=models.PositiveBigIntegerField(default=86400, validators=[django.core.validators.MaxValueValidator(4294967295)]),
+            model_name="dnszone",
+            name="soa_refresh",
+            field=models.PositiveBigIntegerField(
+                default=86400, validators=[django.core.validators.MaxValueValidator(4294967295)]
+            ),
         ),
         migrations.AlterField(
-            model_name='dnszone',
-            name='soa_retry',
-            field=models.PositiveBigIntegerField(default=7200, validators=[django.core.validators.MaxValueValidator(4294967295)]),
+            model_name="dnszone",
+            name="soa_retry",
+            field=models.PositiveBigIntegerField(
+                default=7200, validators=[django.core.validators.MaxValueValidator(4294967295)]
+            ),
         ),
         migrations.AlterField(
-            model_name='dnszone',
-            name='soa_rname',
+            model_name="dnszone",
+            name="soa_rname",
             field=models.CharField(max_length=254),
         ),
         migrations.AlterField(
-            model_name='dnszone',
-            name='soa_serial',
-            field=models.PositiveBigIntegerField(default=0, validators=[django.core.validators.MaxValueValidator(4294967295)]),
+            model_name="dnszone",
+            name="soa_serial",
+            field=models.PositiveBigIntegerField(
+                default=0, validators=[django.core.validators.MaxValueValidator(4294967295)]
+            ),
         ),
         migrations.AlterField(
-            model_name='dnszone',
-            name='ttl',
-            field=models.PositiveBigIntegerField(default=3600, validators=[django.core.validators.MaxValueValidator(4294967295)]),
+            model_name="dnszone",
+            name="ttl",
+            field=models.PositiveBigIntegerField(
+                default=3600, validators=[django.core.validators.MaxValueValidator(4294967295)]
+            ),
         ),
         migrations.AlterField(
-            model_name='mxrecord',
-            name='_ttl',
-            field=models.PositiveBigIntegerField(blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]),
+            model_name="mxrecord",
+            name="_ttl",
+            field=models.PositiveBigIntegerField(
+                blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]
+            ),
         ),
         migrations.AlterField(
-            model_name='nsrecord',
-            name='_ttl',
-            field=models.PositiveBigIntegerField(blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]),
+            model_name="nsrecord",
+            name="_ttl",
+            field=models.PositiveBigIntegerField(
+                blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]
+            ),
         ),
         migrations.AlterField(
-            model_name='ptrrecord',
-            name='_ttl',
-            field=models.PositiveBigIntegerField(blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]),
+            model_name="ptrrecord",
+            name="_ttl",
+            field=models.PositiveBigIntegerField(
+                blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]
+            ),
         ),
         migrations.AlterField(
-            model_name='srvrecord',
-            name='_ttl',
-            field=models.PositiveBigIntegerField(blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]),
+            model_name="srvrecord",
+            name="_ttl",
+            field=models.PositiveBigIntegerField(
+                blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]
+            ),
         ),
         migrations.AlterField(
-            model_name='txtrecord',
-            name='_ttl',
-            field=models.PositiveBigIntegerField(blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]),
+            model_name="txtrecord",
+            name="_ttl",
+            field=models.PositiveBigIntegerField(
+                blank=True, null=True, validators=[django.core.validators.MaxValueValidator(4294967295)]
+            ),
         ),
     ]
