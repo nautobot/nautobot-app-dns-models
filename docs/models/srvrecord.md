@@ -7,6 +7,7 @@ The SRV Record model represents a Service record in DNS. SRV records identify th
 - `ttl` (integer): Time to live for the record.
 - `description` (string): Description of the record.
 - `comment` (string): Comment for the record.
+- `enabled` (boolean, default `True`): Indicates whether the record is eligible for publication by external integrations. This app does not publish records or enforce this setting.
 - `priority` (integer): Priority of the SRV record. Lower values are preferred. Range 0–65535, default 0.
 - `weight` (integer): Relative weight for records with the same priority. Range 0–65535, default 0.
 - `port` (integer): Port number of the service. Range 0–65535.

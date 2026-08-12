@@ -208,6 +208,36 @@ class NSRecordFormTestCase(TestCase):
         self.assertTrue(form.errors)
         self.assertIn("This field is required.", form.errors["zone"])
 
+    # Testing the record `enabled` field here. If it works for NSRecord, it works for all other record types.
+    def test_enabled_is_checked_by_default(self):
+        """A new record form offers `enabled` pre-checked, matching the model default."""
+        self.assertTrue(self.form_class().fields["enabled"].initial)
+
+    def test_enabled_can_be_unchecked(self):
+        """Submitting the form without `enabled` saves a disabled record."""
+        data = {
+            "name": "ns-record",
+            "server": "ns-record-server",
+            "ttl": 3600,
+            "zone": self.dns_zone,
+        }
+        form = self.form_class(data)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertFalse(form.save().enabled)
+
+    def test_enabled_can_be_checked(self):
+        """Submitting the form with `enabled` saves an enabled record."""
+        data = {
+            "name": "ns-record",
+            "server": "ns-record-server",
+            "ttl": 3600,
+            "zone": self.dns_zone,
+            "enabled": True,
+        }
+        form = self.form_class(data)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.save().enabled)
+
 
 class ARecordFormTestCase(TestCase):
     """Test ARecord forms."""

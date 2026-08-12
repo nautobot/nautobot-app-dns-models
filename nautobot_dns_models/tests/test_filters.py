@@ -446,6 +446,16 @@ class NSRecordFilterTestCase(TestCase):
         self.assertEqual(self.filterset({"q": "ns1"}, self.queryset).qs.count(), 1)
         self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 3)
 
+    # Testing the `enabled` filterset here. If it works in NSRecord, it should work in all other record types.
+    def test_enabled_filter(self):
+        """enabled filter should match only records with the given enabled value."""
+        record = NSRecord.objects.get(name="ns-01")
+        record.enabled = False
+        record.validated_save()
+
+        self.assertEqual(self.filterset({"enabled": "false"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"enabled": "true"}, self.queryset).qs.count(), 2)
+
     # Testing TTL filterset here. If it works in NSRecord, it should work in all other record types.
     def test_ttl_equals(self):
         """Test filter with TTL equal to value."""

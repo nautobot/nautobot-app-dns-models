@@ -5,7 +5,7 @@ The DNS zone model is used to represent a distinct DNS zone. It contains the zon
 Domain registration attributes are modeled separately in `DNSRegistration`.
 
 - `name` (string): Unique FQDN of the Zone, w/ TLD. e.g `example.com`.
-- `enabled` (boolean, default `True`): Indicates whether the zone is eligible for publication by external integrations. This app does not publish zones or enforce this setting.
+- `enabled` (boolean, default `True`): Indicates whether the zone is eligible for publication by external integrations. This app does not publish zones or enforce this setting. The same field exists on every [DNS record](dnsrecord.md) type; disabling a zone does not change the records it contains.
 - `ttl` (integer): Time to live for the DNS zone.
 - `filename` (string): Filename of the DNS zone file.
 - `description`: (string): Description of the DNS zone.

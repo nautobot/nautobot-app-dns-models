@@ -118,6 +118,10 @@ class DNSModel(PrimaryModel):
     ttl = models.PositiveBigIntegerField(
         validators=[MaxValueValidator(UINT32_MAX)], default=3600, help_text="Time To Live."
     )
+    enabled = models.BooleanField(
+        default=True,
+        help_text="Whether this object is eligible for publication by external integrations.",
+    )
 
     class Meta:
         """Meta class."""
@@ -249,10 +253,6 @@ class DNSZone(DNSModel):
         help_text="The DNS View this Zone belongs to.",
         verbose_name="View",
         default=get_default_view_pk,
-    )
-    enabled = models.BooleanField(
-        default=True,
-        help_text="Whether this zone is eligible for publication by external integrations.",
     )
     ttl = models.PositiveBigIntegerField(
         validators=[MaxValueValidator(UINT32_MAX)],

@@ -26,6 +26,28 @@ from nautobot_dns_models import models
 EXPIRATION_DATE_INPUT_FORMATS = ("%Y-%m-%d",)
 
 
+class EnabledBeforeDescriptionMixin:
+    """Render the `enabled` field right before `description` on create/edit forms.
+
+    `enabled` is declared on the abstract `DNSModel` base while the concrete models override
+    `name`, so with `fields = "__all__"` Django's declaration order puts `enabled` first.
+    Must be listed before the form base class so this reordering runs after the fields are built.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """Move `enabled` so it renders immediately before `description`."""
+        super().__init__(*args, **kwargs)
+        if "enabled" not in self.fields or "description" not in self.fields:
+            return
+        enabled = self.fields.pop("enabled")
+        reordered = {}
+        for field_name, field in self.fields.items():
+            if field_name == "description":
+                reordered["enabled"] = enabled
+            reordered[field_name] = field
+        self.fields = reordered
+
+
 class DNSViewForm(NautobotModelForm):
     """DNSView creation/edit form."""
 
@@ -232,7 +254,7 @@ class DNSRegistrationFilterForm(NautobotFilterForm):
     ]
 
 
-class DNSZoneForm(NautobotModelForm, TenancyForm):
+class DNSZoneForm(EnabledBeforeDescriptionMixin, NautobotModelForm, TenancyForm):
     """DNSZone creation/edit form."""
 
     dns_view = DynamicModelChoiceField(
@@ -348,7 +370,7 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
     ]
 
 
-class NSRecordForm(NautobotModelForm):
+class NSRecordForm(EnabledBeforeDescriptionMixin, NautobotModelForm):
     """NSRecord creation/edit form."""
 
     class Meta:
@@ -363,6 +385,7 @@ class NSRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.NSRecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -388,16 +411,21 @@ class NSRecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.NSRecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "description",
     ]
 
 
-class ARecordForm(NautobotModelForm):
+class ARecordForm(EnabledBeforeDescriptionMixin, NautobotModelForm):
     """ARecord creation/edit form."""
 
     ip_address = DynamicModelChoiceField(
@@ -418,6 +446,7 @@ class ARecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.ARecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -442,16 +471,21 @@ class ARecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.ARecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "description",
     ]
 
 
-class AAAARecordForm(NautobotModelForm):
+class AAAARecordForm(EnabledBeforeDescriptionMixin, NautobotModelForm):
     """AAAARecord creation/edit form."""
 
     ip_address = DynamicModelChoiceField(
@@ -472,6 +506,7 @@ class AAAARecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.AAAARecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -496,16 +531,21 @@ class AAAARecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.AAAARecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "description",
     ]
 
 
-class CNAMERecordForm(NautobotModelForm):
+class CNAMERecordForm(EnabledBeforeDescriptionMixin, NautobotModelForm):
     """CNAMERecord creation/edit form."""
 
     class Meta:
@@ -520,6 +560,7 @@ class CNAMERecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.CNAMERecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -544,16 +585,21 @@ class CNAMERecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.CNAMERecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "description",
     ]
 
 
-class MXRecordForm(NautobotModelForm):
+class MXRecordForm(EnabledBeforeDescriptionMixin, NautobotModelForm):
     """MXRecord creation/edit form."""
 
     class Meta:
@@ -568,6 +614,7 @@ class MXRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.MXRecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -592,17 +639,22 @@ class MXRecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.MXRecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "preference",
         "description",
     ]
 
 
-class TXTRecordForm(NautobotModelForm):
+class TXTRecordForm(EnabledBeforeDescriptionMixin, NautobotModelForm):
     """TXTRecord creation/edit form."""
 
     class Meta:
@@ -617,6 +669,7 @@ class TXTRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.TXTRecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -641,16 +694,21 @@ class TXTRecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.TXTRecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "description",
     ]
 
 
-class PTRRecordForm(NautobotModelForm):
+class PTRRecordForm(EnabledBeforeDescriptionMixin, NautobotModelForm):
     """PTRRecord creation/edit form."""
 
     class Meta:
@@ -665,6 +723,7 @@ class PTRRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.PTRRecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -689,18 +748,23 @@ class PTRRecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.PTRRecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "ttl",
         "comment",
         "description",
     ]
 
 
-class SRVRecordForm(NautobotModelForm):
+class SRVRecordForm(EnabledBeforeDescriptionMixin, NautobotModelForm):
     """SRVRecord creation/edit form."""
 
     class Meta:
@@ -715,6 +779,7 @@ class SRVRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
 
     pk = forms.ModelMultipleChoiceField(queryset=models.SRVRecord.objects.all(), widget=forms.MultipleHiddenInput)
     description = forms.CharField(required=False)
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
     class Meta:
         """Meta attributes."""
@@ -739,11 +804,16 @@ class SRVRecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.SRVRecord
     # Define the fields above for ordering and widget purposes
     fields = [
         "q",
         "name",
+        "enabled",
         "priority",
         "weight",
         "port",

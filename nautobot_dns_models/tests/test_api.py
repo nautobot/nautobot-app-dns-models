@@ -551,6 +551,7 @@ class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",
@@ -570,6 +571,7 @@ class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):
                 "name": "ns4",
                 "server": "ns4.example.com.",
                 "zone": cls.ns_zone.id,
+                "enabled": False,
             },
             {
                 "name": "ns5",
@@ -612,6 +614,35 @@ class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):
         response = self._post_ns_with_ttl("ns-overflow", 4294967296)
         self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
 
+    # Testing the record `enabled` field here. If it works for NSRecord, it works for all other record types.
+    def test_api_enabled_defaults_to_true_and_can_be_toggled(self):
+        """A record created without `enabled` is enabled, and `enabled` can be patched afterwards."""
+        self.add_permissions("nautobot_dns_models.add_nsrecord")
+        self.add_permissions("nautobot_dns_models.change_nsrecord")
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:nsrecord-list")
+        response = self.client.post(
+            url,
+            data={"name": "ns-enabled", "server": "ns1.example.com.", "zone": self.ns_zone.id},
+            format="json",
+            **self.header,
+        )
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertTrue(response.data["enabled"])
+
+        record = NSRecord.objects.get(pk=response.data["id"])
+        response = self.client.patch(
+            self._get_detail_url(record),
+            data={"enabled": False},
+            format="json",
+            **self.header,
+        )
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+
+        record.refresh_from_db()
+        self.assertFalse(record.enabled)
+
 
 class ARecordAPITestCase(APIViewTestCases.APIViewTestCase):
     """Test the Nautobot ARecord API."""
@@ -620,6 +651,7 @@ class ARecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",
@@ -691,6 +723,7 @@ class AAAARecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",
@@ -760,6 +793,7 @@ class CNAMERecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",
@@ -800,6 +834,7 @@ class MXRecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",
@@ -840,6 +875,7 @@ class TXTRecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",
@@ -880,6 +916,7 @@ class PTRRecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",
@@ -920,6 +957,7 @@ class SRVRecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",
