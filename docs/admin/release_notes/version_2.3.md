@@ -4,8 +4,8 @@ This document describes all new features and changes in the release. The format 
 
 ## Release Overview
 
-- Major features or milestones
-- Changes to compatibility with Nautobot and/or other apps, libraries etc.
+- Added `enabled` field in DNS Zones and every record type models with `True` as the default.
+- Changed fields to comply with RFC using 32-bit range values. 
 
 <!-- towncrier release notes start -->
 
