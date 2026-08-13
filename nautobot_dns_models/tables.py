@@ -131,6 +131,7 @@ class DNSZoneTable(BaseTable):
     tenant = TenantColumn()
     dns_view = tables.Column(linkify=True)
     enabled = BooleanColumn()
+    auto_create_ptr = BooleanColumn()
     actions = ButtonsColumn(
         models.DNSZone,
         buttons=("changelog", "edit", "delete"),
