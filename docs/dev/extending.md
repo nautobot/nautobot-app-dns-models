@@ -11,66 +11,108 @@ Title: DNS Models Entity Relation Diagram
 ---
 erDiagram
     DNSModel {
+        boolean enabled
     }
+
+    DNSView {
+        charfield name UK
+        textfield description
+    }
+
+    ipam_PrefixModel {}
+
+    DNSViewPrefixAssignment {
+        DNSView dns_view FK
+        ipam_PrefixModel prefix FK
+    }
+
+    DNSRegistrar {
+        charfield name UK
+        url url
+        charfield account_number
+    }
+
+    extras_StatusModel {}
+
+    DNSRegistration {
+        DNSRegistrar dns_registrar FK
+        DNSZone dns_zone FK
+        extras_StatusModel status FK
+        datefield expiration_date
+        boolean auto_renewal
+        boolean registry_locked
+        boolean transfer_locked
+        boolean privacy_enabled
+        boolean website_forwarding_enabled
+        integer renewal_term_months
+        boolean dnssec_enabled
+    }
+
+    tenancy_TenantModel {}
 
     DNSZone {
         charfield name UK
+        DNSView dns_view FK
+        boolean enabled
         integer ttl
-        charfied filename
+        charfield filename
         textfield description
         string soa_mname
         email soa_rname
         integer soa_refresh
         integer soa_retry
-        integer soa_export
+        integer soa_expire
         integer soa_serial
         integer soa_minimum
+        tenancy_TenantModel tenant FK
+        boolean auto_create_ptr
     }
 
     DNSRecord {
         charfield name UK
-        DNSZone DNSZone
+        DNSZone zone FK
         integer ttl
+        boolean enabled
         textfield description
-        charfied comment
+        charfield comment
     }
 
     ipam_IPaddressModel {}
 
     ARecord {
-        ipam_IPaddressModel IPAddress
+        ipam_IPaddressModel ip_address FK
     }
 
     AAAARecord {
-        ipam_IPaddressModel IPAddress
+        ipam_IPaddressModel ip_address FK
     }
 
     CNAMERecord {
-        charfied alias
+        charfield alias
     }
 
     MXRecord {
         integer preference
-        charfied server
+        charfield mail_server
     }
 
     TXTRecord {
-        textfield text
+        charfield text
     }
 
     PTRRecord {
-        charfied ptrdname
+        charfield ptrdname
     }
 
     NSRecord {
-        charfied server
+        charfield server
     }
 
     SRVRecord {
         integer priority
         integer weight
         integer port
-        charfied target
+        charfield target
     }
 
     DNSModel ||--o{ DNSZone : implements
@@ -84,8 +126,20 @@ erDiagram
     DNSRecord ||--o{ NSRecord: implements
     DNSRecord ||--o{ SRVRecord: implements
 
-    DNSRecord ||--o{ DNSZone: "is inside of a"
+    DNSZone ||--o{ DNSRecord: "contains"
+    DNSZone }o--|| DNSView: "belongs to"
+    DNSZone }o--o| tenancy_TenantModel: "belongs to"
 
-    ARecord ||--|| ipam_IPaddressModel: "references"
-    AAAARecord ||--|| ipam_IPaddressModel: "references"
+    DNSView ||--o{ DNSViewPrefixAssignment: "assigns"
+    ipam_PrefixModel ||--o{ DNSViewPrefixAssignment: "assigned via"
+
+    DNSRegistration }o--|| DNSRegistrar: "registered with"
+    DNSRegistration }o--|| DNSZone: "registers"
+    DNSRegistration }o--|| extras_StatusModel: "has status"
+
+    ARecord }o--|| ipam_IPaddressModel: "references"
+    AAAARecord }o--|| ipam_IPaddressModel: "references"
+
+    ARecord ||..o{ PTRRecord: "auto-creates (when zone.auto_create_ptr)"
+    AAAARecord ||..o{ PTRRecord: "auto-creates (when zone.auto_create_ptr)"
 ```

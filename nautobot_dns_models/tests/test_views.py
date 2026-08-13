@@ -176,6 +176,7 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             "soa_expire": 3600000,
             "soa_serial": 0,
             "soa_minimum": 172800,
+            "enabled": True,
         }
 
         cls.csv_data = (
@@ -183,7 +184,7 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             f"Test 3, {dns_view.id}, 3600, Description 3, filename 3, auth-server, admin@example_three.com, 86400, 7200, 3600000, 0, 172800",
         )
 
-        cls.bulk_edit_data = {"description": "Bulk edit views"}
+        cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}
 
 
 class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
@@ -218,6 +219,7 @@ class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             "server": "test server",
             "zone": zone.pk,
             "ttl": 3600,
+            "enabled": True,
         }
 
         cls.csv_data = (
@@ -225,7 +227,7 @@ class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             f"Test 3,server 3,{zone.name}, 3600",
         )
 
-        cls.bulk_edit_data = {"description": "Bulk edit views"}
+        cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}
 
 
 class ARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsMixin):
@@ -272,6 +274,7 @@ class ARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsMix
             "ip_address": cls.ip_addresses[0].pk,
             "ttl": 3600,
             "zone": zone.pk,
+            "enabled": True,
         }
 
         cls.csv_data = (
@@ -279,7 +282,7 @@ class ARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsMix
             f"Test 3,{cls.ip_addresses[0].pk},{zone.name}",
         )
 
-        cls.bulk_edit_data = {"description": "Bulk edit views"}
+        cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}
 
     @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
     def test_ipaddress_detail_view_side_panel_always(self):
@@ -374,6 +377,7 @@ class AAAARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTests
             "ip_address": cls.ip_addresses[0].pk,
             "ttl": 3600,
             "zone": zone.pk,
+            "enabled": True,
         }
 
         cls.csv_data = (
@@ -381,7 +385,7 @@ class AAAARecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTests
             f"Test 3,{cls.ip_addresses[0].pk},{zone.name}",
         )
 
-        cls.bulk_edit_data = {"description": "Bulk edit views"}
+        cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}
 
     @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
     def test_ipaddress_detail_view_side_panel_always(self):
@@ -464,6 +468,7 @@ class CNAMERecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             "alias": "test.example.com",
             "ttl": 3600,
             "zone": zone.pk,
+            "enabled": True,
         }
 
         cls.csv_data = (
@@ -471,7 +476,7 @@ class CNAMERecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             f"Test 3,test2.example.com,{zone.name}",
         )
 
-        cls.bulk_edit_data = {"description": "Bulk edit views"}
+        cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}
 
 
 class MXRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
@@ -507,6 +512,7 @@ class MXRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             "preference": 10,
             "ttl": 3600,
             "zone": zone.pk,
+            "enabled": True,
         }
 
         cls.csv_data = (
@@ -514,7 +520,7 @@ class MXRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             f"Test 3,test_mail2.example.com,{zone.name}",
         )
 
-        cls.bulk_edit_data = {"description": "Bulk edit views"}
+        cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}
 
 
 class TXTRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
@@ -550,6 +556,7 @@ class TXTRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             "text": "test-text",
             "ttl": 3600,
             "zone": zone.pk,
+            "enabled": True,
         }
 
         cls.csv_data = (
@@ -557,7 +564,7 @@ class TXTRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             f"Test 3,test-text,{zone.name}",
         )
 
-        cls.bulk_edit_data = {"description": "Bulk edit views"}
+        cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}
 
 
 class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsMixin):
@@ -606,6 +613,7 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsM
             "ptrdname": "ptr-test-record",
             "ttl": 3600,
             "zone": zone.pk,
+            "enabled": True,
         }
 
         cls.csv_data = (
@@ -613,7 +621,7 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsM
             f"Test 3,ptr-test02-record,{zone.name}",
         )
 
-        cls.bulk_edit_data = {"description": "Bulk edit views"}
+        cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}
 
     @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
     def test_ipaddress_detail_view_side_panel_always(self):
@@ -708,6 +716,7 @@ class SRVRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             "target": "xmpp.example.com",
             "ttl": 3600,
             "zone": zone.pk,
+            "enabled": True,
         }
 
         cls.csv_data = (
@@ -715,4 +724,4 @@ class SRVRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             f"_ldap._tcp,20,10,389,ldap.example.com,{zone.name}",
         )
 
-        cls.bulk_edit_data = {"description": "Bulk edit views"}
+        cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}

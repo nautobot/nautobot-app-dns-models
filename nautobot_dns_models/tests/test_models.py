@@ -1,4 +1,5 @@
 """Test DNSZone."""
+# pylint: disable=too-many-lines
 
 from constance.test import override_config
 from django.core.exceptions import ValidationError
@@ -8,6 +9,7 @@ from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from netutils.ip import ipaddress_address
 
 from nautobot_dns_models.models import (
+    UINT32_MAX,
     AAAARecord,
     ARecord,
     CNAMERecord,
@@ -157,6 +159,7 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
         dnszone = DNSZone.objects.create(name="Development")
         self.assertEqual(dnszone.name, "Development")
         self.assertEqual(dnszone.description, "")
+        self.assertTrue(dnszone.enabled)
         self.assertEqual(str(dnszone), "Development (Default)")
 
     def test_create_dnszone_all_fields_success(self):
@@ -567,6 +570,63 @@ class DNSRecordNameLengthValidationTest(TestCase):
         self.assertIn("Empty labels are not allowed", str(context.exception))
 
 
+class DNSZoneSOARNameTest(TestCase):
+    """Test SOA RNAME normalization and validation."""
+
+    def test_save_normalizes_soa_rname(self):
+        test_cases = {
+            "john.example.com": "john@example.com",
+            "john.example.com.": "john@example.com",
+            r"john\.smith.example.com": "john.smith@example.com",
+            r"john\.smith.example.com.": "john.smith@example.com",
+            r"john_smith.example.com": "john_smith@example.com",
+            r"john_smith.example.com.": "john_smith@example.com",
+            "invalid": "invalid",
+            "invalid.": "invalid",
+        }
+        for index, (value, expected) in enumerate(test_cases.items()):
+            with self.subTest(value=value):
+                zone = DNSZone.objects.create(
+                    name=f"rname-{index}.example",
+                    filename=f"rname-{index}.example.zone",
+                    soa_mname=f"ns1.rname-{index}.example.",
+                    soa_rname=value,
+                )
+                self.assertEqual(zone.soa_rname, expected)
+
+    def test_save_rejects_invalid_soa_rname(self):
+        invalid_values = (
+            "",
+            "john@example",
+            "john.example",
+            "john@",
+            "@example.com",
+            "john@@example.com",
+            ".example.com",
+            "john..example.com",
+            r"john\\.smith.example.com",
+            r"john\\.smith.example.com.",
+            r"john\\\.smith.example.com",
+            r"john\\\.smith.example.com.",
+            r"john\046example.com.",
+            r"john.example\.com.",
+            "a" * 64,
+        )
+        for index, value in enumerate(invalid_values):
+            with self.subTest(value=value):
+                zone = DNSZone(
+                    name=f"invalid-rname-{index}.example",
+                    filename=f"invalid-rname-{index}.example.zone",
+                    soa_mname=f"ns1.invalid-rname-{index}.example.",
+                    soa_rname=value,
+                )
+
+                with self.assertRaises(ValidationError) as context:
+                    zone.validated_save()
+
+                self.assertIn("soa_rname", context.exception.message_dict)
+
+
 class DNSZoneNameLengthValidationTest(TestCase):
     """Test DNS zone name validation rules from RFC 1035 §3.1.
 
@@ -800,3 +860,166 @@ class TestDNSZoneFindForPtrdname(TestCase):
             DNSZone.find_reverse_zone_for_ptrdname("1.0.0.10.in-addr.arpa", dns_view=self.view_a),
             specific,
         )
+
+
+class DNSZoneIntegerFieldBoundaryTest(TestCase):
+    """Boundary tests for integer fields on DNSZone.
+
+    TTL (RFC 8767 §4): unsigned 32-bit, 0..4294967295.
+    SOA fields (RFC 1035 §3.3.13): 32-bit values, explicitly unsigned for SERIAL and MINIMUM.
+    RFC 1982 §7 governs SERIAL's uint32 range and arithmetic.
+    """
+
+    _INTEGER_FIELDS = ("ttl", "soa_refresh", "soa_retry", "soa_expire", "soa_serial", "soa_minimum")
+
+    def _make_zone(self, **kwargs):
+        defaults = {
+            "name": "boundary-test.example",
+            "filename": "boundary-test.zone",
+            "soa_mname": "ns1.boundary-test.example.",
+            "soa_rname": "admin@boundary-test.example",
+            "ttl": 3600,
+            "soa_refresh": 86400,
+            "soa_retry": 7200,
+            "soa_expire": 3600000,
+            "soa_serial": 0,
+            "soa_minimum": 3600,
+        }
+        defaults.update(kwargs)
+        return DNSZone(**defaults)
+
+    def test_all_fields_accept_zero(self):
+        """All DNS integer zone fields accept 0 as a valid value."""
+        for field in self._INTEGER_FIELDS:
+            with self.subTest(field=field):
+                zone = self._make_zone(name=f"{field}-zero.example", **{field: 0})
+                zone.full_clean()
+
+    def test_all_fields_accept_uint32_max(self):
+        """All DNS integer zone fields accept the uint32 maximum."""
+        for field in self._INTEGER_FIELDS:
+            with self.subTest(field=field):
+                zone = self._make_zone(name=f"{field}-max.example", **{field: UINT32_MAX})
+                zone.full_clean()
+
+    def test_all_fields_reject_above_uint32_max(self):
+        """All DNS integer zone fields reject values above the uint32 maximum."""
+        for field in self._INTEGER_FIELDS:
+            with self.subTest(field=field):
+                zone = self._make_zone(name=f"{field}-overflow.example", **{field: UINT32_MAX + 1})
+                with self.assertRaises(ValidationError):
+                    zone.full_clean()
+
+
+class DNSRecordTTLBoundaryTest(TestCase):
+    """Boundary tests for the record-level TTL field (RFC 8767 §4: unsigned 32-bit, 0..4294967295)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZone.objects.create(name="ttl-boundary.example", ttl=3600)
+
+    def test_record_ttl_accepts_zero(self):
+        """Record TTL of 0 is valid."""
+        record = NSRecord(name="ns1", server="ns1.example.com.", zone=self.zone, _ttl=0)
+        record.full_clean()
+
+    def test_record_ttl_zero_not_replaced_by_zone_ttl(self):
+        """TTL of 0 must not be treated as unset and silently replaced by the zone TTL (guards against falsy-check regression)."""
+        record = NSRecord.objects.create(name="ns-zero", server="ns1.example.com.", zone=self.zone, _ttl=0)
+        record.refresh_from_db()
+        self.assertEqual(record.ttl, 0)
+
+    def test_record_ttl_accepts_uint32_max(self):
+        """Record TTL at the uint32 maximum is accepted."""
+        record = NSRecord(name="ns1", server="ns1.example.com.", zone=self.zone, _ttl=UINT32_MAX)
+        record.full_clean()
+
+    def test_record_ttl_rejects_above_uint32_max(self):
+        """Record TTL above the uint32 maximum is rejected."""
+        record = NSRecord(name="ns1", server="ns1.example.com.", zone=self.zone, _ttl=UINT32_MAX + 1)
+        with self.assertRaises(ValidationError):
+            record.full_clean()
+
+    def test_record_inherits_zone_ttl_when_no_record_ttl_set(self):
+        """When no record-level TTL is set, the zone TTL is returned by the ttl property."""
+        record = NSRecord.objects.create(name="ns1", server="ns1.example.com.", zone=self.zone)
+        self.assertEqual(record.ttl, self.zone.ttl)
+
+
+class DNSModelEnabledFieldTest(TestCase):
+    """Tests for the `enabled` field that DNSZone and every record type inherit from DNSModel."""
+
+    @classmethod
+    def setUpTestData(cls):
+        # Populate the required zone fields so the zone can be re-saved with validated_save().
+        cls.zone = DNSZone.objects.create(
+            name="enabled.example",
+            filename="enabled.example.zone",
+            soa_mname="ns1.enabled.example",
+            soa_rname="admin@enabled.example",
+        )
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="10.10.0.0/24", namespace=namespace, type="Pool", status=status)
+        cls.ip_address = IPAddress.objects.create(address="10.10.0.1/32", namespace=namespace, status=status)
+        Prefix.objects.create(prefix="2001:db8:abcd:77::/64", namespace=namespace, type="Pool", status=status)
+        cls.ipv6_address = IPAddress.objects.create(
+            address="2001:db8:abcd:77::1/128", namespace=namespace, status=status
+        )
+
+    def _records(self, suffix, **kwargs):
+        """Return one unsaved record of every type, all named after `suffix`."""
+        return [
+            NSRecord(name=f"ns-{suffix}", server="ns1.example.com.", zone=self.zone, **kwargs),
+            ARecord(name=f"a-{suffix}", ip_address=self.ip_address, zone=self.zone, **kwargs),
+            AAAARecord(name=f"aaaa-{suffix}", ip_address=self.ipv6_address, zone=self.zone, **kwargs),
+            CNAMERecord(name=f"cname-{suffix}", alias="www.example.com", zone=self.zone, **kwargs),
+            MXRecord(name=f"mx-{suffix}", mail_server="mail.example.com", zone=self.zone, **kwargs),
+            TXTRecord(name=f"txt-{suffix}", text="v=spf1 -all", zone=self.zone, **kwargs),
+            PTRRecord(name=f"ptr-{suffix}", ptrdname="www.example.com", zone=self.zone, **kwargs),
+            SRVRecord(
+                name=f"srv-{suffix}",
+                priority=10,
+                weight=5,
+                port=5060,
+                target="sip.example.com",
+                zone=self.zone,
+                **kwargs,
+            ),
+        ]
+
+    def test_zone_is_enabled_by_default(self):
+        """A zone is eligible for publication unless explicitly disabled."""
+        self.assertTrue(DNSZone.objects.create(name="default.example").enabled)
+
+    def test_zone_can_be_disabled(self):
+        """A zone's enabled flag can be set to False."""
+        zone = DNSZone.objects.create(name="disabled.example", enabled=False)
+        zone.refresh_from_db()
+        self.assertFalse(zone.enabled)
+
+    def test_records_are_enabled_by_default(self):
+        """Every record type inherits enabled=True from DNSModel."""
+        for record in self._records("default"):
+            with self.subTest(model=type(record).__name__):
+                record.validated_save()
+                record.refresh_from_db()
+                self.assertTrue(record.enabled)
+
+    def test_records_can_be_disabled(self):
+        """Every record type can be created with enabled=False."""
+        for record in self._records("disabled", enabled=False):
+            with self.subTest(model=type(record).__name__):
+                record.validated_save()
+                record.refresh_from_db()
+                self.assertFalse(record.enabled)
+
+    def test_disabling_zone_does_not_disable_its_records(self):
+        """The zone and record flags are independent; this app does not cascade them."""
+        record = NSRecord.objects.create(name="ns-cascade", server="ns1.example.com.", zone=self.zone)
+
+        self.zone.enabled = False
+        self.zone.validated_save()
+
+        record.refresh_from_db()
+        self.assertTrue(record.enabled)

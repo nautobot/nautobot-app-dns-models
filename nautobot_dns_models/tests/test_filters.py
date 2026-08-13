@@ -355,6 +355,7 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
             filename="zone3.conf",
             tenant=cls.tenant1,
             description="Test zone three",
+            enabled=False,
             soa_rname="admin.admin.com",
             soa_serial=2024020101,
             soa_retry=9600,
@@ -383,6 +384,11 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
         self.assertEqual(self.filterset({"q": "Test"}, self.queryset).qs.count(), 3)
         self.assertEqual(self.filterset({"q": "zone1"}, self.queryset).qs.count(), 1)
         self.assertEqual(self.filterset({"q": "zone"}, self.queryset).qs.count(), 3)
+
+    def test_enabled_filter(self):
+        """enabled filter should match only zones with the given enabled value."""
+        self.assertEqual(self.filterset({"enabled": "true"}, self.queryset).qs.count(), 2)
+        self.assertEqual(self.filterset({"enabled": "false"}, self.queryset).qs.count(), 1)
 
 
 class NSRecordFilterTestCase(TestCase):
@@ -439,6 +445,16 @@ class NSRecordFilterTestCase(TestCase):
         self.assertEqual(self.filterset({"q": "ns-"}, self.queryset).qs.count(), 3)
         self.assertEqual(self.filterset({"q": "ns1"}, self.queryset).qs.count(), 1)
         self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 3)
+
+    # Testing the `enabled` filterset here. If it works in NSRecord, it should work in all other record types.
+    def test_enabled_filter(self):
+        """enabled filter should match only records with the given enabled value."""
+        record = NSRecord.objects.get(name="ns-01")
+        record.enabled = False
+        record.validated_save()
+
+        self.assertEqual(self.filterset({"enabled": "false"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"enabled": "true"}, self.queryset).qs.count(), 2)
 
     # Testing TTL filterset here. If it works in NSRecord, it should work in all other record types.
     def test_ttl_equals(self):

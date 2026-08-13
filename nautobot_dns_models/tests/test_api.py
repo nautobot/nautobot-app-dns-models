@@ -1,4 +1,7 @@
 """Unit tests for nautobot_dns_models."""
+# pylint: disable=too-many-lines
+
+# pylint: disable=too-many-lines
 
 from datetime import date
 
@@ -444,6 +447,7 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "filename",
@@ -463,6 +467,7 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
                 "name": "example.com",
                 "dns_view": dns_view.id,
                 "filename": "example.com.zone",
+                "enabled": False,
                 "soa_mname": "ns1.example.com",
                 "soa_rname": "admin@example.com",
                 "soa_refresh": 3600,
@@ -483,6 +488,44 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
                 "soa_rname": "admin@example.net",
             },
         ]
+
+    def test_post_dnszone_accepts_soa_rname_without_at_sign(self):
+        self.add_permissions("nautobot_dns_models.add_dnszone")
+        self.add_permissions("nautobot_dns_models.view_dnsview")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnszone-list")
+        data = {
+            "name": "catalog.example",
+            "dns_view": DNSView.objects.get(name="Default").id,
+            "filename": "catalog.example.zone",
+            "soa_mname": "invalid.",
+            "soa_rname": "invalid.",
+        }
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        # Single-label placeholder is stored without a trailing dot
+        self.assertEqual(response.data["soa_rname"], "invalid")
+
+    def test_update_enabled(self):
+        """Partial update should allow toggling enabled on a DNSZone."""
+        self.add_permissions("nautobot_dns_models.change_dnszone")
+
+        dns_view = DNSView.objects.get(name="Default")
+        zone = _create_zone(name="publish.example", dns_view=dns_view)
+        self.assertTrue(zone.enabled)
+
+        response = self.client.patch(
+            self._get_detail_url(zone),
+            data={"enabled": False},
+            format="json",
+            **self.header,
+        )
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+
+        zone.refresh_from_db()
+        self.assertFalse(zone.enabled)
 
     def test_create_zone_helper_uses_supplied_dns_view(self):
         """_create_zone should use the DNSView explicitly provided by the caller."""
@@ -508,6 +551,7 @@ class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",
@@ -516,29 +560,88 @@ class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        dns_zone = _create_zone(name="example.com")
+        cls.ns_zone = _create_zone(name="example.com")
 
-        NSRecord.objects.create(name="ns1", server="ns1.example.com.", zone=dns_zone)
-        NSRecord.objects.create(name="ns2", server="ns2.example.com.", zone=dns_zone)
-        NSRecord.objects.create(name="ns3", server="ns3.example.com.", zone=dns_zone)
+        NSRecord.objects.create(name="ns1", server="ns1.example.com.", zone=cls.ns_zone)
+        NSRecord.objects.create(name="ns2", server="ns2.example.com.", zone=cls.ns_zone)
+        NSRecord.objects.create(name="ns3", server="ns3.example.com.", zone=cls.ns_zone)
 
         cls.create_data = [
             {
                 "name": "ns4",
                 "server": "ns4.example.com.",
-                "zone": dns_zone.id,
+                "zone": cls.ns_zone.id,
+                "enabled": False,
             },
             {
                 "name": "ns5",
                 "server": "ns5.example.com.",
-                "zone": dns_zone.id,
+                "zone": cls.ns_zone.id,
             },
             {
                 "name": "ns6",
                 "server": "ns6.example.com.",
-                "zone": dns_zone.id,
+                "zone": cls.ns_zone.id,
             },
         ]
+
+    def _post_ns_with_ttl(self, name, ttl):
+        """POST an NS record with an explicit TTL value."""
+        self.add_permissions("nautobot_dns_models.add_nsrecord")
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+        url = reverse("plugins-api:nautobot_dns_models-api:nsrecord-list")
+        return self.client.post(
+            url,
+            data={"name": name, "server": "ns1.example.com.", "zone": self.ns_zone.id, "ttl": ttl},
+            format="json",
+            **self.header,
+        )
+
+    def test_api_accepts_ttl_zero(self):
+        """TTL of 0 is valid."""
+        response = self._post_ns_with_ttl("ns-zero", 0)
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["ttl"], 0)
+
+    def test_api_accepts_uint32_max_ttl(self):
+        """TTL at the uint32 maximum is accepted."""
+        response = self._post_ns_with_ttl("ns-max", 4294967295)
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["ttl"], 4294967295)
+
+    def test_api_rejects_ttl_above_uint32_max(self):
+        """TTL above the uint32 maximum is rejected."""
+        response = self._post_ns_with_ttl("ns-overflow", 4294967296)
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+
+    # Testing the record `enabled` field here. If it works for NSRecord, it works for all other record types.
+    def test_api_enabled_defaults_to_true_and_can_be_toggled(self):
+        """A record created without `enabled` is enabled, and `enabled` can be patched afterwards."""
+        self.add_permissions("nautobot_dns_models.add_nsrecord")
+        self.add_permissions("nautobot_dns_models.change_nsrecord")
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:nsrecord-list")
+        response = self.client.post(
+            url,
+            data={"name": "ns-enabled", "server": "ns1.example.com.", "zone": self.ns_zone.id},
+            format="json",
+            **self.header,
+        )
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertTrue(response.data["enabled"])
+
+        record = NSRecord.objects.get(pk=response.data["id"])
+        response = self.client.patch(
+            self._get_detail_url(record),
+            data={"enabled": False},
+            format="json",
+            **self.header,
+        )
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+
+        record.refresh_from_db()
+        self.assertFalse(record.enabled)
 
 
 class ARecordAPITestCase(APIViewTestCases.APIViewTestCase):
@@ -548,6 +651,7 @@ class ARecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",
@@ -619,6 +723,7 @@ class AAAARecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",
@@ -688,6 +793,7 @@ class CNAMERecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",
@@ -728,6 +834,7 @@ class MXRecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",
@@ -768,6 +875,7 @@ class TXTRecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",
@@ -808,6 +916,7 @@ class PTRRecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",
@@ -848,6 +957,7 @@ class SRVRecordAPITestCase(APIViewTestCases.APIViewTestCase):
     view_namespace = "plugins-api:nautobot_dns_models"
     bulk_update_data = {
         "description": "Example bulk description",
+        "enabled": False,
     }
     brief_fields = [
         "name",

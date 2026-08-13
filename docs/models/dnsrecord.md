@@ -1,5 +1,16 @@
 # DNS Record Model
 
+`DNSRecord` is the abstract base model shared by every record type (A, AAAA, CNAME, MX, NS, PTR, SRV, and TXT). The fields below are available on all of them:
+
+- `name` (string): FQDN of the record, without TLD.
+- `zone` (DNSZone): The DNS zone this record belongs to.
+- `ttl` (integer): Time to live for the record. If unset, the zone TTL is used.
+- `enabled` (boolean, default `True`): Indicates whether the record is eligible for publication by external integrations. This app does not publish records or enforce this setting.
+- `description` (string): Description of the record.
+- `comment` (string): Comment for the record.
+
+`enabled` is defined on `DNSModel`, so it is available on both [DNS Zone](dnszone.md) and every record type. The flags are independent: disabling a zone does not change the `enabled` value of the records it contains, and consumers of the data are responsible for deciding how to combine them.
+
 +++ 1.2.0 "DNS name length rules"
 
     When DNS validation is enabled (via the `DNS_VALIDATION_LEVEL` configuration), `DNSRecord` enforces the following DNS label and name length rules, as specified by [RFC 1035 §3.1](https://datatracker.ietf.org/doc/html/rfc1035#section-3.1):

@@ -2,7 +2,7 @@
 
 from constance import config as constance_config
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, validate_email
 from django.db import models
 from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
@@ -13,6 +13,12 @@ from netutils.ip import ipaddress_address
 # Reverse-DNS roots per RFC 1035 §3.5 and RFC 3596 §2.5
 RESERVED_ROOTS = {"in-addr.arpa", "ip6.arpa", "arpa"}
 
+# All DNS integer fields use the full unsigned 32-bit range (0..4294967295).
+# RFC 8767 §4 defines TTL as a 32-bit unsigned integer (updating RFC 2181).
+# RFC 1035 §3.3.13 defines SOA fields as 32-bit values, explicitly unsigned for SERIAL and MINIMUM;
+# RFC 1982 §7 specifies SERIAL's uint32 range and arithmetic.
+UINT32_MAX = 2**32 - 1
+
 
 def dns_wire_label_length(label):
     """Return the wire-format (IDNA/Punycode) length of a DNS label."""
@@ -20,6 +26,40 @@ def dns_wire_label_length(label):
         return len(label)
 
     return len("xn--" + label.encode("punycode").decode("ascii"))
+
+
+def _find_unescaped_dot(value):
+    """Return the position of the first unescaped dot, or None."""
+    character_is_escaped = False
+    for index, character in enumerate(value):
+        if character_is_escaped:
+            character_is_escaped = False
+            continue
+
+        if character == "\\":
+            character_is_escaped = True
+        elif character == ".":
+            return index
+
+    return None
+
+
+def normalize_soa_rname(value):
+    """Normalize a basic DNS-style SOA RNAME mailbox to email form."""
+    if not value or "@" in value:
+        return value
+
+    value_without_root = value.removesuffix(".")
+    separator = _find_unescaped_dot(value_without_root)
+    if separator is None:
+        return value_without_root
+
+    local_part = value_without_root[:separator].replace(r"\.", ".")
+    domain = value_without_root[separator + 1 :]
+    if not local_part or not domain or "\\" in local_part or "\\" in domain or "" in domain.split("."):
+        return value
+
+    return f"{local_part}@{domain}"
 
 
 def prior_checks_ptr_record_creation(record):
@@ -75,8 +115,12 @@ class DNSModel(PrimaryModel):
     # name is effectively a NOOP here; it's overridden in both subclasses but
     # is here so that linters don't complain about it being used in clean().
     name = models.CharField(max_length=200)
-    ttl = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)], default=3600, help_text="Time To Live."
+    ttl = models.PositiveBigIntegerField(
+        validators=[MaxValueValidator(UINT32_MAX)], default=3600, help_text="Time To Live."
+    )
+    enabled = models.BooleanField(
+        default=True,
+        help_text="Whether this object is eligible for publication by external integrations.",
     )
 
     class Meta:
@@ -210,8 +254,8 @@ class DNSZone(DNSModel):
         verbose_name="View",
         default=get_default_view_pk,
     )
-    ttl = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+    ttl = models.PositiveBigIntegerField(
+        validators=[MaxValueValidator(UINT32_MAX)],
         default=3600,
         help_text="Time To Live.",
         verbose_name="TTL",
@@ -224,33 +268,37 @@ class DNSZone(DNSModel):
         null=False,
         verbose_name="SOA MNAME",
     )
-    soa_rname = models.EmailField(help_text="Admin Email for the Zone in the form", verbose_name="SOA RNAME")
-    soa_refresh = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+    soa_rname = models.CharField(
+        max_length=254,
+        help_text="Mailbox of the person responsible for the zone or a single-label placeholder.",
+        verbose_name="SOA RNAME",
+    )
+    soa_refresh = models.PositiveBigIntegerField(
+        validators=[MaxValueValidator(UINT32_MAX)],
         default=86400,
         help_text="Number of seconds after which secondary name servers should query the master for the SOA record, to detect zone changes.",
         verbose_name="SOA Refresh",
     )
-    soa_retry = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+    soa_retry = models.PositiveBigIntegerField(
+        validators=[MaxValueValidator(UINT32_MAX)],
         default=7200,
         help_text="Number of seconds after which secondary name servers should retry to request the serial number from the master if the master does not respond.",
         verbose_name="SOA Retry",
     )
-    soa_expire = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+    soa_expire = models.PositiveBigIntegerField(
+        validators=[MaxValueValidator(UINT32_MAX)],
         default=3600000,
         help_text="Number of seconds after which secondary name servers should stop answering request for this zone if the master does not respond. This value must be bigger than the sum of Refresh and Retry.",
         verbose_name="SOA Expire",
     )
-    soa_serial = models.IntegerField(
-        validators=[MinValueValidator(0), MaxValueValidator(2147483647)],
+    soa_serial = models.PositiveBigIntegerField(
+        validators=[MaxValueValidator(UINT32_MAX)],
         default=0,
         help_text="Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.",
         verbose_name="SOA Serial",
     )
-    soa_minimum = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+    soa_minimum = models.PositiveBigIntegerField(
+        validators=[MaxValueValidator(UINT32_MAX)],
         default=3600,
         help_text="Minimum TTL for records in this zone.",
         verbose_name="SOA Minimum",
@@ -279,6 +327,34 @@ class DNSZone(DNSModel):
     def __str__(self):
         """Stringify instance."""
         return f"{self.name} ({self.dns_view})"
+
+    def clean(self):
+        """Normalize plain DNS-style RNAME mailboxes to email form."""
+        super().clean()
+
+        invalid_rname_message = (
+            "SOA RNAME must be a valid email address, a basic DNS-style mailbox with a fully qualified domain, "
+            "or a single-label placeholder."
+        )
+        normalized_soa_rname = normalize_soa_rname(self.soa_rname)
+        if "@" in normalized_soa_rname:
+            try:
+                validate_email(normalized_soa_rname)
+            except ValidationError as exc:
+                raise ValidationError({"soa_rname": invalid_rname_message}) from exc
+        else:
+            if not normalized_soa_rname or "." in normalized_soa_rname or "\\" in normalized_soa_rname:
+                raise ValidationError({"soa_rname": invalid_rname_message})
+            self._validate_dns_label(normalized_soa_rname, field="soa_rname")
+
+        # Keep the in-memory instance canonical for callers of clean() or full_clean()
+        # that do not immediately save it.
+        self.soa_rname = normalized_soa_rname
+
+    def save(self, *args, **kwargs):
+        """Normalize the RNAME before saving through the ORM."""
+        self.soa_rname = normalize_soa_rname(self.soa_rname)
+        return super().save(*args, **kwargs)
 
     @classmethod
     def find_reverse_zone_for_ptrdname(cls, ptrdname, dns_view=None):
@@ -385,8 +461,8 @@ class DNSRecord(DNSModel):
 
     name = models.CharField(max_length=200, help_text="FQDN of the Record, w/o TLD.")
     zone = ForeignKeyWithAutoRelatedName(DNSZone, on_delete=models.PROTECT)
-    _ttl = models.IntegerField(
-        validators=[MinValueValidator(300), MaxValueValidator(2147483647)],
+    _ttl = models.PositiveBigIntegerField(
+        validators=[MaxValueValidator(UINT32_MAX)],
         help_text="Time To Live (if no value is given, the Zone TTL will be used).",
         blank=True,
         null=True,
@@ -463,7 +539,7 @@ class DNSRecord(DNSModel):
     @property
     def ttl(self):
         """Return the TTL value for the record."""
-        if not self._ttl:
+        if self._ttl is None:
             return self.zone.ttl  # pylint: disable=no-member
         return self._ttl
 
