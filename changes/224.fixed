@@ -1,1 +1,0 @@
-Changed `DNSZone.soa_rname` to accept single-label placeholders and normalize supported DNS-style mailboxes to email form.

@@ -1,1 +1,0 @@
-Added the `enabled` boolean field (default `True`) to every DNS record type by moving it from `DNSZone` up to the shared `DNSModel` base class. The zone and record flags are independent: disabling a zone does not disable the records it contains.
