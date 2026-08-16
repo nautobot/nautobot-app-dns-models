@@ -291,9 +291,10 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
         help_text="FQDN of the Authoritative Name Server for Zone.",
         label="SOA MNAME",
     )
-    soa_rname = forms.EmailField(
+    soa_rname = forms.CharField(
         required=False,
-        help_text="Admin Email for the Zone in the form",
+        max_length=254,
+        help_text="Mailbox of the person responsible for the zone or a single-label placeholder.",
         label="SOA RNAME",
     )
     soa_refresh = forms.IntegerField(

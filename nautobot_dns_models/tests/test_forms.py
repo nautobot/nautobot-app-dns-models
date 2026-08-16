@@ -1,5 +1,6 @@
 """Tests for nautobot_dns_models Form Classes."""
 
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
@@ -137,6 +138,62 @@ class DNSZoneTest(TestCase):
             }
         )
         self.assertTrue(form.is_valid())
+
+
+class DNSZoneBulkEditFormTest(TestCase):
+    """Test DNSZone bulk edit form SOA RNAME handling."""
+
+    form_class = forms.DNSZoneBulkEditForm
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZone.objects.create(
+            name="bulk-rname.example",
+            filename="bulk-rname.example.zone",
+            soa_mname="ns1.bulk-rname.example.",
+            soa_rname="admin@example.com",
+        )
+
+    def test_soa_rname_accepts_dns_style_mailbox(self):
+        form = self.form_class(
+            DNSZone,
+            data={"pk": [self.zone.pk], "soa_rname": "admin.example.com"},
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.zone.soa_rname = form.cleaned_data["soa_rname"]
+        self.zone.validated_save()
+        self.zone.refresh_from_db()
+        self.assertEqual(self.zone.soa_rname, "admin@example.com")
+
+    def test_soa_rname_accepts_single_label_placeholder(self):
+        form = self.form_class(
+            DNSZone,
+            data={"pk": [self.zone.pk], "soa_rname": "invalid."},
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.zone.soa_rname = form.cleaned_data["soa_rname"]
+        self.zone.validated_save()
+        self.zone.refresh_from_db()
+        self.assertEqual(self.zone.soa_rname, "invalid")
+
+    def test_soa_rname_rejects_invalid_value(self):
+        form = self.form_class(
+            DNSZone,
+            data={"pk": [self.zone.pk], "soa_rname": "john.example"},
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.zone.soa_rname = form.cleaned_data["soa_rname"]
+        with self.assertRaises(ValidationError) as context:
+            self.zone.validated_save()
+        self.assertIn("soa_rname", context.exception.message_dict)
+        self.assertIn(
+            "SOA RNAME must be a valid email address, a basic DNS-style mailbox with a fully qualified domain, "
+            "or a single-label placeholder.",
+            context.exception.message_dict["soa_rname"],
+        )
 
 
 class DNSRegistrarFormTestCase(TestCase):

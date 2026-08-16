@@ -184,7 +184,12 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             f"Test 3, {dns_view.id}, 3600, Description 3, filename 3, auth-server, admin@example_three.com, 86400, 7200, 3600000, 0, 172800",
         )
 
-        cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}
+        cls.bulk_edit_data = {
+            "description": "Bulk edit views",
+            "enabled": False,
+            # DNSZone.soa_rname accepts a DNS-style mailbox, not only an email address
+            "soa_rname": "admin.example.com",
+        }
 
 
 class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
