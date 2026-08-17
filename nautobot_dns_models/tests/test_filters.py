@@ -369,9 +369,9 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
     def test_name(self):
-        """Test using Q search with name of DNSZone."""
-        params = {"name__in": "Test"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+        """Test case-insensitive substring filter on name of DNSZone."""
+        self.assertEqual(self.filterset({"name__ic": "TEST T"}, self.queryset).qs.count(), 2)
+        self.assertEqual(self.filterset({"name__ic": "Test"}, self.queryset).qs.count(), 3)
 
     def test_name_invalid(self):
         """Test using invalid Q search for DNSZone."""
