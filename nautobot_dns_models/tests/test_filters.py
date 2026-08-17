@@ -871,10 +871,10 @@ class SRVRecordFilterTestCase(TestCase):
         params = {"name": "_sip._tcp"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
 
-    def test_name(self):
-        """Test filter with name of SRVRecord."""
-        params = {"name__in": "_sip._tcp,_xmpp._tcp"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+    def test_name_multiple(self):
+        """Test filter with multiple name values of SRVRecord."""
+        self.assertEqual(self.filterset({"name": ["_xmpp._tcp"]}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"name": ["_sip._tcp", "_xmpp._tcp"]}, self.queryset).qs.count(), 3)
 
     def test_name_invalid(self):
         """Test using invalid search for SRVRecord."""
