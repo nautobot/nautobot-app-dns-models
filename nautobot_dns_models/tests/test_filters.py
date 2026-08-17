@@ -533,10 +533,10 @@ class ARecordFilterTestCase(TestCase):
         params = {"ip_address": [self.ip_addresses[0]]}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
-    def test_ipaddress_in(self):
-        """Test ip_address in ARecord."""
-        params = {"ip_address__in": "10.0.0."}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+    def test_ipaddress_multiple(self):
+        """Test search with multiple IP addresses of ARecord."""
+        params = {"ip_address": [self.ip_addresses[0], self.ip_addresses[1]]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
 
     def test_zone(self):
         params = {"zone": [self.zone]}
@@ -600,10 +600,10 @@ class AAAARecordFilterTestCase(TestCase):
         params = {"ip_address": [self.ip_addresses[0]]}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
-    def test_ip_address_in(self):
-        """Test ip_address in AAAARecord."""
-        params = {"ip_address__in": "2001:db8:abcd:12::"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+    def test_ip_address_multiple(self):
+        """Test search with multiple IP addresses of AAAARecord."""
+        params = {"ip_address": [self.ip_addresses[0], self.ip_addresses[1]]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
 
     def test_zone(self):
         params = {"zone": [self.zone]}
