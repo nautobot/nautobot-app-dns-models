@@ -306,7 +306,7 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
         required=False,
         max_value=models.UINT32_MAX,
         help_text="Number of seconds after which secondary name servers should retry to request the serial number from the master if the master does not respond.",
-        label="SOA Refresh",
+        label="SOA Retry",
     )
     soa_expire = forms.IntegerField(
         required=False,
