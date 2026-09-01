@@ -97,7 +97,7 @@ erDiagram
     }
 
     TXTRecord {
-        charfield text
+        textfield text
     }
 
     PTRRecord {
