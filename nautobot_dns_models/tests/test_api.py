@@ -885,6 +885,7 @@ class TXTRecordAPITestCase(APIViewTestCases.APIViewTestCase):
     @classmethod
     def setUpTestData(cls):
         dns_zone = _create_zone(name="example.com")
+        cls.dns_zone = dns_zone
 
         TXTRecord.objects.create(name="txt", text="spf-record-01", zone=dns_zone)
         TXTRecord.objects.create(name="txt2", text="spf-record-02", zone=dns_zone)
@@ -902,11 +903,44 @@ class TXTRecordAPITestCase(APIViewTestCases.APIViewTestCase):
                 "zone": dns_zone.id,
             },
             {
+                # A 2048-bit DKIM key: exercises the full API create path with a value that exceeds
+                # the former 256-character limit (RFC 1035 §3.3.14).
                 "name": "txt6",
-                "text": "spf-record-06",
+                "text": "v=DKIM1; k=rsa; p=" + "A" * 582,
                 "zone": dns_zone.id,
             },
         ]
+
+    def _post_txt(self, name, text):
+        """POST a TXT record with the given text content."""
+        self.add_permissions("nautobot_dns_models.add_txtrecord")
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+        url = reverse("plugins-api:nautobot_dns_models-api:txtrecord-list")
+        return self.client.post(
+            url,
+            data={"name": name, "text": text, "zone": self.dns_zone.id},
+            format="json",
+            **self.header,
+        )
+
+    def test_api_accepts_explicit_quoted_multi_string(self):
+        """Presentation-format character-strings are accepted through the API (RFC 1035 §5.1)."""
+        response = self._post_txt("spf", '"v=spf1 include:_spf.example.com" "~all"')
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+
+    def test_api_rejects_character_string_above_255_octets(self):
+        """Per-character-string limit from RFC 1035 §3.3 is enforced through the API."""
+        response = self._post_txt("too-long", '"' + "a" * 300 + '"')
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("text", response.data)
+
+    def test_api_does_not_expose_the_uniqueness_digest(self):
+        """`_text_hash` is an internal column and must stay out of the REST API."""
+        self.add_permissions("nautobot_dns_models.view_txtrecord")
+        url = reverse("plugins-api:nautobot_dns_models-api:txtrecord-list")
+        response = self.client.get(url, **self.header)
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertNotIn("_text_hash", response.data["results"][0])
 
 
 class PTRRecordAPITestCase(APIViewTestCases.APIViewTestCase):

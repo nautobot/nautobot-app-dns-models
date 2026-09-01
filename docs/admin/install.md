@@ -77,6 +77,13 @@ This setting controls the DNS validation level applied to zones and records:
     - Empty labels (e.g., consecutive dots or leading/trailing dots) are not allowed
     - The total length of the fully qualified DNS name (including all dots, in wire format) must not exceed 255 bytes
 
+    It also enforces the TXT record content length rules from [RFC 1035 §3.3.14](https://datatracker.ietf.org/doc/html/rfc1035#section-3.3.14):
+
+    - Each `<character-string>` within a TXT record must be no more than 255 bytes
+    - The total TXT record data, including the length byte that prefixes each character-string, must not exceed 65535 bytes
+
+    See the [TXT Record model](../models/txtrecord.md#txt-record-content) documentation for how long values are split into character-strings. When this setting is **Disabled**, TXT records that break these rules are still saved but are reported under Data Compliance; see [Enforcement and Data Compliance](../models/txtrecord.md#enforcement-and-data-compliance).
+
 `CNAME_RESTRICTION_ENABLED` (default: "False")
 
 - **Disabled** - No CNAME exclusivity checks are performed.

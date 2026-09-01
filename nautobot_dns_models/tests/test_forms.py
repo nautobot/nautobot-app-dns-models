@@ -495,6 +495,28 @@ class TXTRecordFormTestCase(TestCase):
         self.assertTrue(form.is_valid())
         self.assertTrue(form.save())
 
+    def test_accepts_dkim_key_longer_than_256_characters(self):
+        data = {
+            "name": "dkim",
+            "text": "v=DKIM1; k=rsa; p=" + "A" * 582,
+            "ttl": 3600,
+            "zone": self.dns_zone,
+        }
+        form = self.form_class(data)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.save())
+
+    def test_rejects_quoted_character_string_over_255_octets(self):
+        data = {
+            "name": "txt-record",
+            "text": '"' + "a" * 300 + '"',
+            "ttl": 3600,
+            "zone": self.dns_zone,
+        }
+        form = self.form_class(data)
+        self.assertFalse(form.is_valid())
+        self.assertIn("text", form.errors)
+
 
 class PTRRecordFormTestCase(TestCase):
     """Test PTRRecord forms."""

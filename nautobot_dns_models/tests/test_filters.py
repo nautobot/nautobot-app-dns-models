@@ -767,6 +767,15 @@ class TXTRecordFilterTestCase(TestCase):
         params = {"text": "wrong-text"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 
+    def test_text_search_matches_long_value(self):
+        """`text` is a TextField now; substring search must still work past the former 256-char limit."""
+        TXTRecord.objects.create(name="txt-record-03", text="v=DKIM1; k=rsa; p=" + "A" * 582, zone=self.zone)
+        self.assertEqual(self.filterset({"q": "v=DKIM1"}, self.queryset).qs.count(), 1)
+
+    def test_uniqueness_digest_is_not_a_filter(self):
+        """The internal `_text_hash` column must not be exposed as a filter."""
+        self.assertNotIn("_text_hash", self.filterset().filters)
+
     def test_zone(self):
         params = {"zone": [self.zone]}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
