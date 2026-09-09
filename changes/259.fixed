@@ -1,0 +1,1 @@
+Fixed the `Auto-create PTR Records` column in the DNS Zone table to render the same check/X icons as the detail view and the other boolean columns, instead of plain Unicode characters.
