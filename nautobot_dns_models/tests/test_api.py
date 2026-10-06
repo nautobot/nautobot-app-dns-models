@@ -469,6 +469,24 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
         # Single-label placeholder is stored without a trailing dot
         self.assertEqual(response.data["soa_rname"], "invalid")
 
+    def test_post_dnszone_without_dns_view_uses_default_view(self):
+        """Creating a zone without dns_view should assign the Default view."""
+        self.add_permissions("nautobot_dns_models.add_dnszone")
+        self.add_permissions("nautobot_dns_models.view_dnsview")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnszone-list")
+        data = {
+            "name": "no-view.example",
+            "filename": "no-view.example.zone",
+            "soa_mname": "ns1.no-view.example",
+            "soa_rname": "admin@no-view.example",
+        }
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(DNSZone.objects.get(name="no-view.example").dns_view.name, "Default")
+
     def test_update_enabled(self):
         """Partial update should allow toggling enabled on a DNSZone."""
         self.add_permissions("nautobot_dns_models.change_dnszone")
