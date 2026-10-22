@@ -154,6 +154,7 @@ class DNSZoneTable(BaseTable):
     name = tables.Column(linkify=True)
     tenant = TenantColumn()
     dns_view = tables.Column(linkify=True)
+    parent = tables.Column(linkify=True)
     enabled = BooleanColumn()
     auto_create_ptr = BooleanColumn()
     actions = ButtonsColumn(
@@ -169,6 +170,7 @@ class DNSZoneTable(BaseTable):
             "pk",
             "name",
             "dns_view",
+            "parent",
             "enabled",
             "ttl",
             "filename",
