@@ -103,18 +103,24 @@ class DNSRegistrarViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        DNSRegistrar.objects.create(name="Registrar 1", url="https://registrar1.example", account_number="ACC-001")
-        DNSRegistrar.objects.create(name="Registrar 2", url="https://registrar2.example", account_number="ACC-002")
-        DNSRegistrar.objects.create(name="Registrar 3", url="https://registrar3.example", account_number="ACC-003")
+        DNSRegistrar.objects.create(
+            name="Registrar 1", portal_url="https://registrar1.example", account_number="ACC-001"
+        )
+        DNSRegistrar.objects.create(
+            name="Registrar 2", portal_url="https://registrar2.example", account_number="ACC-002"
+        )
+        DNSRegistrar.objects.create(
+            name="Registrar 3", portal_url="https://registrar3.example", account_number="ACC-003"
+        )
 
         cls.form_data = {
             "name": "Registrar Test",
-            "url": "https://registrar-test.example",
+            "portal_url": "https://registrar-test.example",
             "account_number": "ACC-TEST",
         }
 
         cls.csv_data = (
-            "name,url,account_number",
+            "name,portal_url,account_number",
             "Registrar CSV,https://registrar-csv.example,ACC-CSV",
         )
 

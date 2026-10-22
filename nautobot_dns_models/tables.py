@@ -66,7 +66,7 @@ class DNSRegistrarTable(BaseTable):
         fields = (
             "pk",
             "name",
-            "url",
+            "portal_url",
             "account_number",
             "actions",
         )
@@ -74,7 +74,7 @@ class DNSRegistrarTable(BaseTable):
         default_columns = (
             "pk",
             "name",
-            "url",
+            "portal_url",
             "account_number",
             "actions",
         )

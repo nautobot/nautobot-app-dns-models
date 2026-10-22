@@ -7,15 +7,11 @@ from datetime import date
 
 from constance.test import override_config
 from django.contrib.contenttypes.models import ContentType
-from django.test import override_settings
 from django.urls import reverse
-from nautobot.apps.api import get_serializer_for_model
 from nautobot.apps.testing import APIViewTestCases
-from nautobot.core.testing import utils
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from rest_framework import status
-from rest_framework.relations import ManyRelatedField
 
 from nautobot_dns_models.models import (
     AAAARecord,
@@ -136,74 +132,39 @@ class DNSRegistrarAPITestCase(APIViewTestCases.APIViewTestCase):
     }
     brief_fields = [
         "name",
-        "url",
+        "portal_url",
         "account_number",
     ]
 
     @classmethod
     def setUpTestData(cls):
-        DNSRegistrar.objects.create(name="Registrar 1", url="https://registrar1.example", account_number="ACC-001")
-        DNSRegistrar.objects.create(name="Registrar 2", url="https://registrar2.example", account_number="ACC-002")
-        DNSRegistrar.objects.create(name="Registrar 3", url="https://registrar3.example", account_number="ACC-003")
+        DNSRegistrar.objects.create(
+            name="Registrar 1", portal_url="https://registrar1.example", account_number="ACC-001"
+        )
+        DNSRegistrar.objects.create(
+            name="Registrar 2", portal_url="https://registrar2.example", account_number="ACC-002"
+        )
+        DNSRegistrar.objects.create(
+            name="Registrar 3", portal_url="https://registrar3.example", account_number="ACC-003"
+        )
 
         cls.create_data = [
             {
                 "name": "Registrar 4",
-                "url": "https://registrar4.example",
+                "portal_url": "https://registrar4.example",
                 "account_number": "ACC-004",
             },
             {
                 "name": "Registrar 5",
-                "url": "https://registrar5.example",
+                "portal_url": "https://registrar5.example",
                 "account_number": "ACC-005",
             },
             {
                 "name": "Registrar 6",
-                "url": "https://registrar6.example",
+                "portal_url": "https://registrar6.example",
                 "account_number": "ACC-006",
             },
         ]
-
-    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
-    def test_recreate_object_csv(self):
-        """CSV recreate test excluding model `url`, which Nautobot omits from CSV headers."""
-        instance = utils.get_deletable_objects(self.model, self._get_queryset()).first()
-        if instance is None:
-            self.fail("Couldn't find a single deletable object!")
-
-        self.add_permissions(
-            f"{self.model._meta.app_label}.add_{self.model._meta.model_name}",
-            f"{self.model._meta.app_label}.view_{self.model._meta.model_name}",
-        )
-
-        response = self.client.get(self._get_detail_url(instance) + "?format=csv", **self.header)
-        self.assertHttpStatus(response, status.HTTP_200_OK)
-        csv_data = response.content.decode(response.charset)
-
-        serializer_class = get_serializer_for_model(self.model)
-        old_data = serializer_class(instance, context={"request": None}).data
-        orig_pk = instance.pk
-        instance.delete()
-
-        response = self.client.post(self._get_list_url(), csv_data, content_type="text/csv", **self.header)
-        self.assertHttpStatus(response, status.HTTP_201_CREATED, csv_data)
-        new_instance = self._get_queryset().get(pk=response.data[0]["id"])
-        if isinstance(orig_pk, int):
-            self.assertNotEqual(new_instance.pk, orig_pk)
-        else:
-            self.assertEqual(new_instance.pk, orig_pk)
-
-        new_serializer = serializer_class(new_instance, context={"request": None})
-        new_data = new_serializer.data
-        for field_name, field in new_serializer.fields.items():
-            if isinstance(field, ManyRelatedField) and field_name != "tags":
-                continue
-            if field.read_only or field.write_only or field_name == "url":
-                continue
-            if field_name in ["created", "last_updated"]:
-                self.assertNotEqual(old_data[field_name], new_data[field_name])
-            else:
-                self.assertEqual(old_data[field_name], new_data[field_name])
 
     def test_post_dnsregistrar_fails_invalid_url(self):
         """Attempting to create a registrar with invalid URL should fail."""
@@ -212,7 +173,7 @@ class DNSRegistrarAPITestCase(APIViewTestCases.APIViewTestCase):
         url = reverse("plugins-api:nautobot_dns_models-api:dnsregistrar-list")
         data = {
             "name": "Bad URL Registrar",
-            "url": "not-a-valid-url",
+            "portal_url": "not-a-valid-url",
             "account_number": "ACC-BAD-URL",
         }
 
@@ -226,7 +187,7 @@ class DNSRegistrarAPITestCase(APIViewTestCases.APIViewTestCase):
         url = reverse("plugins-api:nautobot_dns_models-api:dnsregistrar-list")
         data = {
             "name": "Registrar 1",
-            "url": "https://duplicate-registrar.example",
+            "portal_url": "https://duplicate-registrar.example",
             "account_number": "ACC-DUPLICATE",
         }
 
@@ -262,13 +223,13 @@ class DNSRegistrationAPITestCase(APIViewTestCases.APIViewTestCase):
         )
         cls.dns_registrars = (
             DNSRegistrar.objects.create(
-                name="Reg API Registrar 1", url="https://reg-api-1.example", account_number="R1"
+                name="Reg API Registrar 1", portal_url="https://reg-api-1.example", account_number="R1"
             ),
             DNSRegistrar.objects.create(
-                name="Reg API Registrar 2", url="https://reg-api-2.example", account_number="R2"
+                name="Reg API Registrar 2", portal_url="https://reg-api-2.example", account_number="R2"
             ),
             DNSRegistrar.objects.create(
-                name="Reg API Registrar 3", url="https://reg-api-3.example", account_number="R3"
+                name="Reg API Registrar 3", portal_url="https://reg-api-3.example", account_number="R3"
             ),
         )
         cls.dns_zones = tuple(

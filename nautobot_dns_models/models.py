@@ -212,7 +212,9 @@ class DNSRegistrar(PrimaryModel):
     """Model for DNS Registrars."""
 
     name = models.CharField(max_length=200, help_text="Name of the Registrar.", unique=True)
-    url = models.URLField(max_length=500, blank=True, help_text="Registrar URL.")
+    portal_url = models.URLField(
+        max_length=500, blank=True, help_text="Registrar portal URL.", verbose_name="Portal URL"
+    )
     account_number = models.CharField(max_length=100, blank=True, help_text="Registrar account number.")
 
     class Meta:

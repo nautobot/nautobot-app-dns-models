@@ -44,7 +44,7 @@ class DNSZoneTest(TestCase):
     def test_specifying_all_fields_success(self):
         registrar = DNSRegistrar.objects.create(
             name="Registrar One",
-            url="https://registrar.example",
+            portal_url="https://registrar.example",
             account_number="ACC-100",
         )
         form = forms.DNSZoneForm(
@@ -205,7 +205,7 @@ class DNSRegistrarFormTestCase(TestCase):
         form = self.form_class(
             data={
                 "name": "Registrar Test",
-                "url": "https://registrar.test",
+                "portal_url": "https://registrar.test",
                 "account_number": "REG-100",
             }
         )
@@ -218,7 +218,7 @@ class DNSRegistrarFormTestCase(TestCase):
         self.assertTrue(form.save())
 
     def test_validate_name_is_required(self):
-        form = self.form_class(data={"url": "https://registrar.test"})
+        form = self.form_class(data={"portal_url": "https://registrar.test"})
         self.assertFalse(form.is_valid())
         self.assertIn("This field is required.", form.errors["name"])
 
