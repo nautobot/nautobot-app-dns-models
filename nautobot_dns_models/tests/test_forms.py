@@ -6,7 +6,7 @@ from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 
 from nautobot_dns_models import forms
-from nautobot_dns_models.models import DNSRegistrar, DNSView, DNSZone
+from nautobot_dns_models.models import DNSForwardingRule, DNSRegistrar, DNSView, DNSZone
 
 
 class DNSViewFormTestCase(TestCase):
@@ -36,6 +36,105 @@ class DNSViewFormTestCase(TestCase):
         form = self.form_class(data={"description": "Test Description"})
         self.assertFalse(form.is_valid())
         self.assertIn("This field is required.", form.errors["name"])
+
+
+class DNSForwardingRuleFormTestCase(TestCase):
+    """Test the DNSForwardingRule form and its forwarders formset."""
+
+    @classmethod
+    def setUpTestData(cls):
+        active_status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, status=active_status)
+        cls.ip_address = IPAddress.objects.create(address="10.0.0.53/32", namespace=namespace, status=active_status)
+        cls.dns_view = DNSView.objects.get(name="Default")
+
+    def test_only_required_fields_and_defaults(self):
+        form = forms.DNSForwardingRuleForm(
+            data={"name": "corp.example.com", "dns_view": self.dns_view.pk, "action": "forward_first"}
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        rule = form.save()
+        self.assertEqual(rule.dns_view, self.dns_view)
+        self.assertNotIn("forwarders", form.fields)
+
+    def test_action_is_required(self):
+        form = forms.DNSForwardingRuleForm(data={"name": "corp.example.com", "dns_view": self.dns_view.pk})
+        self.assertFalse(form.is_valid())
+        self.assertIn("action", form.errors)
+
+    def test_forwarders_formset_validates_port(self):
+        rule = DNSForwardingRule.objects.create(name="corp.example.com")
+        data = {
+            "forwarder_assignments-TOTAL_FORMS": "2",
+            "forwarder_assignments-INITIAL_FORMS": "0",
+            "forwarder_assignments-0-ip_address": self.ip_address.pk,
+            "forwarder_assignments-0-port": "53",
+            "forwarder_assignments-0-weight": "100",
+            "forwarder_assignments-1-ip_address": self.ip_address.pk,
+            "forwarder_assignments-1-port": "70000",
+            "forwarder_assignments-1-weight": "100",
+        }
+
+        formset = forms.DNSForwardingRuleIPAddressAssignmentFormSet(instance=rule, data=data)
+
+        self.assertFalse(formset.is_valid())
+        self.assertEqual(formset.errors[0], {})
+        self.assertIn("port", formset.errors[1])
+
+    def test_forwarders_formset_ignores_new_rows_without_ip_address(self):
+        rule = DNSForwardingRule.objects.create(name="corp.example.com")
+        data = {
+            "forwarder_assignments-TOTAL_FORMS": "2",
+            "forwarder_assignments-INITIAL_FORMS": "0",
+            "forwarder_assignments-0-ip_address": "",
+            "forwarder_assignments-0-port": "53",
+            "forwarder_assignments-0-weight": "100",
+            "forwarder_assignments-1-ip_address": "",
+            "forwarder_assignments-1-port": "",
+            "forwarder_assignments-1-weight": "",
+        }
+
+        formset = forms.DNSForwardingRuleIPAddressAssignmentFormSet(instance=rule, data=data)
+
+        self.assertTrue(formset.is_valid(), formset.errors)
+        formset.save()
+        self.assertFalse(rule.forwarder_assignments.exists())
+
+    def test_forwarders_formset_rejects_clearing_the_ip_address_of_an_existing_row(self):
+        rule = DNSForwardingRule.objects.create(name="corp.example.com")
+        assignment = rule.forwarder_assignments.create(ip_address=self.ip_address)
+        data = {
+            "forwarder_assignments-TOTAL_FORMS": "1",
+            "forwarder_assignments-INITIAL_FORMS": "1",
+            "forwarder_assignments-0-id": assignment.pk,
+            "forwarder_assignments-0-forwarding_rule": rule.pk,
+            "forwarder_assignments-0-ip_address": "",
+            "forwarder_assignments-0-port": "53",
+            "forwarder_assignments-0-weight": "100",
+        }
+
+        formset = forms.DNSForwardingRuleIPAddressAssignmentFormSet(instance=rule, data=data)
+
+        self.assertFalse(formset.is_valid())
+        self.assertEqual(formset.errors[0]["ip_address"], ["An IP address is required."])
+
+    def test_forwarders_formset_defaults_empty_port_and_weight(self):
+        rule = DNSForwardingRule.objects.create(name="corp.example.com")
+        data = {
+            "forwarder_assignments-TOTAL_FORMS": "1",
+            "forwarder_assignments-INITIAL_FORMS": "0",
+            "forwarder_assignments-0-ip_address": self.ip_address.pk,
+            "forwarder_assignments-0-port": "",
+            "forwarder_assignments-0-weight": "",
+        }
+
+        formset = forms.DNSForwardingRuleIPAddressAssignmentFormSet(instance=rule, data=data)
+
+        self.assertTrue(formset.is_valid(), formset.errors)
+        formset.save()
+        assignment = rule.forwarder_assignments.get()
+        self.assertEqual((assignment.port, assignment.weight), (53, 100))
 
 
 class DNSZoneTest(TestCase):

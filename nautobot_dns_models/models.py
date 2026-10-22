@@ -1,14 +1,22 @@
 """Models for Nautobot DNS Models."""
+# pylint: disable=too-many-lines
+
+import dataclasses
 
 from constance import config as constance_config
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, validate_email
 from django.db import models
+from django.db.models.functions import Lower
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 from nautobot.extras.models import StatusField
 from nautobot.ipam.choices import IPAddressVersionChoices
 from netutils.ip import ipaddress_address
+
+from nautobot_dns_models.choices import DNSForwardingRuleActionChoices
 
 # Reverse-DNS roots per RFC 1035 §3.5 and RFC 3596 §2.5
 RESERVED_ROOTS = {"in-addr.arpa", "ip6.arpa", "arpa"}
@@ -60,6 +68,48 @@ def normalize_soa_rname(value):
         return value
 
     return f"{local_part}@{domain}"
+
+
+def validate_dns_label(label, field="name"):
+    """
+    Validate a DNS label for wire-format length using punycode encoding.
+
+    Only checks for non-empty and length.
+    """
+    if not label:
+        raise ValidationError({field: "Empty labels are not allowed"})
+    length = dns_wire_label_length(label)
+    if length > 63:
+        raise ValidationError(
+            {field: f"Label '{label}' exceeds the maximum length of 63 bytes (octets) in wire format."}
+        )
+    return length
+
+
+def normalize_dns_name(value):
+    """Return `value` lowercased and without a trailing dot, for comparing DNS names."""
+    return value.strip().rstrip(".").lower()
+
+
+def is_same_or_subdomain(name, domain):
+    """Return True if the normalized `name` equals the normalized `domain` or lies beneath it."""
+    return name == domain or name.endswith(f".{domain}")
+
+
+def record_fqdn(record_name, zone_name):
+    """Return the normalized FQDN of a record owner name within a zone.
+
+    An empty name or `@` is the zone apex. A name that already ends with the zone name is treated as
+    zone-qualified, matching the trailing-dot normalization in `DNSRecord.clean()`. Any other name is
+    relative to the zone.
+    """
+    zone_fqdn = normalize_dns_name(zone_name)
+    name = normalize_dns_name(record_name)
+    if name in ("", "@"):
+        return zone_fqdn
+    if is_same_or_subdomain(name, zone_fqdn):
+        return name
+    return f"{name}.{zone_fqdn}"
 
 
 def prior_checks_ptr_record_creation(record):
@@ -132,21 +182,7 @@ class DNSModel(PrimaryModel):
         """Stringify instance."""
         return self.name  # pylint: disable=no-member
 
-    @staticmethod
-    def _validate_dns_label(label, field="name"):
-        """
-        Validate a DNS label for wire-format length using punycode encoding.
-
-        Only checks for non-empty and length.
-        """
-        if not label:
-            raise ValidationError({field: "Empty labels are not allowed"})
-        length = dns_wire_label_length(label)
-        if length > 63:
-            raise ValidationError(
-                {field: f"Label '{label}' exceeds the maximum length of 63 bytes (octets) in wire format."}
-            )
-        return length
+    _validate_dns_label = staticmethod(validate_dns_label)
 
     def clean(self):
         """
@@ -234,6 +270,36 @@ def get_default_view_pk():
     return default_view.pk
 
 
+@dataclasses.dataclass
+class ZoneDelegation:
+    """A delegation point in a parent zone, derived from the NS records at that name.
+
+    This is not stored in the database. See `DNSZone.get_delegations()`.
+    """
+
+    zone: "DNSZone"
+    fqdn: str
+    ns_records: list = dataclasses.field(default_factory=list)
+    glue_records: list = dataclasses.field(default_factory=list)
+    child_zone: "DNSZone | None" = None
+
+    @property
+    def servers(self):
+        """Sorted, normalized FQDNs of the name servers the delegation points to."""
+        return sorted({normalize_dns_name(ns_record.server) for ns_record in self.ns_records})
+
+    @property
+    def glue_required_servers(self):
+        """Name servers at or below the delegated name, which resolvers can only reach through glue."""
+        return [server for server in self.servers if is_same_or_subdomain(server, self.fqdn)]
+
+    @property
+    def missing_glue_servers(self):
+        """Name servers that need glue but have no A/AAAA record in the parent zone."""
+        glue_fqdns = {record_fqdn(record.name, self.zone.name) for record in self.glue_records}
+        return [server for server in self.glue_required_servers if server not in glue_fqdns]
+
+
 @extras_features(
     "custom_fields",
     "custom_links",
@@ -316,6 +382,18 @@ class DNSZone(DNSModel):
         help_text="Automatically create PTR records when A/AAAA records are created in this zone.",
         verbose_name="Auto-create PTR Records",
     )
+    # Children are moved up to the next ancestor when their parent is deleted (see refresh_orphaned_child_zones),
+    # so SET_NULL only covers the moment between the delete and that update.
+    parent_zone = models.ForeignKey(
+        to="self",
+        on_delete=models.SET_NULL,
+        related_name="child_zones",
+        blank=True,
+        null=True,
+        editable=False,
+        help_text="Nearest ancestor zone in the same DNS View. Set automatically.",
+        verbose_name="Parent Zone",
+    )
 
     class Meta:
         """Meta attributes for DNSZone."""
@@ -329,8 +407,18 @@ class DNSZone(DNSModel):
         return f"{self.name} ({self.dns_view})"
 
     def clean(self):
-        """Normalize plain DNS-style RNAME mailboxes to email form."""
+        """Normalize plain DNS-style RNAME mailboxes to email form and reject names used by forwarding rules."""
         super().clean()
+
+        if (
+            self.dns_view_id
+            and DNSForwardingRule.objects.annotate(name_lower=Lower("name"))
+            .filter(dns_view_id=self.dns_view_id, name_lower=normalize_dns_name(self.name))
+            .exists()
+        ):
+            raise ValidationError(
+                {"name": "A DNS forwarding rule with this name already exists in this view. Remove it first."}
+            )
 
         invalid_rname_message = (
             "SOA RNAME must be a valid email address, a basic DNS-style mailbox with a fully qualified domain, "
@@ -352,9 +440,226 @@ class DNSZone(DNSModel):
         self.soa_rname = normalized_soa_rname
 
     def save(self, *args, **kwargs):
-        """Normalize the RNAME before saving through the ORM."""
+        """Normalize the RNAME and keep `parent_zone` up to date for this zone and its relatives."""
         self.soa_rname = normalize_soa_rname(self.soa_rname)
-        return super().save(*args, **kwargs)
+        previous = None
+        if self.present_in_database:
+            previous = DNSZone.objects.filter(pk=self.pk).values("name", "dns_view_id").first()
+        self.parent_zone = self.find_enclosing_zone(self.name, self.dns_view_id, exclude_pk=self.pk)
+        super().save(*args, **kwargs)
+        if previous != {"name": self.name, "dns_view_id": self.dns_view_id}:
+            self._refresh_related_parent_zones()
+
+    def update_parent_zone(self):
+        """Recompute and store `parent_zone` without a full save, so relatives can be updated in bulk."""
+        parent = self.find_enclosing_zone(self.name, self.dns_view_id, exclude_pk=self.pk)
+        parent_pk = parent.pk if parent else None
+        if parent_pk != self.parent_zone_id:
+            DNSZone.objects.filter(pk=self.pk).update(parent_zone=parent)
+            self.parent_zone = parent
+
+    def _refresh_related_parent_zones(self):
+        """Update zones whose nearest ancestor may have changed because this zone was created, renamed or moved."""
+        affected = DNSZone.objects.filter(
+            models.Q(parent_zone=self)
+            | models.Q(dns_view_id=self.dns_view_id, name__iendswith=f".{normalize_dns_name(self.name)}")
+        ).exclude(pk=self.pk)
+        for zone in affected:
+            zone.update_parent_zone()
+
+    @classmethod
+    def find_enclosing_zone(cls, name, dns_view_id, exclude_pk=None):
+        """Return the zone in the given view with the longest name that is a proper ancestor of `name`, or None."""
+        labels = normalize_dns_name(name).split(".")
+        ancestor_names = [".".join(labels[i:]) for i in range(1, len(labels))]
+        if not ancestor_names or dns_view_id is None:
+            return None
+        zones = cls.objects.annotate(name_lower=Lower("name")).filter(
+            dns_view_id=dns_view_id, name_lower__in=ancestor_names
+        )
+        if exclude_pk is not None:
+            zones = zones.exclude(pk=exclude_pk)
+        return max(zones, key=lambda zone: len(zone.name_lower), default=None)
+
+    @classmethod
+    def get_apex_ns_servers_by_zone(cls, zones):
+        """Return `{zone pk: sorted, normalized apex name servers}` for the given zones, using one query."""
+        zone_names = {zone.pk: zone.name for zone in zones}
+        servers = {pk: set() for pk in zone_names}
+        for ns_record in NSRecord.objects.filter(zone__in=list(zone_names)):
+            zone_name = zone_names[ns_record.zone_id]
+            if record_fqdn(ns_record.name, zone_name) == normalize_dns_name(zone_name):
+                servers[ns_record.zone_id].add(normalize_dns_name(ns_record.server))
+        return {pk: sorted(zone_servers) for pk, zone_servers in servers.items()}
+
+    def get_apex_ns_servers(self):
+        """Return the sorted, normalized name servers of the NS records at this zone's apex."""
+        return self.get_apex_ns_servers_by_zone([self])[self.pk]
+
+    def get_delegations(self):
+        """Return the delegations in this zone, derived from the NS records below the apex.
+
+        NS records below another delegation point are hidden by it, so they do not form a delegation of their own
+        (see `get_occluded_records()`).
+
+        Returns:
+            (list[ZoneDelegation]): One entry per delegated name, ordered by FQDN.
+        """
+        zone_fqdn = normalize_dns_name(self.name)
+        by_fqdn = {}
+        for ns_record in NSRecord.objects.filter(zone=self):
+            fqdn = record_fqdn(ns_record.name, self.name)
+            if fqdn != zone_fqdn:
+                by_fqdn.setdefault(fqdn, ZoneDelegation(zone=self, fqdn=fqdn)).ns_records.append(ns_record)
+
+        delegations = {
+            fqdn: delegation
+            for fqdn, delegation in by_fqdn.items()
+            if not any(other != fqdn and is_same_or_subdomain(fqdn, other) for other in by_fqdn)
+        }
+        if not delegations:
+            return []
+
+        child_zones = (
+            DNSZone.objects.annotate(name_lower=Lower("name"))
+            .filter(dns_view_id=self.dns_view_id, name_lower__in=list(delegations))
+            .select_related("dns_view")
+        )
+        for child_zone in child_zones:
+            delegations[child_zone.name_lower].child_zone = child_zone
+
+        address_records = [
+            *ARecord.objects.filter(zone=self).select_related("ip_address"),
+            *AAAARecord.objects.filter(zone=self).select_related("ip_address"),
+        ]
+        for delegation in delegations.values():
+            glue_names = set(delegation.glue_required_servers)
+            delegation.glue_records = [
+                record for record in address_records if record_fqdn(record.name, self.name) in glue_names
+            ]
+
+        return [delegations[fqdn] for fqdn in sorted(delegations)]
+
+    def get_parent_delegation(self):
+        """Return the delegation of this zone in its parent zone, or None if the parent has no NS records for it."""
+        if self.parent_zone is None:
+            return None
+        zone_fqdn = normalize_dns_name(self.name)
+        return next(
+            (delegation for delegation in self.parent_zone.get_delegations() if delegation.fqdn == zone_fqdn),
+            None,
+        )
+
+    def get_occluded_records(self, delegations=None):
+        """Return the records in this zone that a delegation point hides.
+
+        Resolvers do not receive data at or below a zone cut from the parent zone, except the NS records that form
+        the cut and A/AAAA glue for the delegations' name servers.
+
+        Args:
+            delegations (list[ZoneDelegation], optional): Result of `get_delegations()`, if already computed.
+        """
+        if delegations is None:
+            delegations = self.get_delegations()
+        if not delegations:
+            return []
+
+        cuts = [delegation.fqdn for delegation in delegations]
+        glue_names = {server for delegation in delegations for server in delegation.servers}
+        # Only fetch names at or below a cut, written either relative to the zone or zone-qualified.
+        zone_fqdn = normalize_dns_name(self.name)
+        below_cuts = models.Q()
+        for cut in cuts:
+            for name in (cut.removesuffix(f".{zone_fqdn}"), cut):
+                below_cuts |= models.Q(name__iexact=name) | models.Q(name__iendswith=f".{name}")
+        record_models = (NSRecord, ARecord, AAAARecord, CNAMERecord, MXRecord, TXTRecord, PTRRecord, SRVRecord)
+        occluded = []
+        for record_model in record_models:
+            for record in record_model.objects.filter(below_cuts, zone=self):
+                fqdn = record_fqdn(record.name, self.name)
+                cut = next((cut for cut in cuts if is_same_or_subdomain(fqdn, cut)), None)
+                if cut is None:
+                    continue
+                if isinstance(record, NSRecord) and fqdn == cut:
+                    continue
+                if isinstance(record, (ARecord, AAAARecord)) and fqdn in glue_names:
+                    continue
+                occluded.append(record)
+        return occluded
+
+    def get_delegation_warnings(self, delegations=None, parent_delegations=None):
+        """Return consistency problems with the delegations this zone makes and the delegation it receives.
+
+        Args:
+            delegations (list[ZoneDelegation], optional): Result of `get_delegations()`, if already computed.
+            parent_delegations (list[ZoneDelegation], optional): Result of `parent_zone.get_delegations()`,
+                if already computed.
+
+        Returns:
+            (list[str]): Human-readable warnings. None of them block saving.
+        """
+        if delegations is None:
+            delegations = self.get_delegations()
+        warnings = self._outgoing_delegation_warnings(delegations)
+        if self.parent_zone is not None:
+            if parent_delegations is None:
+                parent_delegations = self.parent_zone.get_delegations()
+            warnings.extend(self._incoming_delegation_warnings(parent_delegations))
+        return warnings
+
+    def _outgoing_delegation_warnings(self, delegations):
+        """Return problems with the delegations this zone makes to its children."""
+        warnings = []
+        child_apex_servers = self.get_apex_ns_servers_by_zone(
+            [delegation.child_zone for delegation in delegations if delegation.child_zone is not None]
+        )
+
+        for delegation in delegations:
+            for server in delegation.missing_glue_servers:
+                warnings.append(
+                    f"Delegation {delegation.fqdn}: name server {server} is inside the delegated name "
+                    "but has no A/AAAA glue record in this zone."
+                )
+            if delegation.child_zone is not None:
+                child_servers = child_apex_servers[delegation.child_zone.pk]
+                if child_servers != delegation.servers:
+                    warnings.append(
+                        f"Delegation {delegation.fqdn}: the NS records here ({', '.join(delegation.servers)}) "
+                        f"do not match the apex NS records of zone {delegation.child_zone.name} "
+                        f"({', '.join(child_servers) or 'none'})."
+                    )
+
+        # A child zone below another delegated name is delegated from that zone, which Nautobot does not model.
+        cuts = [delegation.fqdn for delegation in delegations]
+        for child_zone in self.child_zones.all():
+            if not any(is_same_or_subdomain(normalize_dns_name(child_zone.name), cut) for cut in cuts):
+                warnings.append(f"Child zone {child_zone.name} has no NS records in this zone, so it is not delegated.")
+
+        occluded = self.get_occluded_records(delegations)
+        if occluded:
+            names = sorted({record_fqdn(record.name, self.name) for record in occluded})
+            warnings.append(
+                f"{len(occluded)} record(s) at or below a delegation point are hidden by it: {', '.join(names)}."
+            )
+        return warnings
+
+    def _incoming_delegation_warnings(self, parent_delegations):
+        """Return problems with how the parent zone delegates this zone."""
+        zone_fqdn = normalize_dns_name(self.name)
+        parent_delegation = next((d for d in parent_delegations if d.fqdn == zone_fqdn), None)
+        if parent_delegation is None:
+            if any(is_same_or_subdomain(zone_fqdn, d.fqdn) for d in parent_delegations):
+                return []
+            return [f"Parent zone {self.parent_zone.name} has no NS records for this zone, so it is not delegated."]
+
+        apex_servers = self.get_apex_ns_servers()
+        if parent_delegation.servers == apex_servers:
+            return []
+        return [
+            f"The NS records for this zone in parent zone {self.parent_zone.name} "
+            f"({', '.join(parent_delegation.servers)}) do not match this zone's apex NS records "
+            f"({', '.join(apex_servers) or 'none'})."
+        ]
 
     @classmethod
     def find_reverse_zone_for_ptrdname(cls, ptrdname, dns_view=None):
@@ -373,6 +678,22 @@ class DNSZone(DNSModel):
             if zone:
                 return zone
         return None
+
+
+@receiver(post_delete, sender=DNSZone)
+def refresh_orphaned_child_zones(sender, instance, **kwargs):  # pylint: disable=unused-argument
+    """Move the children of a deleted zone up to their nearest remaining ancestor.
+
+    A receiver, unlike an overridden `delete()`, also runs for queryset deletes such as UI bulk delete.
+    By the time it runs, `on_delete=SET_NULL` has already cleared the children's `parent_zone`.
+    """
+    orphans = DNSZone.objects.filter(
+        dns_view_id=instance.dns_view_id,
+        parent_zone__isnull=True,
+        name__iendswith=f".{normalize_dns_name(instance.name)}",
+    )
+    for zone in orphans:
+        zone.update_parent_zone()
 
 
 @extras_features(
@@ -799,3 +1120,191 @@ class SRVRecord(DNSRecord):
         unique_together = [["name", "target", "port", "zone"]]
         verbose_name = "SRV Record"
         verbose_name_plural = "SRV Records"
+
+
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
+class DNSForwardingRule(PrimaryModel):
+    """Model for DNS forwarding rules: how resolvers in a DNS View handle queries for a domain."""
+
+    name = models.CharField(
+        max_length=200,
+        help_text="Domain the rule applies to, e.g. corp.example.com. Use a single dot (.) for global forwarders.",
+    )
+    dns_view = ForeignKeyWithAutoRelatedName(
+        DNSView,
+        on_delete=models.PROTECT,
+        help_text="The DNS View this rule applies in.",
+        verbose_name="View",
+        default=get_default_view_pk,
+    )
+    action = models.CharField(
+        max_length=50,
+        choices=DNSForwardingRuleActionChoices,
+        default=DNSForwardingRuleActionChoices.ACTION_FORWARD_FIRST,
+        help_text=(
+            "Forward first falls back to normal resolution when the forwarders fail, Forward only does not, "
+            "and Do not forward exempts the domain from a broader rule."
+        ),
+    )
+    forwarders = models.ManyToManyField(
+        to="ipam.IPAddress",
+        through="DNSForwardingRuleIPAddressAssignment",
+        through_fields=("forwarding_rule", "ip_address"),
+        related_name="dns_forwarding_rules",
+        blank=True,
+        editable=False,
+        help_text="IP addresses of the servers queries are forwarded to.",
+    )
+    enabled = models.BooleanField(
+        default=True,
+        help_text="Whether this object is eligible for publication by external integrations.",
+    )
+    description = models.TextField(help_text="Description of the rule.", blank=True)
+    tenant = models.ForeignKey(
+        to="tenancy.Tenant",
+        on_delete=models.PROTECT,
+        related_name="dns_forwarding_rules",
+        blank=True,
+        null=True,
+    )
+
+    class Meta:
+        """Meta attributes for DNSForwardingRule."""
+
+        ordering = ["dns_view__name", "name"]
+        unique_together = [["name", "dns_view"]]
+        verbose_name = "DNS Forwarding Rule"
+        verbose_name_plural = "DNS Forwarding Rules"
+
+    def __str__(self):
+        """Stringify instance."""
+        return f"{self.name} ({self.dns_view})"
+
+    @property
+    def is_global(self):
+        """Whether this rule holds the global forwarders, which apply to every name."""
+        return self.name == "."
+
+    def get_action_class(self):
+        """Return the CSS class used to render the action in tables."""
+        return DNSForwardingRuleActionChoices.CSS_CLASSES.get(self.action)
+
+    def clean(self):
+        """Validate the domain name and keep the rule consistent with zones and forwarders in the same view."""
+        super().clean()
+
+        validation_level = getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL")
+        if validation_level == "wire-format" and not self.is_global:
+            for label in self.name.split("."):
+                validate_dns_label(label, field="name")
+
+        if self.dns_view_id:
+            # unique_together is case-sensitive on PostgreSQL but not on MySQL, so check case-insensitively here.
+            same_name = {"dns_view_id": self.dns_view_id, "name_lower": normalize_dns_name(self.name)}
+            if (
+                DNSForwardingRule.objects.annotate(name_lower=Lower("name"))
+                .filter(**same_name)
+                .exclude(pk=self.pk)
+                .exists()
+            ):
+                raise ValidationError({"name": "A DNS forwarding rule with this name already exists in this view."})
+            if DNSZone.objects.annotate(name_lower=Lower("name")).filter(**same_name).exists():
+                raise ValidationError(
+                    {
+                        "name": "A DNS zone with this name exists in this view. "
+                        "A rule cannot replace an authoritative zone."
+                    }
+                )
+
+        if (
+            self.action == DNSForwardingRuleActionChoices.ACTION_DO_NOT_FORWARD
+            and self.present_in_database
+            and self.forwarder_assignments.exists()
+        ):
+            raise ValidationError(
+                {"action": "Remove this rule's forwarders before setting the action to Do not forward."}
+            )
+
+    def get_warnings(self):
+        """Return problems that make this rule ineffective. None of them block saving.
+
+        Returns:
+            (list[str]): Human-readable warnings.
+        """
+        if self.action == DNSForwardingRuleActionChoices.ACTION_DO_NOT_FORWARD:
+            return []
+
+        warnings = []
+        if not self.forwarder_assignments.exists():
+            warnings.append("No forwarders are assigned, so this rule has nowhere to send queries.")
+
+        if not self.is_global:
+            zone = DNSZone.find_enclosing_zone(self.name, self.dns_view_id)
+            rule_fqdn = normalize_dns_name(self.name)
+            if zone is not None and not any(
+                is_same_or_subdomain(rule_fqdn, delegation.fqdn) for delegation in zone.get_delegations()
+            ):
+                warnings.append(
+                    f"{self.name} is inside zone {zone.name} in the same view, and that zone has no delegation for "
+                    "it. BIND and Microsoft DNS answer such names from the zone instead of forwarding them."
+                )
+        return warnings
+
+
+@extras_features("graphql")
+class DNSForwardingRuleIPAddressAssignment(BaseModel):
+    """Through model assigning an IP address, with port and order, to a DNS forwarding rule as a forwarder."""
+
+    forwarding_rule = models.ForeignKey(
+        to=DNSForwardingRule,
+        on_delete=models.CASCADE,
+        related_name="forwarder_assignments",
+        verbose_name="Forwarding Rule",
+    )
+    ip_address = models.ForeignKey(
+        to="ipam.IPAddress",
+        on_delete=models.CASCADE,
+        related_name="dns_forwarding_rule_assignments",
+        verbose_name="IP Address",
+    )
+    port = models.PositiveIntegerField(
+        default=53,
+        validators=[MinValueValidator(1), MaxValueValidator(65535)],
+        help_text="Port the forwarder listens on.",
+    )
+    weight = models.PositiveSmallIntegerField(
+        default=100,
+        help_text=(
+            "Forwarders are listed from lowest to highest weight. "
+            "Servers that query forwarders in order, such as Microsoft DNS, use this order."
+        ),
+    )
+
+    class Meta:
+        """Meta attributes for DNSForwardingRuleIPAddressAssignment."""
+
+        ordering = ["forwarding_rule", "weight", "port"]
+        unique_together = [["forwarding_rule", "ip_address", "port"]]
+        verbose_name = "DNS Forwarding Rule IP Address Assignment"
+        verbose_name_plural = "DNS Forwarding Rule IP Address Assignments"
+
+    def __str__(self):
+        """Stringify instance."""
+        return f"{self.forwarding_rule}: {self.ip_address.host} port {self.port}"
+
+    def clean(self):
+        """Reject forwarders on rules that do not forward."""
+        super().clean()
+        if (
+            self.forwarding_rule_id
+            and self.forwarding_rule.action == DNSForwardingRuleActionChoices.ACTION_DO_NOT_FORWARD
+        ):
+            raise ValidationError("A rule with the action Do not forward cannot have forwarders.")

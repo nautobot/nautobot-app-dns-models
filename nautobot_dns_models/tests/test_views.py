@@ -1,4 +1,5 @@
 """Unit tests for views."""
+# pylint: disable=too-many-lines
 
 from constance import config as constance_config
 from django.contrib.auth import get_user_model
@@ -10,10 +11,13 @@ from nautobot.extras.models import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from netutils.ip import ipaddress_address
 
+from nautobot_dns_models.choices import DNSForwardingRuleActionChoices
 from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSForwardingRule,
+    DNSForwardingRuleIPAddressAssignment,
     DNSRegistrar,
     DNSView,
     DNSZone,
@@ -23,6 +27,7 @@ from nautobot_dns_models.models import (
     SRVRecord,
     TXTRecord,
 )
+from nautobot_dns_models.tables import DNSForwardingRuleTable
 
 User = get_user_model()
 
@@ -190,6 +195,290 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             # DNSZone.soa_rname accepts a DNS-style mailbox, not only an email address
             "soa_rname": "admin.example.com",
         }
+
+    def _zone(self, name):
+        zone = DNSZone(name=name, filename=f"{name}.zone", soa_mname=f"ns1.{name}", soa_rname=f"admin@{name}")
+        zone.validated_save()
+        return zone
+
+    def _get_detail(self, zone):
+        response = self.client.get(zone.get_absolute_url())
+        self.assertHttpStatus(response, 200)
+        return extract_page_body(response.content.decode(response.charset))
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_zone_detail_shows_delegations_children_and_checks(self):
+        parent = self._zone("parent.example")
+        child = self._zone("apps.parent.example")
+        self._zone("lab.parent.example")
+        NSRecord.objects.create(zone=parent, name="apps", server="ns1.provider.net")
+        NSRecord.objects.create(zone=parent, name="mail", server="ns1.mailvendor.net")
+        NSRecord.objects.create(zone=child, name="@", server="ns1.provider.net")
+
+        content = self._get_detail(parent)
+
+        self.assertIn("DELEGATIONS", content)
+        self.assertIn("mail.parent.example", content)
+        self.assertIn("External", content)
+        self.assertIn(child.get_absolute_url(), content)
+        self.assertIn("<strong>Child Zones</strong>", content)
+        self.assertIn("DELEGATION CHECKS", content)
+        self.assertIn("Child zone lab.parent.example has no NS records in this zone", content)
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_child_zone_detail_shows_parent_delegation(self):
+        parent = self._zone("parent.example")
+        child = self._zone("apps.parent.example")
+        NSRecord.objects.create(zone=parent, name="apps", server="ns1.provider.net")
+        NSRecord.objects.create(zone=child, name="@", server="ns1.provider.net")
+
+        content = self._get_detail(child)
+
+        self.assertIn("PARENT DELEGATION", content)
+        self.assertIn(parent.get_absolute_url(), content)
+        self.assertIn("ns1.provider.net", content)
+        self.assertNotIn("DELEGATION CHECKS", content)
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_zone_detail_shows_a_delegation_of_a_name_above_the_zone(self):
+        parent = self._zone("parent.example")
+        grandchild = self._zone("b.a.parent.example")
+        NSRecord.objects.create(zone=parent, name="a", server="ns1.provider.net")
+
+        content = self._get_detail(grandchild)
+
+        self.assertIn("PARENT DELEGATION", content)
+        self.assertIn("a.parent.example", content)
+        self.assertIn("ns1.provider.net", content)
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_zone_detail_hides_delegation_panels_when_empty(self):
+        content = self._get_detail(DNSZone.objects.get(name="example-one.com"))
+
+        for label in ("DELEGATIONS", "DELEGATION CHECKS", "PARENT DELEGATION", "<strong>Child Zones</strong>"):
+            with self.subTest(label=label):
+                self.assertNotIn(label, content)
+
+
+class DNSForwardingRuleViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+    """Test the DNSForwardingRule views."""
+
+    model = DNSForwardingRule
+
+    @staticmethod
+    def _formset_data(*rows, initial=0):
+        data = {
+            "forwarder_assignments-TOTAL_FORMS": str(len(rows)),
+            "forwarder_assignments-INITIAL_FORMS": str(initial),
+            "forwarder_assignments-MIN_NUM_FORMS": "0",
+            "forwarder_assignments-MAX_NUM_FORMS": "1000",
+        }
+        for index, row in enumerate(rows):
+            data.update({f"forwarder_assignments-{index}-{key}": value for key, value in row.items()})
+        return data
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.dns_view = DNSView.objects.get(name="Default")
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, status=status)
+        cls.forwarders = [
+            IPAddress.objects.create(address=f"10.0.0.{i}/32", namespace=namespace, status=status) for i in (1, 2)
+        ]
+        cls.unused_ip = IPAddress.objects.create(address="10.0.0.9/32", namespace=namespace, status=status)
+
+        DNSForwardingRule.objects.create(name="corp.example.com", dns_view=cls.dns_view)
+        DNSForwardingRule.objects.create(name="partner.example.net", dns_view=cls.dns_view)
+        DNSForwardingRule.objects.create(name="lab.example.org", dns_view=cls.dns_view)
+
+        cls.form_data = {
+            "name": "new.example.com",
+            "dns_view": cls.dns_view.pk,
+            "action": DNSForwardingRuleActionChoices.ACTION_FORWARD_ONLY,
+            "enabled": True,
+            "description": "New rule",
+            **cls._formset_data({"ip_address": cls.forwarders[0].pk, "port": 5353, "weight": 10}),
+        }
+        cls.csv_data = (
+            "name,dns_view,action",
+            f"csv.example.com,{cls.dns_view.pk},forward_only",
+            f"csv.example.net,{cls.dns_view.pk},do_not_forward",
+        )
+        cls.bulk_edit_data = {
+            "action": DNSForwardingRuleActionChoices.ACTION_FORWARD_ONLY,
+            "description": "Bulk edited",
+        }
+
+    def _add_edit_permissions(self):
+        self.add_permissions(
+            "nautobot_dns_models.add_dnsforwardingrule",
+            "nautobot_dns_models.change_dnsforwardingrule",
+            "nautobot_dns_models.view_dnsforwardingrule",
+            "nautobot_dns_models.view_dnsview",
+            "ipam.view_ipaddress",
+        )
+
+    def test_create_rule_with_forwarders(self):
+        self._add_edit_permissions()
+        data = {
+            "name": "ad.example.com",
+            "dns_view": self.dns_view.pk,
+            "action": DNSForwardingRuleActionChoices.ACTION_FORWARD_ONLY,
+            **self._formset_data(
+                {"ip_address": self.forwarders[0].pk, "port": 53, "weight": 20},
+                {"ip_address": self.forwarders[1].pk, "port": 5353, "weight": 10},
+            ),
+        }
+
+        response = self.client.post(self._get_url("add"), data=data)
+
+        self.assertHttpStatus(response, 302)
+        rule = DNSForwardingRule.objects.get(name="ad.example.com")
+        self.assertEqual(
+            [(a.ip_address, a.port, a.weight) for a in rule.forwarder_assignments.all()],
+            [(self.forwarders[1], 5353, 10), (self.forwarders[0], 53, 20)],
+        )
+
+    def test_edit_rule_removes_deleted_forwarder(self):
+        self._add_edit_permissions()
+        rule = DNSForwardingRule.objects.get(name="corp.example.com")
+        assignment = DNSForwardingRuleIPAddressAssignment.objects.create(
+            forwarding_rule=rule, ip_address=self.forwarders[0]
+        )
+        data = {
+            "name": rule.name,
+            "dns_view": self.dns_view.pk,
+            "action": rule.action,
+            **self._formset_data(
+                {
+                    "id": assignment.pk,
+                    "forwarding_rule": rule.pk,
+                    "ip_address": self.forwarders[0].pk,
+                    "port": 53,
+                    "weight": 100,
+                    "DELETE": "on",
+                },
+                initial=1,
+            ),
+        }
+
+        response = self.client.post(self._get_url("edit", rule), data=data)
+
+        self.assertHttpStatus(response, 302)
+        self.assertFalse(rule.forwarder_assignments.exists())
+
+    def test_invalid_forwarder_on_update_reverts_the_rule_changes(self):
+        self._add_edit_permissions()
+        rule = DNSForwardingRule.objects.get(name="corp.example.com")
+        data = {
+            "name": rule.name,
+            "dns_view": self.dns_view.pk,
+            "action": rule.action,
+            "description": "Changed",
+            **self._formset_data({"ip_address": self.forwarders[0].pk, "port": 70000, "weight": 100}),
+        }
+
+        response = self.client.post(self._get_url("edit", rule), data=data)
+
+        self.assertHttpStatus(response, 200)
+        rule.refresh_from_db()
+        self.assertEqual(rule.description, "")
+        self.assertFalse(rule.forwarder_assignments.exists())
+
+    def test_forwarder_must_be_an_ip_address_the_user_can_view(self):
+        self._add_edit_permissions()
+        self.remove_permissions("ipam.view_ipaddress")
+        self.add_permissions("ipam.view_ipaddress", constraints={"host": "10.0.0.1"})
+        data = {
+            "name": "restricted.example.com",
+            "dns_view": self.dns_view.pk,
+            "action": DNSForwardingRuleActionChoices.ACTION_FORWARD_ONLY,
+            **self._formset_data({"ip_address": self.forwarders[1].pk, "port": 53, "weight": 100}),
+        }
+
+        response = self.client.post(self._get_url("add"), data=data)
+
+        self.assertHttpStatus(response, 200)
+        self.assertFalse(DNSForwardingRule.objects.filter(name="restricted.example.com").exists())
+
+        data["forwarder_assignments-0-ip_address"] = self.forwarders[0].pk
+        self.assertHttpStatus(self.client.post(self._get_url("add"), data=data), 302)
+        self.assertEqual(
+            list(DNSForwardingRule.objects.get(name="restricted.example.com").forwarders.all()), [self.forwarders[0]]
+        )
+
+    def test_invalid_forwarder_rolls_back_the_rule(self):
+        self._add_edit_permissions()
+        data = {
+            "name": "public.example.net",
+            "dns_view": self.dns_view.pk,
+            "action": DNSForwardingRuleActionChoices.ACTION_DO_NOT_FORWARD,
+            **self._formset_data({"ip_address": self.forwarders[0].pk, "port": 53, "weight": 100}),
+        }
+
+        response = self.client.post(self._get_url("add"), data=data)
+
+        self.assertHttpStatus(response, 200)
+        self.assertIn(
+            "Forwarder 1: A rule with the action Do not forward cannot have forwarders.",
+            extract_page_body(response.content.decode(response.charset)),
+        )
+        self.assertFalse(DNSForwardingRule.objects.filter(name="public.example.net").exists())
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_detail_view_shows_forwarders_and_rule_checks(self):
+        rule = DNSForwardingRule.objects.get(name="partner.example.net")
+        empty_rule = DNSForwardingRule.objects.get(name="corp.example.com")
+        DNSForwardingRuleIPAddressAssignment.objects.create(
+            forwarding_rule=rule, ip_address=self.forwarders[1], port=5353
+        )
+
+        content = extract_page_body(self.client.get(rule.get_absolute_url()).content.decode())
+        self.assertIn(self.forwarders[1].get_absolute_url(), content)
+        self.assertIn("5353", content)
+        self.assertNotIn("RULE CHECKS", content)
+
+        content = extract_page_body(self.client.get(empty_rule.get_absolute_url()).content.decode())
+        self.assertIn("RULE CHECKS", content)
+        self.assertIn("No forwarders are assigned", content)
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_lists_forwarding_rules_only_when_used(self):
+        rule = DNSForwardingRule.objects.get(name="corp.example.com")
+        DNSForwardingRuleIPAddressAssignment.objects.create(forwarding_rule=rule, ip_address=self.forwarders[0])
+        panel_title = "<strong>DNS Forwarding Rules</strong>"
+
+        content = extract_page_body(self.client.get(self.forwarders[0].get_absolute_url()).content.decode())
+        self.assertInHTML(panel_title, content, 1)
+        self.assertIn(rule.get_absolute_url(), content)
+
+        content = extract_page_body(self.client.get(self.unused_ip.get_absolute_url()).content.decode())
+        self.assertInHTML(panel_title, content, 0)
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_forwarder_on_two_ports_is_listed_once(self):
+        rule = DNSForwardingRule.objects.get(name="corp.example.com")
+        for port in (53, 5353):
+            DNSForwardingRuleIPAddressAssignment.objects.create(
+                forwarding_rule=rule, ip_address=self.forwarders[0], port=port
+            )
+
+        ip_page = extract_page_body(self.client.get(self.forwarders[0].get_absolute_url()).content.decode())
+        table = DNSForwardingRuleTable(DNSForwardingRule.objects.filter(pk=rule.pk))
+        forwarders_cell = table.columns["forwarders"].column.render(rule.forwarders)
+
+        self.assertEqual(ip_page.count(f'href="{rule.get_absolute_url()}"'), 1)
+        self.assertEqual(forwarders_cell.count(f'href="{self.forwarders[0].get_absolute_url()}"'), 1)
+
+    def test_ipaddress_detail_hides_forwarding_rules_the_user_cannot_view(self):
+        self.add_permissions("ipam.view_ipaddress")
+        rule = DNSForwardingRule.objects.get(name="corp.example.com")
+        DNSForwardingRuleIPAddressAssignment.objects.create(forwarding_rule=rule, ip_address=self.forwarders[0])
+
+        content = extract_page_body(self.client.get(self.forwarders[0].get_absolute_url()).content.decode())
+
+        self.assertInHTML("<strong>DNS Forwarding Rules</strong>", content, 0)
 
 
 class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):

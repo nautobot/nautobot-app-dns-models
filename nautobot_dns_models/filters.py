@@ -107,11 +107,49 @@ class DNSZoneFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
             "soa_rname": "icontains",
         }
     )
+    parent_zone = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        label="Parent zone (name or ID)",
+    )
 
     class Meta:
         """Meta attributes for filter."""
 
         model = models.DNSZone
+        fields = "__all__"
+
+
+class DNSForwardingRuleFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
+    """Filter for DNSForwardingRule."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "description": "icontains",
+        }
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSForwardingRule
+        fields = "__all__"
+
+
+class DNSForwardingRuleIPAddressAssignmentFilterSet(NautobotFilterSet):
+    """Filter for DNSForwardingRuleIPAddressAssignment."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "forwarding_rule__name": "icontains",
+        }
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSForwardingRuleIPAddressAssignment
         fields = "__all__"
 
 

@@ -1,7 +1,7 @@
 """Tables for nautobot_dns_models."""
 
 import django_tables2 as tables
-from nautobot.apps.tables import BaseTable, BooleanColumn, ButtonsColumn, ToggleColumn
+from nautobot.apps.tables import BaseTable, BooleanColumn, ButtonsColumn, ChoiceFieldColumn, ToggleColumn
 from nautobot.tenancy.tables import TenantColumn
 
 from nautobot_dns_models import models
@@ -130,6 +130,7 @@ class DNSZoneTable(BaseTable):
     name = tables.Column(linkify=True)
     tenant = TenantColumn()
     dns_view = tables.Column(linkify=True)
+    parent_zone = tables.Column(linkify=True)
     enabled = BooleanColumn()
     auto_create_ptr = BooleanColumn()
     actions = ButtonsColumn(
@@ -145,6 +146,7 @@ class DNSZoneTable(BaseTable):
             "pk",
             "name",
             "dns_view",
+            "parent_zone",
             "enabled",
             "ttl",
             "filename",
@@ -164,12 +166,76 @@ class DNSZoneTable(BaseTable):
             "pk",
             "name",
             "dns_view",
+            "parent_zone",
             "enabled",
             "ttl",
             "filename",
             "soa_expire",
             "soa_rname",
             "actions",
+        )
+
+
+class DNSForwardingRuleTable(BaseTable):
+    """Table for DNS Forwarding Rule list view."""
+
+    pk = ToggleColumn()
+    name = tables.Column(linkify=True)
+    dns_view = tables.Column(linkify=True)
+    action = ChoiceFieldColumn()
+    # An IP address assigned on two ports appears twice in the M2M; dedupe in Python to keep the prefetch.
+    forwarders = tables.ManyToManyColumn(
+        linkify_item=True, orderable=False, filter=lambda forwarders: list(dict.fromkeys(forwarders.all()))
+    )
+    enabled = BooleanColumn()
+    tenant = TenantColumn()
+    actions = ButtonsColumn(
+        models.DNSForwardingRule,
+        buttons=("changelog", "edit", "delete"),
+    )
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.DNSForwardingRule
+        fields = (
+            "pk",
+            "name",
+            "dns_view",
+            "action",
+            "forwarders",
+            "enabled",
+            "description",
+            "tenant",
+            "actions",
+        )
+
+        default_columns = (
+            "pk",
+            "name",
+            "dns_view",
+            "action",
+            "forwarders",
+            "enabled",
+            "actions",
+        )
+
+
+class DNSForwardingRuleIPAddressAssignmentTable(BaseTable):
+    """Table of the forwarders assigned to DNS forwarding rules."""
+
+    forwarding_rule = tables.Column(linkify=True)
+    ip_address = tables.Column(linkify=True)
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.DNSForwardingRuleIPAddressAssignment
+        fields = (
+            "forwarding_rule",
+            "ip_address",
+            "port",
+            "weight",
         )
 
 

@@ -1,0 +1,2 @@
+Added a read-only Parent Zone to DNS Zones, kept up to date automatically, so zones form a hierarchy within each DNS View.
+Added recognition of zone delegations from NS records, with Delegations, Parent Delegation, Child Zones, and Delegation Checks panels on the DNS Zone detail page.

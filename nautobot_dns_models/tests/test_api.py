@@ -11,16 +11,20 @@ from django.test import override_settings
 from django.urls import reverse
 from nautobot.apps.api import get_serializer_for_model
 from nautobot.apps.testing import APIViewTestCases
+from nautobot.core.graphql import execute_query
 from nautobot.core.testing import utils
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from rest_framework import status
 from rest_framework.relations import ManyRelatedField
 
+from nautobot_dns_models.choices import DNSForwardingRuleActionChoices
 from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSForwardingRule,
+    DNSForwardingRuleIPAddressAssignment,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -542,6 +546,130 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
         zone = _create_zone(name="helper-default.example")
 
         self.assertEqual(zone.dns_view, expected_default_view)
+
+    def test_parent_zone_is_computed_and_read_only(self):
+        """parent_zone is derived from the zone name and ignores any value sent by the client."""
+        self.add_permissions("nautobot_dns_models.add_dnszone", "nautobot_dns_models.view_dnsview")
+        dns_view = DNSView.objects.get(name="Default")
+        unrelated = _create_zone(name="unrelated.example", dns_view=dns_view)
+        data = {
+            "name": "sub.test.com",
+            "dns_view": dns_view.id,
+            "filename": "sub.test.com.zone",
+            "soa_mname": "ns1.test.com",
+            "soa_rname": "admin@test.com",
+            "parent_zone": unrelated.pk,
+        }
+
+        response = self.client.post(self._get_list_url(), data=data, format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["parent_zone"]["id"], DNSZone.objects.get(name="test.com").pk)
+
+    def test_graphql_parent_zone(self):
+        """GraphQL exposes parent_zone and child_zones."""
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+        child = DNSZone(name="sub.test.com", filename="sub", soa_mname="ns1.test.com", soa_rname="admin@test.com")
+        child.validated_save()
+        query = '{ dns_zones(name: "test.com") { name child_zones { name } } }'
+
+        result = execute_query(query, user=self.user)
+
+        self.assertIsNone(result.errors)
+        self.assertEqual(result.data["dns_zones"][0]["child_zones"], [{"name": "sub.test.com"}])
+
+
+class DNSForwardingRuleAPITestCase(APIViewTestCases.APIViewTestCase):
+    """Test the Nautobot DNSForwardingRule API."""
+
+    model = DNSForwardingRule
+    view_namespace = "plugins-api:nautobot_dns_models"
+    bulk_update_data = {
+        "description": "Example bulk description",
+        "action": DNSForwardingRuleActionChoices.ACTION_FORWARD_ONLY,
+    }
+    choices_fields = ["action"]
+
+    @classmethod
+    def setUpTestData(cls):
+        dns_view = DNSView.objects.get(name="Default")
+        DNSForwardingRule.objects.create(name="corp.example.com", dns_view=dns_view)
+        DNSForwardingRule.objects.create(name="partner.example.net", dns_view=dns_view)
+        DNSForwardingRule.objects.create(name=".", dns_view=dns_view)
+
+        cls.create_data = [
+            {"name": "ad.example.com", "dns_view": dns_view.id, "action": "forward_only"},
+            {"name": "aws.example.com", "dns_view": dns_view.id, "description": "Cloud resolver"},
+            {"name": "public.example.net", "dns_view": dns_view.id, "action": "do_not_forward", "enabled": False},
+        ]
+
+    def test_rule_with_zone_name_is_rejected(self):
+        """A rule cannot share its name with a zone in the same view."""
+        self.add_permissions("nautobot_dns_models.add_dnsforwardingrule", "nautobot_dns_models.view_dnsview")
+        dns_view = DNSView.objects.get(name="Default")
+        _create_zone(name="zone.example.com", dns_view=dns_view)
+
+        response = self.client.post(
+            self._get_list_url(),
+            data={"name": "zone.example.com", "dns_view": dns_view.id},
+            format="json",
+            **self.header,
+        )
+
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("name", response.data)
+
+
+class DNSForwardingRuleIPAddressAssignmentAPITestCase(APIViewTestCases.APIViewTestCase):
+    """Test the Nautobot DNSForwardingRuleIPAddressAssignment API."""
+
+    model = DNSForwardingRuleIPAddressAssignment
+    view_namespace = "plugins-api:nautobot_dns_models"
+    bulk_update_data = {"weight": 50}
+
+    @classmethod
+    def setUpTestData(cls):
+        namespace = Namespace.objects.get(name="Global")
+        active_status = Status.objects.get(name="Active")
+        Prefix.objects.create(prefix="10.0.0.0/8", namespace=namespace, status=active_status)
+        cls.ip_addresses = [
+            IPAddress.objects.create(address=f"10.0.0.{i}/32", namespace=namespace, status=active_status)
+            for i in range(1, 5)
+        ]
+        cls.rules = [DNSForwardingRule.objects.create(name=f"rule{i}.example.com") for i in range(1, 3)]
+        cls.exempt_rule = DNSForwardingRule.objects.create(
+            name="public.example.net", action=DNSForwardingRuleActionChoices.ACTION_DO_NOT_FORWARD
+        )
+
+        DNSForwardingRuleIPAddressAssignment.objects.create(
+            forwarding_rule=cls.rules[0], ip_address=cls.ip_addresses[0]
+        )
+        DNSForwardingRuleIPAddressAssignment.objects.create(
+            forwarding_rule=cls.rules[0], ip_address=cls.ip_addresses[1]
+        )
+        DNSForwardingRuleIPAddressAssignment.objects.create(
+            forwarding_rule=cls.rules[1], ip_address=cls.ip_addresses[0]
+        )
+
+        cls.create_data = [
+            {"forwarding_rule": cls.rules[1].pk, "ip_address": cls.ip_addresses[1].pk},
+            {"forwarding_rule": cls.rules[1].pk, "ip_address": cls.ip_addresses[2].pk, "port": 5353, "weight": 20},
+            {"forwarding_rule": cls.rules[0].pk, "ip_address": cls.ip_addresses[3].pk, "weight": 5},
+        ]
+
+    def test_forwarder_on_do_not_forward_rule_is_rejected(self):
+        """A rule with the action Do not forward cannot get forwarders through the API."""
+        self.add_permissions(
+            "nautobot_dns_models.add_dnsforwardingruleipaddressassignment",
+            "nautobot_dns_models.view_dnsforwardingrule",
+            "ipam.view_ipaddress",
+        )
+        data = {"forwarding_rule": self.exempt_rule.pk, "ip_address": self.ip_addresses[0].pk}
+
+        response = self.client.post(self._get_list_url(), data=data, format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(self.exempt_rule.forwarder_assignments.exists())
 
 
 class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):

@@ -11,12 +11,14 @@ from netutils.ip import ipaddress_address
 from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
+    DNSForwardingRule,
     DNSZone,
     PTRRecord,
 )
 from nautobot_dns_models.tables import (
     AAAARecordTable,
     ARecordTable,
+    DNSForwardingRuleTable,
     PTRRecordTable,
 )
 
@@ -122,6 +124,17 @@ class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
         return ctx
 
 
+class ForwardingRulesTablePanel(ObjectsTablePanel):
+    """Add the DNS forwarding rules that forward to an IP address to the IP Address page."""
+
+    def should_render(self, context):
+        """Render only for IP addresses used as a forwarder by a rule the user can view."""
+        if not super().should_render(context):
+            return False
+        rules = DNSForwardingRule.objects.restrict(context["request"].user, "view")
+        return rules.filter(forwarders=get_obj_from_context(context)).exists()
+
+
 class IPAddressDNSRecords(TemplateExtension):  # pylint: disable=abstract-method
     """Add DNS Records to the right side of the IP Address page."""
 
@@ -141,6 +154,16 @@ class IPAddressDNSRecords(TemplateExtension):  # pylint: disable=abstract-method
             table_class=PTRRecordTable,
             table_filter="ptrdname",
             include_columns=["name", "zone", "ttl", "actions"],
+        ),
+        ForwardingRulesTablePanel(
+            weight=120,
+            section=SectionChoices.RIGHT_HALF,
+            table_class=DNSForwardingRuleTable,
+            table_filter="forwarders",
+            table_title="DNS Forwarding Rules",
+            add_button_route=None,
+            # A rule lists an IP once per port, so the join through the assignments can repeat it.
+            distinct=True,
         ),
     ]
 

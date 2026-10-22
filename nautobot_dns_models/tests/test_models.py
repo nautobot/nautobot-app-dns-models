@@ -1,18 +1,26 @@
 """Test DNSZone."""
 # pylint: disable=too-many-lines
 
+import importlib
+
 from constance.test import override_config
+from django.apps import apps as django_apps
 from django.core.exceptions import ValidationError
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from nautobot.apps.testing import ModelTestCases, TestCase
 from nautobot.extras.models import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from netutils.ip import ipaddress_address
 
+from nautobot_dns_models.choices import DNSForwardingRuleActionChoices
 from nautobot_dns_models.models import (
     UINT32_MAX,
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSForwardingRule,
+    DNSForwardingRuleIPAddressAssignment,
     DNSRegistrar,
     DNSView,
     DNSViewPrefixAssignment,
@@ -1023,3 +1031,466 @@ class DNSModelEnabledFieldTest(TestCase):
 
         record.refresh_from_db()
         self.assertTrue(record.enabled)
+
+
+def _zone(name, dns_view=None):
+    """Create a zone with validated_save(), so parent_zone is computed the way the UI and API compute it."""
+    zone = DNSZone(name=name, filename=f"{name}.zone", soa_mname=f"ns1.{name}", soa_rname=f"admin@{name}")
+    if dns_view is not None:
+        zone.dns_view = dns_view
+    zone.validated_save()
+    return zone
+
+
+def _ip(address):
+    """Create an IP address in the Global namespace, creating its parent prefix if needed."""
+    namespace = Namespace.objects.get(name="Global")
+    active = Status.objects.get(name="Active")
+    prefix = "10.0.0.0/8" if ":" not in address else "2001:db8::/32"
+    Prefix.objects.get_or_create(prefix=prefix, namespace=namespace, defaults={"status": active})
+    return IPAddress.objects.create(address=address, namespace=namespace, status=active)
+
+
+class DNSZoneHierarchyTestCase(TestCase):
+    """Test that DNSZone.parent_zone always points to the nearest existing ancestor zone in the same view."""
+
+    def assertParent(self, zone, expected_parent):  # pylint: disable=invalid-name
+        """Assert the zone's stored parent_zone, as read back from the database."""
+        zone.refresh_from_db()
+        self.assertEqual(zone.parent_zone, expected_parent)
+
+    def test_parent_zone_is_nearest_existing_ancestor(self):
+        example = _zone("example.com")
+        deep = _zone("a.b.example.com")
+        unrelated = _zone("example.org")
+
+        self.assertParent(example, None)
+        self.assertParent(deep, example)
+        self.assertParent(unrelated, None)
+
+    def test_creating_zone_moves_descendants_under_it(self):
+        example = _zone("example.com")
+        deep = _zone("a.b.example.com")
+        sibling = _zone("c.example.com")
+
+        middle = _zone("b.example.com")
+
+        self.assertParent(middle, example)
+        self.assertParent(deep, middle)
+        self.assertParent(sibling, example)
+
+    def test_deleting_zone_moves_children_to_grandparent(self):
+        example = _zone("example.com")
+        middle = _zone("b.example.com")
+        deep = _zone("a.b.example.com")
+
+        middle.delete()
+
+        self.assertParent(deep, example)
+
+    def test_bulk_deleting_zones_moves_children_to_nearest_remaining_ancestor(self):
+        example = _zone("example.com")
+        _zone("b.example.com")
+        _zone("c.b.example.com")
+        deepest = _zone("d.c.b.example.com")
+
+        DNSZone.objects.filter(name__in=["b.example.com", "c.b.example.com"]).delete()
+
+        self.assertParent(deepest, example)
+
+    def test_deleting_root_zone_leaves_children_without_parent(self):
+        example = _zone("example.com")
+        child = _zone("a.example.com")
+
+        example.delete()
+
+        self.assertParent(child, None)
+
+    def test_renaming_zone_updates_old_and_new_children(self):
+        example = _zone("example.com")
+        renamed = _zone("x.example.com")
+        old_child = _zone("a.x.example.com")
+        new_child = _zone("a.y.example.com")
+
+        renamed.name = "y.example.com"
+        renamed.validated_save()
+
+        self.assertParent(old_child, example)
+        self.assertParent(new_child, renamed)
+
+    def test_parent_zone_is_scoped_to_dns_view(self):
+        other_view = DNSView.objects.create(name="Other")
+        example = _zone("example.com")
+        child = _zone("sub.example.com", dns_view=other_view)
+        self.assertParent(child, None)
+
+        child.dns_view = example.dns_view
+        child.validated_save()
+
+        self.assertParent(child, example)
+
+    def test_parent_zone_matching_ignores_case(self):
+        example = _zone("Example.COM")
+        child = _zone("sub.example.com")
+
+        self.assertParent(child, example)
+
+    def test_data_migration_populates_parent_zone_for_existing_zones(self):
+        example = _zone("example.com")
+        child = _zone("a.b.example.com")
+        other_view_child = _zone("c.example.com", dns_view=DNSView.objects.create(name="Other"))
+        DNSZone.objects.update(parent_zone=None)
+
+        migration = importlib.import_module("nautobot_dns_models.migrations.0012_populate_dnszone_parent_zone")
+        migration.populate_parent_zone(django_apps, None)
+
+        self.assertParent(child, example)
+        self.assertParent(other_view_child, None)
+
+
+class DNSZoneDelegationTestCase(TestCase):
+    """Test how delegations are derived from NS records and how their consistency is checked."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.parent = _zone("example.com")
+        NSRecord.objects.create(zone=cls.parent, name="@", server="ns1.example.com")
+
+    def _delegate(self, name, *servers):
+        for server in servers:
+            NSRecord.objects.create(zone=self.parent, name=name, server=server)
+
+    def _delegation(self, fqdn):
+        return next(delegation for delegation in self.parent.get_delegations() if delegation.fqdn == fqdn)
+
+    def test_apex_ns_records_are_not_delegations(self):
+        NSRecord.objects.create(zone=self.parent, name="example.com", server="ns2.example.com")
+
+        self.assertEqual(self.parent.get_delegations(), [])
+        self.assertEqual(self.parent.get_apex_ns_servers(), ["ns1.example.com", "ns2.example.com"])
+
+    def test_internal_delegation_links_child_zone_and_glue(self):
+        child = _zone("apps.example.com")
+        self._delegate("apps", "ns1.apps.example.com", "ns2.apps.example.com")
+        glue = ARecord.objects.create(zone=self.parent, name="ns1.apps", ip_address=_ip("10.0.0.1/32"))
+
+        delegation = self._delegation("apps.example.com")
+
+        self.assertEqual(delegation.child_zone, child)
+        self.assertEqual(delegation.servers, ["ns1.apps.example.com", "ns2.apps.example.com"])
+        self.assertEqual(delegation.glue_records, [glue])
+        self.assertEqual(delegation.missing_glue_servers, ["ns2.apps.example.com"])
+
+    def test_external_delegation_has_no_child_zone_and_needs_no_glue(self):
+        self._delegate("mail", "ns1.mailvendor.net", "ns2.mailvendor.net")
+
+        delegation = self._delegation("mail.example.com")
+
+        self.assertIsNone(delegation.child_zone)
+        self.assertEqual(delegation.glue_required_servers, [])
+        self.assertEqual(self.parent.get_delegation_warnings(), [])
+
+    def test_zone_qualified_ns_record_name_is_recognized(self):
+        self._delegate("mail.example.com", "ns1.mailvendor.net")
+
+        self.assertEqual([delegation.fqdn for delegation in self.parent.get_delegations()], ["mail.example.com"])
+
+    def test_ns_records_below_a_delegation_are_occluded_not_delegated(self):
+        self._delegate("mail", "ns1.mailvendor.net")
+        self._delegate("eu.mail", "ns1.eu.mailvendor.net")
+
+        self.assertEqual([delegation.fqdn for delegation in self.parent.get_delegations()], ["mail.example.com"])
+        self.assertEqual([record.name for record in self.parent.get_occluded_records()], ["eu.mail"])
+
+    def test_records_below_a_delegation_are_occluded_except_glue(self):
+        self._delegate("apps", "ns1.apps.example.com")
+        self._delegate("mail", "ns1.mail.example.com")
+        ARecord.objects.create(zone=self.parent, name="ns1.apps", ip_address=_ip("10.0.0.1/32"))
+        ARecord.objects.create(zone=self.parent, name="ns1.mail", ip_address=_ip("10.0.0.2/32"))
+        hidden = TXTRecord.objects.create(zone=self.parent, name="legacy.mail", text="hidden")
+        at_cut = CNAMERecord.objects.create(zone=self.parent, name="apps", alias="www.example.com")
+        TXTRecord.objects.create(zone=self.parent, name="www", text="served")
+
+        occluded = self.parent.get_occluded_records()
+
+        self.assertCountEqual(occluded, [hidden, at_cut])
+        self.assertIn("2 record(s) at or below a delegation point", " ".join(self.parent.get_delegation_warnings()))
+
+    def test_sibling_glue_is_not_occluded(self):
+        self._delegate("apps", "ns1.mail.example.com")
+        self._delegate("mail", "ns1.mail.example.com")
+        ARecord.objects.create(zone=self.parent, name="ns1.mail", ip_address=_ip("10.0.0.2/32"))
+
+        self.assertEqual(self.parent.get_occluded_records(), [])
+
+    def test_missing_glue_is_reported(self):
+        self._delegate("mail", "ns1.mail.example.com")
+
+        warnings = self.parent.get_delegation_warnings()
+
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("ns1.mail.example.com is inside the delegated name but has no A/AAAA glue", warnings[0])
+
+    def test_name_server_mismatch_is_reported_on_both_sides(self):
+        child = _zone("apps.example.com")
+        NSRecord.objects.create(zone=child, name="@", server="ns1.other.net")
+        self._delegate("apps", "ns1.provider.net")
+
+        parent_warnings = self.parent.get_delegation_warnings()
+        child_warnings = child.get_delegation_warnings()
+
+        self.assertEqual(len(parent_warnings), 1)
+        self.assertIn("do not match the apex NS records of zone apps.example.com", parent_warnings[0])
+        self.assertEqual(len(child_warnings), 1)
+        self.assertIn("parent zone example.com (ns1.provider.net) do not match", child_warnings[0])
+
+    def test_child_zone_without_delegation_is_reported_on_both_sides(self):
+        child = _zone("lab.example.com")
+
+        self.assertEqual(
+            self.parent.get_delegation_warnings(),
+            ["Child zone lab.example.com has no NS records in this zone, so it is not delegated."],
+        )
+        self.assertEqual(
+            child.get_delegation_warnings(),
+            ["Parent zone example.com has no NS records for this zone, so it is not delegated."],
+        )
+        self.assertIsNone(child.get_parent_delegation())
+
+    def test_zone_qualified_records_below_a_delegation_are_occluded(self):
+        self._delegate("mail", "ns1.mailvendor.net")
+        hidden = TXTRecord.objects.create(zone=self.parent, name="legacy.mail.example.com", text="hidden")
+
+        self.assertEqual(self.parent.get_occluded_records(), [hidden])
+
+    def test_query_count_does_not_grow_with_delegations_or_records(self):
+        def count_queries():
+            with CaptureQueriesContext(connection) as context:
+                delegations = self.parent.get_delegations()
+                self.parent.get_delegation_warnings(delegations)
+            return len(context.captured_queries)
+
+        def add_internal_delegation(label):
+            child = _zone(f"{label}.example.com")
+            NSRecord.objects.create(zone=child, name="@", server="ns1.provider.net")
+            self._delegate(label, "ns1.provider.net")
+
+        add_internal_delegation("one")
+        baseline = count_queries()
+        for label in ("two", "three", "four"):
+            add_internal_delegation(label)
+            TXTRecord.objects.create(zone=self.parent, name=f"txt.{label}", text="hidden")
+
+        self.assertEqual(count_queries(), baseline)
+
+    def test_zone_below_another_delegation_is_not_reported_as_undelegated(self):
+        self._delegate("a", "ns1.provider.net")
+        grandchild = _zone("b.a.example.com")
+
+        self.assertEqual(grandchild.parent_zone, self.parent)
+        self.assertEqual(self.parent.get_delegation_warnings(), [])
+        self.assertEqual(grandchild.get_delegation_warnings(), [])
+
+    def test_consistent_internal_delegation_has_no_warnings(self):
+        child = _zone("apps.example.com")
+        NSRecord.objects.create(zone=child, name="@", server="ns1.apps.example.com")
+        self._delegate("apps", "NS1.Apps.Example.com.")
+        ARecord.objects.create(zone=self.parent, name="ns1.apps", ip_address=_ip("10.0.0.1/32"))
+
+        self.assertEqual(self.parent.get_delegation_warnings(), [])
+        self.assertEqual(child.get_delegation_warnings(), [])
+        self.assertEqual(child.get_parent_delegation().fqdn, "apps.example.com")
+
+    def test_delegations_do_not_cross_dns_views(self):
+        _zone("apps.example.com", dns_view=DNSView.objects.create(name="Other"))
+        self._delegate("apps", "ns1.provider.net")
+
+        self.assertIsNone(self._delegation("apps.example.com").child_zone)
+
+
+class TestDNSForwardingRule(ModelTestCases.BaseModelTestCase):
+    """Generic model tests for DNSForwardingRule."""
+
+    model = DNSForwardingRule
+
+    @classmethod
+    def setUpTestData(cls):
+        DNSForwardingRule.objects.create(name="corp.example.com")
+        DNSForwardingRule.objects.create(name="partner.example.net")
+        DNSForwardingRule.objects.create(name=".")
+
+
+class _DNSForwardingRuleTestBase(TestCase):
+    """Shared fixtures and helpers for the DNSForwardingRule test cases."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.view = DNSView.objects.get(name="Default")
+        cls.other_view = DNSView.objects.create(name="Internal")
+        cls.forwarder = _ip("10.0.0.53/32")
+
+    def _rule(self, name, **kwargs):
+        rule = DNSForwardingRule(name=name, **kwargs)
+        rule.validated_save()
+        return rule
+
+    def _forward(self, rule, ip_address=None, **kwargs):
+        assignment = DNSForwardingRuleIPAddressAssignment(
+            forwarding_rule=rule, ip_address=ip_address or self.forwarder, **kwargs
+        )
+        assignment.validated_save()
+        return assignment
+
+
+class DNSForwardingRuleValidationTestCase(_DNSForwardingRuleTestBase):
+    """Test DNSForwardingRule and DNSForwardingRuleIPAddressAssignment validation."""
+
+    def test_defaults(self):
+        rule = self._rule("corp.example.com")
+
+        self.assertEqual(rule.dns_view, self.view)
+        self.assertEqual(rule.action, DNSForwardingRuleActionChoices.ACTION_FORWARD_FIRST)
+        self.assertTrue(rule.enabled)
+        self.assertEqual(str(rule), "corp.example.com (Default)")
+        self.assertEqual(rule.get_action_class(), "info")
+
+    def test_single_dot_is_the_global_rule(self):
+        rule = self._rule(".")
+
+        self.assertTrue(rule.is_global)
+
+    def test_name_labels_are_validated(self):
+        with self.assertRaises(ValidationError) as context:
+            self._rule("bad..example.com")
+        self.assertIn("Empty labels are not allowed", str(context.exception))
+
+    @override_config(nautobot_dns_models__DNS_VALIDATION_LEVEL="none")
+    def test_name_labels_are_not_validated_when_validation_is_disabled(self):
+        self._rule("bad..example.com")
+
+    def test_name_is_unique_per_view(self):
+        self._rule("corp.example.com")
+        self._rule("corp.example.com", dns_view=self.other_view)
+
+        with self.assertRaises(ValidationError):
+            self._rule("corp.example.com")
+
+    def test_name_is_unique_per_view_regardless_of_case(self):
+        self._rule("corp.example.com")
+
+        with self.assertRaises(ValidationError) as context:
+            self._rule("Corp.Example.com")
+        self.assertIn("A DNS forwarding rule with this name already exists", str(context.exception))
+
+    def test_rule_cannot_reuse_a_zone_name_in_the_same_view(self):
+        _zone("corp.example.com")
+
+        with self.assertRaises(ValidationError) as context:
+            self._rule("CORP.example.com")
+        self.assertIn("A DNS zone with this name exists in this view", str(context.exception))
+        self._rule("corp.example.com", dns_view=self.other_view)
+
+    def test_zone_cannot_reuse_a_rule_name_in_the_same_view(self):
+        self._rule("corp.example.com")
+
+        with self.assertRaises(ValidationError) as context:
+            _zone("corp.example.com")
+        self.assertIn("A DNS forwarding rule with this name already exists", str(context.exception))
+        _zone("corp.example.com", dns_view=self.other_view)
+
+    def test_do_not_forward_rule_rejects_forwarders(self):
+        rule = self._rule("public.example.net", action=DNSForwardingRuleActionChoices.ACTION_DO_NOT_FORWARD)
+
+        with self.assertRaises(ValidationError) as context:
+            self._forward(rule)
+        self.assertIn("cannot have forwarders", str(context.exception))
+
+    def test_rule_with_forwarders_cannot_switch_to_do_not_forward(self):
+        rule = self._rule("corp.example.com")
+        self._forward(rule)
+
+        rule.action = DNSForwardingRuleActionChoices.ACTION_DO_NOT_FORWARD
+        with self.assertRaises(ValidationError) as context:
+            rule.validated_save()
+        self.assertIn("Remove this rule's forwarders", str(context.exception))
+
+    def test_forwarder_is_unique_per_rule_address_and_port(self):
+        rule = self._rule("corp.example.com")
+        self._forward(rule, port=53)
+        self._forward(rule, port=5353)
+
+        with self.assertRaises(ValidationError):
+            self._forward(rule, port=53)
+
+    def test_forwarder_port_must_be_a_valid_port(self):
+        rule = self._rule("corp.example.com")
+        for port in (0, 65536):
+            with self.subTest(port=port), self.assertRaises(ValidationError):
+                self._forward(rule, port=port)
+
+    def test_forwarders_are_ordered_by_weight(self):
+        rule = self._rule("corp.example.com")
+        second = self._forward(rule, ip_address=_ip("10.0.0.54/32"), weight=20)
+        first = self._forward(rule, weight=10)
+
+        self.assertEqual(list(rule.forwarder_assignments.all()), [first, second])
+        self.assertCountEqual(rule.forwarders.all(), [first.ip_address, second.ip_address])
+        self.assertEqual(list(self.forwarder.dns_forwarding_rules.all()), [rule])
+
+    def test_deleting_rule_or_ip_address_deletes_its_forwarder_assignments(self):
+        rule = self._rule("corp.example.com")
+        other_ip = _ip("10.0.0.54/32")
+        self._forward(rule)
+        self._forward(rule, ip_address=other_ip)
+
+        other_ip.delete()
+        self.assertEqual(rule.forwarder_assignments.count(), 1)
+        rule.delete()
+        self.assertFalse(DNSForwardingRuleIPAddressAssignment.objects.exists())
+
+
+class DNSForwardingRuleWarningsTestCase(_DNSForwardingRuleTestBase):
+    """Test the warnings DNSForwardingRule reports for rules that cannot work as intended."""
+
+    def test_warning_when_forwarding_rule_has_no_forwarders(self):
+        rule = self._rule("corp.example.com")
+
+        self.assertEqual(rule.get_warnings(), ["No forwarders are assigned, so this rule has nowhere to send queries."])
+
+    def test_do_not_forward_rule_has_no_warnings(self):
+        _zone("example.com")
+        rule = self._rule("corp.example.com", action=DNSForwardingRuleActionChoices.ACTION_DO_NOT_FORWARD)
+
+        self.assertEqual(rule.get_warnings(), [])
+
+    def test_warning_when_rule_is_inside_a_zone_without_delegation(self):
+        _zone("example.com")
+        rule = self._rule("corp.example.com")
+        self._forward(rule)
+
+        warnings = rule.get_warnings()
+
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("is inside zone example.com in the same view", warnings[0])
+
+    def test_no_warning_when_rule_is_inside_a_delegated_name(self):
+        zone = _zone("example.com")
+        NSRecord.objects.create(zone=zone, name="corp", server="dc1.corp.example.com")
+        rule = self._rule("east.corp.example.com")
+        self._forward(rule)
+
+        self.assertEqual(rule.get_warnings(), [])
+
+    def test_no_warning_for_zones_in_other_views(self):
+        _zone("example.com", dns_view=self.other_view)
+        rule = self._rule("corp.example.com")
+        self._forward(rule)
+
+        self.assertEqual(rule.get_warnings(), [])
+
+    def test_global_rule_is_never_inside_a_zone(self):
+        _zone("example.com")
+        rule = self._rule(".")
+        self._forward(rule)
+
+        self.assertEqual(rule.get_warnings(), [])

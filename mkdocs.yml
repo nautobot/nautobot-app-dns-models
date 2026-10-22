@@ -129,6 +129,8 @@ nav:
           - SRV Record: "models/srvrecord.md"
           - TXT Record: "models/txtrecord.md"
           - DNS View Prefix Assignment: "models/dnsviewprefixassignment.md"
+          - DNS Forwarding Rule: "models/dnsforwardingrule.md"
+          - DNS Forwarding Rule IP Address Assignment: "models/dnsforwardingruleipaddressassignment.md"
   - Administrator Guide:
       - Install and Configure: "admin/install.md"
       - Upgrade: "admin/upgrade.md"

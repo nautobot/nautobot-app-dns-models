@@ -9,3 +9,5 @@ The NS Record model represents a Name Server record in DNS. It identifies an aut
 - `comment` (string): Comment for the record.
 - `enabled` (boolean, default `True`): Indicates whether the record is eligible for publication by external integrations. This app does not publish records or enforce this setting.
 - `server` (string): FQDN of the authoritative name server.
+
+NS records at the zone apex (named `@` or the zone name) list the zone's own authoritative name servers. NS records at any other name delegate that name to other name servers. See [Delegation](dnszone.md#delegation) for how delegations, child zones, and glue records are recognized.

@@ -1,0 +1,74 @@
+{% extends 'generic/object_create.html' %}
+{% load form_helpers %}
+
+{% block form %}
+    <div class="card">
+        <div class="card-header"><strong>{{ obj_type|capfirst }}</strong></div>
+        <div class="card-body">
+            {% render_form form %}
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header"><strong>Forwarders</strong></div>
+        <div class="card-body overflow-auto">
+            {% if forwarder_assignments.non_form_errors %}
+                <div class="text-danger">{{ forwarder_assignments.non_form_errors }}</div>
+            {% endif %}
+            <table class="table" id="forwarder_assignments">
+                {{ forwarder_assignments.management_form }}
+                {% for assignment_form in forwarder_assignments.forms %}
+                    {% if forloop.first %}
+                        <thead>
+                            <tr>
+                                {% for field in assignment_form.visible_fields %}
+                                    <th>{{ field.label|capfirst }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                    {% endif %}
+                    <tr class="formset_row-{{ forwarder_assignments.prefix }}">
+                        {% for field in assignment_form.visible_fields %}
+                            <td>
+                                {% if forloop.first %}
+                                    {% for hidden in assignment_form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
+                                    {% for error in assignment_form.non_field_errors %}
+                                        <!-- FORM-ERROR __all__: {{ error }} -->
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                {% endif %}
+                                {{ field }}
+                                {% if field.errors %}
+                                    <ul>
+                                        {% for error in field.errors %}
+                                            {# Embed an HTML comment indicating the error for extraction by tests #}
+                                            <!-- FORM-ERROR {{ field.name }}: {{ error }} -->
+                                            <li class="text-danger">{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+    {% include 'inc/extras_features_edit_form_fields.html' %}
+{% endblock form %}
+
+{% block javascript %}
+    {{ block.super }}
+    <script type="text/javascript">
+        $('.formset_row-{{ forwarder_assignments.prefix }}').formset({
+            addText: '<span class="mdi mdi-plus-thick" aria-hidden="true"></span> Add another forwarder',
+            addCssClass: 'btn btn-primary add-row',
+            deleteText: '<span class="mdi mdi-trash-can-outline" aria-hidden="true"></span>',
+            deleteCssClass: 'btn btn-danger delete-row',
+            prefix: '{{ forwarder_assignments.prefix }}',
+            formCssClass: 'dynamic-formset-{{ forwarder_assignments.prefix }}',
+            added: jsify_form
+        });
+    </script>
+{% endblock javascript %}

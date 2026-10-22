@@ -18,6 +18,57 @@ Domain registration attributes are modeled separately in `DNSRegistration`.
 - `soa_minimum`: (integer): Minimum TTL for records in this zone.
 - `tenant` (Tenant, optional): Reference to the Tenant model for multi-tenancy support.
 - `auto_create_ptr` (boolean, default `False`): When enabled, creating an A or AAAA record in this zone automatically creates a matching PTR record in the most-specific reverse zone within the same DNS view. If no matching reverse zone exists, the A/AAAA creation fails with a validation error.
+- `parent_zone` (DNSZone, read-only): The nearest ancestor zone in the same DNS View, for example `example.com` for `apps.example.com`. It is set automatically, see [Zone Hierarchy](#zone-hierarchy).
+
+A zone cannot have the same name as a [DNS Forwarding Rule](dnsforwardingrule.md) in the same DNS View.
+
+## Zone Hierarchy
+
+`parent_zone` points to the zone in the same DNS View with the longest name that is an ancestor of this zone's name. Names are compared ignoring case. A zone in another DNS View is never a parent, so each view of a split-horizon setup has its own tree.
+
+The hierarchy is kept up to date automatically:
+
+- Creating `b.example.com` between `example.com` and `a.b.example.com` moves `a.b.example.com` under the new zone.
+- Renaming a zone, or moving it to another DNS View, recomputes its own parent and the parents of the zones around it.
+- Deleting a zone moves its children up to the nearest remaining ancestor.
+
+The zone detail page lists the direct children in a **Child Zones** panel, and the zone list can be filtered by parent zone.
+
+## Delegation
+
+A delegation hands part of a zone's name space over to other name servers. This app does not store delegations as separate objects. It recognizes them from the records in the parent zone, the same way DNS does:
+
+- **Delegation point**: the [NS records](nsrecord.md) at a name other than the zone apex, for example NS records named `apps` in `example.com`.
+- **Child zone**: if a zone named `apps.example.com` exists in the same DNS View, the delegation is internal and links to that zone. Otherwise it is external, for example a subdomain run by a mail provider or another team's DNS servers.
+- **Glue**: A and AAAA records in the parent zone for name servers that sit at or below the delegated name, for example `ns1.apps` for the name server `ns1.apps.example.com`. Resolvers can only reach such name servers through glue. Name servers outside the delegated name need no glue.
+
+Record names are read relative to their zone. The apex is `@` or the zone name itself, and a name that already ends with the zone name (`apps.example.com` in `example.com`) is treated as zone-qualified.
+
+The following records in `example.com` describe one internal and one external delegation:
+
+| Name | Type | Value | Meaning |
+| --- | --- | --- | --- |
+| `@` | NS | `ns1.example.com` | Authoritative name server of `example.com`. Not a delegation. |
+| `apps` | NS | `ns1.apps.example.com` | Delegates `apps.example.com`. Internal if that zone exists in the same view. |
+| `ns1.apps` | A | `192.0.2.53` | Glue for `ns1.apps.example.com`. |
+| `mail` | NS | `ns1.mailvendor.net` | Delegates `mail.example.com` to a provider. External, no glue needed. |
+
+### Delegation Panels and Checks
+
+The zone detail page shows:
+
+- **Delegations**: each delegated name with its name servers, glue records, and child zone, or "External".
+- **Parent Delegation**: on a zone that has a parent, whether the parent delegates it and with which name servers.
+- **Delegation Checks**: problems with the delegations this zone makes or receives. The panel is only shown when there is something to report.
+
+The delegation checks report:
+
+- A child zone in Nautobot that the parent zone has no NS records for, so it is not delegated. A child zone below another delegated name is not reported, because that delegation belongs in a zone Nautobot does not model.
+- A delegation whose NS records do not match the apex NS records of the child zone.
+- A name server at or below the delegated name that has no glue record in the parent zone.
+- Records in the parent zone at or below a delegation point, other than the delegation's NS records and glue. Resolvers never see them, because the child zone answers for those names.
+
+These are warnings only. They never block saving, because a delegation is built from several records that are created one at a time. This app does not create or update delegation records automatically.
 
 ## SOA RNAME Formats
 

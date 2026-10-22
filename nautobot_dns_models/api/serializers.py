@@ -67,6 +67,28 @@ class DNSZoneSerializer(NautobotModelSerializer):
         fields = "__all__"
 
 
+class DNSForwardingRuleSerializer(NautobotModelSerializer):
+    """DNSForwardingRule Serializer."""
+
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnsforwardingrule-detail")
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSForwardingRule
+        fields = "__all__"
+
+
+class DNSForwardingRuleIPAddressAssignmentSerializer(ValidatedModelSerializer):
+    """DNSForwardingRuleIPAddressAssignment Serializer."""
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSForwardingRuleIPAddressAssignment
+        fields = "__all__"
+
+
 class DNSRecordSerializer(NautobotModelSerializer):
     """DNSRecord Serializer."""
 

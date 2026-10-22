@@ -2,6 +2,7 @@
 
 from django import forms
 from nautobot.apps.forms import (
+    BootstrapMixin,
     BulkEditNullBooleanSelect,
     DatePicker,
     DynamicModelChoiceField,
@@ -10,7 +11,9 @@ from nautobot.apps.forms import (
     NautobotFilterForm,
     NautobotModelForm,
     StaticSelect2,
+    StaticSelect2Multiple,
     TagsBulkEditFormMixin,
+    add_blank_choice,
 )
 
 # This should be updated after https://github.com/nautobot/nautobot/issues/9302 is resolved
@@ -22,6 +25,7 @@ from nautobot.tenancy.forms import TenancyFilterForm, TenancyForm
 from nautobot.tenancy.models import Tenant
 
 from nautobot_dns_models import models
+from nautobot_dns_models.choices import DNSForwardingRuleActionChoices
 
 EXPIRATION_DATE_INPUT_FORMATS = ("%Y-%m-%d",)
 
@@ -361,6 +365,11 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
         widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
     )
     filename = forms.CharField(required=False, label="Filename")
+    parent_zone = DynamicModelMultipleChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        required=False,
+        label="Parent Zone",
+    )
     model = models.DNSZone
     # Define the fields above for ordering and widget purposes
     fields = [
@@ -368,6 +377,141 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
         "name",
         "enabled",
         "filename",
+        "parent_zone",
+    ]
+
+
+class DNSForwardingRuleForm(NautobotModelForm, TenancyForm):
+    """DNSForwardingRule creation/edit form."""
+
+    dns_view = DynamicModelChoiceField(
+        queryset=models.DNSView.objects.all(),
+        required=True,
+        label="View",
+    )
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSForwardingRule
+        fields = "__all__"
+
+
+class DNSForwardingRuleIPAddressAssignmentForm(BootstrapMixin, forms.ModelForm):
+    """Form for one forwarder row in the DNSForwardingRule create/edit page."""
+
+    # None of these are required in HTML, so the blank rows the page starts with do not block submitting it.
+    # Rows added with "Add another forwarder" start out empty, so an empty port or weight gets the model default.
+    ip_address = DynamicModelChoiceField(queryset=IPAddress.objects.all(), required=False, label="IP Address")
+    port = forms.IntegerField(required=False, initial=53, min_value=1, max_value=65535, label="Port")
+    weight = forms.IntegerField(required=False, initial=100, min_value=0, max_value=32767, label="Weight")
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSForwardingRuleIPAddressAssignment
+        fields = ["ip_address", "port", "weight"]
+
+    def has_changed(self):
+        """Treat new rows without an IP address as unchanged, so the formset skips them."""
+        if not self.instance.present_in_database and not self.data.get(self.add_prefix("ip_address")):
+            return False
+        return super().has_changed()
+
+    def clean_ip_address(self):
+        """Require an IP address on every row that is kept."""
+        ip_address = self.cleaned_data.get("ip_address")
+        if ip_address is None:
+            raise forms.ValidationError("An IP address is required.")
+        return ip_address
+
+    def _clean_with_default(self, field_name):
+        value = self.cleaned_data.get(field_name)
+        if value is None:
+            return models.DNSForwardingRuleIPAddressAssignment._meta.get_field(field_name).default
+        return value
+
+    def clean_port(self):
+        """Default an empty port to 53."""
+        return self._clean_with_default("port")
+
+    def clean_weight(self):
+        """Default an empty weight to 100."""
+        return self._clean_with_default("weight")
+
+
+DNSForwardingRuleIPAddressAssignmentFormSet = forms.inlineformset_factory(
+    parent_model=models.DNSForwardingRule,
+    model=models.DNSForwardingRuleIPAddressAssignment,
+    form=DNSForwardingRuleIPAddressAssignmentForm,
+    fk_name="forwarding_rule",
+    extra=3,
+)
+
+
+class DNSForwardingRuleBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
+    """DNSForwardingRule bulk edit form."""
+
+    pk = forms.ModelMultipleChoiceField(
+        queryset=models.DNSForwardingRule.objects.all(), widget=forms.MultipleHiddenInput
+    )
+    dns_view = DynamicModelChoiceField(
+        queryset=models.DNSView.objects.all(),
+        required=False,
+        label="View",
+    )
+    action = forms.ChoiceField(
+        choices=add_blank_choice(DNSForwardingRuleActionChoices),
+        required=False,
+        widget=StaticSelect2(),
+    )
+    enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
+    description = forms.CharField(required=False)
+    tenant = DynamicModelChoiceField(
+        queryset=Tenant.objects.all(),
+        required=False,
+    )
+
+    class Meta:
+        """Meta attributes."""
+
+        nullable_fields = [
+            "description",
+            "tenant",
+        ]
+
+
+class DNSForwardingRuleFilterForm(NautobotFilterForm, TenancyFilterForm):
+    """Filter form for DNSForwardingRule searches."""
+
+    q = forms.CharField(
+        required=False,
+        label="Search",
+        help_text="Search within Name and Description.",
+    )
+    name = forms.CharField(required=False, label="Name")
+    dns_view = DynamicModelMultipleChoiceField(
+        queryset=models.DNSView.objects.all(),
+        required=False,
+        label="View",
+    )
+    action = forms.MultipleChoiceField(
+        choices=DNSForwardingRuleActionChoices,
+        required=False,
+        widget=StaticSelect2Multiple(),
+    )
+    enabled = forms.NullBooleanField(
+        required=False,
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
+    model = models.DNSForwardingRule
+    # Define the fields above for ordering and widget purposes
+    fields = [
+        "q",
+        "name",
+        "dns_view",
+        "action",
+        "enabled",
     ]
 
 

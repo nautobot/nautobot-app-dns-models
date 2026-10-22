@@ -11,6 +11,8 @@ router.register("dns-view-prefix-assignments", views.DNSViewPrefixAssignmentView
 router.register("dns-registrars", views.DNSRegistrarViewSet)
 router.register("dns-registrations", views.DNSRegistrationViewSet)
 router.register("dns-zones", views.DNSZoneViewSet)
+router.register("dns-forwarding-rules", views.DNSForwardingRuleViewSet)
+router.register("dns-forwarding-rule-ip-address-assignments", views.DNSForwardingRuleIPAddressAssignmentViewSet)
 router.register("ns-records", views.NSRecordViewSet)
 router.register("a-records", views.ARecordViewSet)
 router.register("aaaa-records", views.AAAARecordViewSet)

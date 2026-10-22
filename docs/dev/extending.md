@@ -66,6 +66,23 @@ erDiagram
         integer soa_minimum
         tenancy_TenantModel tenant FK
         boolean auto_create_ptr
+        DNSZone parent_zone FK "set automatically"
+    }
+
+    DNSForwardingRule {
+        charfield name "domain, or a single dot for global forwarders"
+        DNSView dns_view FK
+        charfield action "forward_first, forward_only, do_not_forward"
+        boolean enabled
+        textfield description
+        tenancy_TenantModel tenant FK
+    }
+
+    DNSForwardingRuleIPAddressAssignment {
+        DNSForwardingRule forwarding_rule FK
+        ipam_IPaddressModel ip_address FK
+        integer port
+        integer weight
     }
 
     DNSRecord {
@@ -129,6 +146,13 @@ erDiagram
     DNSZone ||--o{ DNSRecord: "contains"
     DNSZone }o--|| DNSView: "belongs to"
     DNSZone }o--o| tenancy_TenantModel: "belongs to"
+    DNSZone |o--o{ DNSZone: "parent of"
+    NSRecord }o..o| DNSZone: "delegates to (matched by name)"
+
+    DNSForwardingRule }o--|| DNSView: "scoped to"
+    DNSForwardingRule }o--o| tenancy_TenantModel: "belongs to"
+    DNSForwardingRule ||--o{ DNSForwardingRuleIPAddressAssignment: "forwards to"
+    ipam_IPaddressModel ||--o{ DNSForwardingRuleIPAddressAssignment: "assigned as forwarder"
 
     DNSView ||--o{ DNSViewPrefixAssignment: "assigns"
     ipam_PrefixModel ||--o{ DNSViewPrefixAssignment: "assigned via"

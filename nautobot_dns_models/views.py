@@ -1,21 +1,29 @@
 """DNS Plugin Views."""
 
+from django.core.exceptions import ValidationError
+from django.utils.html import format_html, format_html_join
 from nautobot.apps import views
+from nautobot.apps.forms import restrict_form_fields
 from nautobot.apps.ui import (
     ButtonColorChoices,
+    DataTablePanel,
+    KeyValueTablePanel,
     ObjectDetailContent,
     ObjectFieldsPanel,
     ObjectsTablePanel,
     SectionChoices,
     StatsPanel,
 )
+from nautobot.core.templatetags.helpers import hyperlinked_object
 from nautobot.core.ui import object_detail
+from nautobot.core.views.utils import get_obj_from_context
 from nautobot.ipam.tables import PrefixTable
 
 from nautobot_dns_models.api.serializers import (
     AAAARecordSerializer,
     ARecordSerializer,
     CNAMERecordSerializer,
+    DNSForwardingRuleSerializer,
     DNSRegistrarSerializer,
     DNSRegistrationSerializer,
     DNSViewSerializer,
@@ -30,6 +38,7 @@ from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSForwardingRuleFilterSet,
     DNSRegistrarFilterSet,
     DNSRegistrationFilterSet,
     DNSViewFilterSet,
@@ -50,6 +59,10 @@ from nautobot_dns_models.forms import (
     CNAMERecordBulkEditForm,
     CNAMERecordFilterForm,
     CNAMERecordForm,
+    DNSForwardingRuleBulkEditForm,
+    DNSForwardingRuleFilterForm,
+    DNSForwardingRuleForm,
+    DNSForwardingRuleIPAddressAssignmentFormSet,
     DNSRegistrarBulkEditForm,
     DNSRegistrarFilterForm,
     DNSRegistrarForm,
@@ -82,6 +95,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSForwardingRule,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -91,11 +105,16 @@ from nautobot_dns_models.models import (
     PTRRecord,
     SRVRecord,
     TXTRecord,
+    is_same_or_subdomain,
+    normalize_dns_name,
+    record_fqdn,
 )
 from nautobot_dns_models.tables import (
     AAAARecordTable,
     ARecordTable,
     CNAMERecordTable,
+    DNSForwardingRuleIPAddressAssignmentTable,
+    DNSForwardingRuleTable,
     DNSRegistrarTable,
     DNSRegistrationTable,
     DNSViewTable,
@@ -106,6 +125,64 @@ from nautobot_dns_models.tables import (
     SRVRecordTable,
     TXTRecordTable,
 )
+
+
+class NonEmptyDataTablePanel(DataTablePanel):
+    """A DataTablePanel that is hidden when its context data is empty."""
+
+    def should_render(self, context):
+        """Render only when there are rows to show."""
+        return super().should_render(context) and bool(context.get(self.context_data_key))
+
+
+class NonEmptyObjectsTablePanel(ObjectsTablePanel):
+    """An ObjectsTablePanel that is hidden when the filtered queryset is empty."""
+
+    def should_render(self, context):
+        """Render only when at least one related object exists."""
+        if not super().should_render(context):
+            return False
+        obj = get_obj_from_context(context)
+        queryset = self.table_class.Meta.model.objects.restrict(context["request"].user, "view")
+        return queryset.filter(**{self.table_filter: obj}).exists()
+
+
+def _lines(values):
+    """Render values one per line, escaping each of them."""
+    return format_html_join(format_html("<br>"), "{}", ((value,) for value in values))
+
+
+def _delegation_rows(zone, delegations):
+    """Return DataTablePanel rows describing the delegations of `zone`."""
+    return [
+        {
+            "name": delegation.fqdn,
+            "servers": _lines(delegation.servers),
+            "glue": _lines(
+                f"{record_fqdn(record.name, zone.name)} ({record.ip_address.host})"
+                for record in delegation.glue_records
+            ),
+            "child_zone": hyperlinked_object(delegation.child_zone) if delegation.child_zone else "External",
+        }
+        for delegation in delegations
+    ]
+
+
+def _parent_delegation_data(zone, parent_delegations):
+    """Return KeyValueTablePanel data describing how the parent zone delegates `zone`, or {} without a parent.
+
+    The delegation may be for this zone's own name or for a name above it.
+    """
+    if zone.parent_zone is None:
+        return {}
+    zone_fqdn = normalize_dns_name(zone.name)
+    delegation = next((d for d in parent_delegations if is_same_or_subdomain(zone_fqdn, d.fqdn)), None)
+    return {
+        "parent_zone": zone.parent_zone,
+        "delegated": delegation is not None,
+        "delegated_name": delegation.fqdn if delegation else None,
+        "name_servers_in_parent": _lines(delegation.servers) if delegation else None,
+    }
 
 
 class DNSViewUIViewSet(views.NautobotUIViewSet):
@@ -211,7 +288,8 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
     filterset_form_class = DNSZoneFilterForm
     serializer_class = DNSZoneSerializer
     lookup_field = "pk"
-    queryset = DNSZone.objects.all()
+    # parent_zone is rendered with DNSZone.__str__, which includes the zone's view.
+    queryset = DNSZone.objects.select_related("dns_view", "parent_zone__dns_view")
     table_class = DNSZoneTable
 
     object_detail_content = ObjectDetailContent(
@@ -231,6 +309,14 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                 include_columns=["dns_registrar", "status", "expiration_date", "auto_renewal", "actions"],
                 max_display_count=1,
             ),
+            NonEmptyDataTablePanel(
+                weight=150,
+                section=SectionChoices.LEFT_HALF,
+                label="Delegation Checks",
+                css_class="warning",
+                context_data_key="zone_delegation_warnings",
+                columns=["warning"],
+            ),
             ObjectsTablePanel(
                 weight=300,
                 section=SectionChoices.LEFT_HALF,
@@ -239,6 +325,29 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                 table_title="NS Records",
                 exclude_columns=["zone"],
                 max_display_count=5,
+            ),
+            KeyValueTablePanel(
+                weight=350,
+                section=SectionChoices.LEFT_HALF,
+                label="Parent Delegation",
+                context_data_key="zone_parent_delegation",
+            ),
+            NonEmptyDataTablePanel(
+                weight=400,
+                section=SectionChoices.LEFT_HALF,
+                label="Delegations",
+                context_data_key="zone_delegations",
+                columns=["name", "servers", "glue", "child_zone"],
+                column_headers=["Delegated Name", "Name Servers", "Glue", "Child Zone"],
+            ),
+            NonEmptyObjectsTablePanel(
+                weight=500,
+                section=SectionChoices.LEFT_HALF,
+                table_filter="parent_zone",
+                table_class=DNSZoneTable,
+                table_title="Child Zones",
+                exclude_columns=["parent_zone", "soa_expire", "soa_rname"],
+                add_button_route=None,
             ),
             # Right pane
             StatsPanel(
@@ -380,6 +489,92 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
             ),
         ],
     )
+
+    def get_extra_context(self, request, instance=None):
+        """Add the derived delegation data shown on the zone detail page."""
+        context = super().get_extra_context(request, instance)
+        if self.action == "retrieve":
+            delegations = instance.get_delegations()
+            parent_delegations = instance.parent_zone.get_delegations() if instance.parent_zone else []
+            context["zone_delegations"] = _delegation_rows(instance, delegations)
+            context["zone_delegation_warnings"] = [
+                {"warning": warning} for warning in instance.get_delegation_warnings(delegations, parent_delegations)
+            ]
+            context["zone_parent_delegation"] = _parent_delegation_data(instance, parent_delegations)
+        return context
+
+
+class DNSForwardingRuleUIViewSet(views.NautobotUIViewSet):
+    """DNSForwardingRule UI ViewSet."""
+
+    form_class = DNSForwardingRuleForm
+    bulk_update_form_class = DNSForwardingRuleBulkEditForm
+    filterset_class = DNSForwardingRuleFilterSet
+    filterset_form_class = DNSForwardingRuleFilterForm
+    serializer_class = DNSForwardingRuleSerializer
+    lookup_field = "pk"
+    queryset = DNSForwardingRule.objects.all()
+    table_class = DNSForwardingRuleTable
+
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            ),
+            NonEmptyDataTablePanel(
+                weight=150,
+                section=SectionChoices.LEFT_HALF,
+                label="Rule Checks",
+                css_class="warning",
+                context_data_key="forwarding_rule_warnings",
+                columns=["warning"],
+            ),
+            ObjectsTablePanel(
+                weight=100,
+                section=SectionChoices.RIGHT_HALF,
+                table_filter="forwarding_rule",
+                table_class=DNSForwardingRuleIPAddressAssignmentTable,
+                table_title="Forwarders",
+                exclude_columns=["forwarding_rule"],
+                add_button_route=None,
+                enable_related_link=False,
+            ),
+        ],
+    )
+
+    def get_extra_context(self, request, instance=None):
+        """Add the forwarders formset to create/edit pages and the rule checks to the detail page."""
+        context = super().get_extra_context(request, instance)
+        if self.action in ["create", "update"]:
+            forwarder_assignments = DNSForwardingRuleIPAddressAssignmentFormSet(
+                instance=instance,
+                data=request.POST if request.method == "POST" else None,
+            )
+            for assignment_form in forwarder_assignments.forms:
+                restrict_form_fields(assignment_form, request.user)
+            context["forwarder_assignments"] = forwarder_assignments
+        if self.action == "retrieve":
+            context["forwarding_rule_warnings"] = [{"warning": warning} for warning in instance.get_warnings()]
+        return context
+
+    def form_save(self, form, **kwargs):
+        """Save the rule, then its forwarders. An invalid forwarder rolls back the whole save."""
+        obj = super().form_save(form, **kwargs)
+        forwarder_assignments = self.get_extra_context(self.request, obj)["forwarder_assignments"]
+        if not forwarder_assignments.is_valid():
+            # The page is re-rendered from a fresh instance, so the row errors are reported in the error banner.
+            row_errors = [
+                f"Forwarder {row}: {error}"
+                for row, assignment_form in enumerate(forwarder_assignments.forms, start=1)
+                if not assignment_form.cleaned_data.get("DELETE")
+                for field_errors in assignment_form.errors.values()
+                for error in field_errors
+            ]
+            raise ValidationError(" ".join(row_errors + list(forwarder_assignments.non_form_errors())))
+        forwarder_assignments.save()
+        return obj
 
 
 class NSRecordUIViewSet(views.NautobotUIViewSet):

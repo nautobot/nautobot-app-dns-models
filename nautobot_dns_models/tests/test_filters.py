@@ -1,4 +1,5 @@
 """Test DNSZone Filter."""
+# pylint: disable=too-many-lines
 
 from datetime import date
 
@@ -8,10 +9,13 @@ from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from nautobot.tenancy.models import Tenant, TenantGroup
 
+from nautobot_dns_models.choices import DNSForwardingRuleActionChoices
 from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSForwardingRuleFilterSet,
+    DNSForwardingRuleIPAddressAssignmentFilterSet,
     DNSRegistrarFilterSet,
     DNSRegistrationFilterSet,
     DNSViewFilterSet,
@@ -27,6 +31,8 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSForwardingRule,
+    DNSForwardingRuleIPAddressAssignment,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -389,6 +395,152 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
         """enabled filter should match only zones with the given enabled value."""
         self.assertEqual(self.filterset({"enabled": "true"}, self.queryset).qs.count(), 2)
         self.assertEqual(self.filterset({"enabled": "false"}, self.queryset).qs.count(), 1)
+
+    def test_parent_zone_filter(self):
+        """parent_zone filter should match the direct children of the given zones, by ID or name."""
+        zones = {}
+        for name in ("example.com", "a.example.com", "b.example.com", "x.a.example.com"):
+            zones[name] = DNSZone(
+                name=name, filename=f"{name}.zone", soa_mname="ns1.example.com", soa_rname="admin@example.com"
+            )
+            zones[name].validated_save()
+        parent = zones["example.com"]
+        children = [zones["a.example.com"], zones["b.example.com"]]
+
+        for value in (parent.pk, parent.name):
+            with self.subTest(value=value):
+                self.assertQuerysetEqualAndNotEmpty(
+                    self.filterset({"parent_zone": [value]}, self.queryset).qs, children, ordered=False
+                )
+
+
+class DNSForwardingRuleFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.TenancyFilterTestCaseMixin):
+    """DNSForwardingRule Filter Test Case."""
+
+    queryset = DNSForwardingRule.objects.all()
+    filterset = DNSForwardingRuleFilterSet
+    tenancy_related_name = "dns_forwarding_rules"
+
+    generic_filter_tests = (
+        ("id",),
+        ("created",),
+        ("last_updated",),
+        ("name",),
+        ("description",),
+        ("dns_view", "dns_view__id"),
+        ("forwarders", "forwarders__id"),
+    )
+
+    @classmethod
+    def setUpTestData(cls):
+        """Setup test data for DNSForwardingRule Model."""
+        namespace = Namespace.objects.get(name="Global")
+        active_status = Status.objects.get(name="Active")
+        Prefix.objects.create(prefix="10.0.0.0/8", namespace=namespace, status=active_status)
+        forwarders = [
+            IPAddress.objects.create(address=f"10.0.0.{i}/32", namespace=namespace, status=active_status)
+            for i in range(1, 4)
+        ]
+        tenants = (
+            Tenant.objects.create(name="Forwarding Tenant 1", tenant_group=TenantGroup.objects.create(name="FG1")),
+            Tenant.objects.create(name="Forwarding Tenant 2", tenant_group=TenantGroup.objects.create(name="FG2")),
+        )
+        views = (
+            DNSView.objects.get(name="Default"),
+            DNSView.objects.create(name="Internal"),
+            DNSView.objects.create(name="Partner"),
+        )
+
+        rules = (
+            DNSForwardingRule.objects.create(
+                name="corp.example.com", dns_view=views[0], description="Corporate", tenant=tenants[0]
+            ),
+            DNSForwardingRule.objects.create(
+                name="partner.example.net",
+                dns_view=views[1],
+                action=DNSForwardingRuleActionChoices.ACTION_FORWARD_ONLY,
+                description="Partner",
+                tenant=tenants[1],
+            ),
+            DNSForwardingRule.objects.create(
+                name="public.partner.example.net",
+                dns_view=views[2],
+                action=DNSForwardingRuleActionChoices.ACTION_DO_NOT_FORWARD,
+                description="Exemption",
+                enabled=False,
+            ),
+        )
+        DNSForwardingRuleIPAddressAssignment.objects.create(forwarding_rule=rules[0], ip_address=forwarders[0])
+        DNSForwardingRuleIPAddressAssignment.objects.create(forwarding_rule=rules[1], ip_address=forwarders[1])
+        DNSForwardingRuleIPAddressAssignment.objects.create(forwarding_rule=rules[2], ip_address=forwarders[2])
+
+    def test_action_filter(self):
+        """action filter should match rules with any of the given actions."""
+        params = {"action": [DNSForwardingRuleActionChoices.ACTION_FORWARD_ONLY]}
+        self.assertQuerysetEqualAndNotEmpty(
+            self.filterset(params, self.queryset).qs,
+            DNSForwardingRule.objects.filter(name="partner.example.net"),
+        )
+
+    def test_enabled_filter(self):
+        """enabled filter should match only rules with the given enabled value."""
+        for value, enabled in (("true", True), ("false", False)):
+            with self.subTest(enabled=value):
+                self.assertQuerysetEqualAndNotEmpty(
+                    self.filterset({"enabled": value}, self.queryset).qs,
+                    DNSForwardingRule.objects.filter(enabled=enabled),
+                    ordered=False,
+                )
+
+    def test_search(self):
+        """Q search should match rule names and descriptions."""
+        self.assertQuerysetEqualAndNotEmpty(
+            self.filterset({"q": "partner.example"}, self.queryset).qs,
+            DNSForwardingRule.objects.filter(name__icontains="partner.example"),
+            ordered=False,
+        )
+        self.assertQuerysetEqualAndNotEmpty(
+            self.filterset({"q": "Corporate"}, self.queryset).qs,
+            DNSForwardingRule.objects.filter(description="Corporate"),
+        )
+        self.assertFalse(self.filterset({"q": "nothing-matches"}, self.queryset).qs.exists())
+
+
+class DNSForwardingRuleIPAddressAssignmentFilterTestCase(FilterTestCases.FilterTestCase):
+    """DNSForwardingRuleIPAddressAssignment Filter Test Case."""
+
+    queryset = DNSForwardingRuleIPAddressAssignment.objects.all()
+    filterset = DNSForwardingRuleIPAddressAssignmentFilterSet
+    generic_filter_tests = [
+        ["forwarding_rule"],
+        ["ip_address"],
+        ["port"],
+        ["weight"],
+    ]
+
+    @classmethod
+    def setUpTestData(cls):
+        """Setup test data for DNSForwardingRuleIPAddressAssignment Model."""
+        namespace = Namespace.objects.get(name="Global")
+        active_status = Status.objects.get(name="Active")
+        Prefix.objects.create(prefix="10.0.0.0/8", namespace=namespace, status=active_status)
+        forwarders = [
+            IPAddress.objects.create(address=f"10.0.0.{i}/32", namespace=namespace, status=active_status)
+            for i in range(1, 4)
+        ]
+        rules = [DNSForwardingRule.objects.create(name=f"rule{i}.example.com") for i in range(1, 4)]
+        for i, (rule, forwarder) in enumerate(zip(rules, forwarders)):
+            DNSForwardingRuleIPAddressAssignment.objects.create(
+                forwarding_rule=rule, ip_address=forwarder, port=53 + i, weight=10 * (i + 1)
+            )
+
+    def test_search(self):
+        """Q search should match the name of the assignment's rule."""
+        self.assertQuerysetEqualAndNotEmpty(
+            self.filterset({"q": "rule1"}, self.queryset).qs,
+            DNSForwardingRuleIPAddressAssignment.objects.filter(forwarding_rule__name="rule1.example.com"),
+        )
+        self.assertFalse(self.filterset({"q": "nothing-matches"}, self.queryset).qs.exists())
 
 
 class NSRecordFilterTestCase(TestCase):

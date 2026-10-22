@@ -462,6 +462,20 @@ This is the same as running:
 ➜ nautobot-server shell_plus
 ```
 
+### Demo Data
+
+To populate the development database with example data for every model, run:
+
+```bash
+➜ invoke generate-test-data
+```
+
+The command is safe to run more than once. Add `--flush` to delete the generated DNS objects first and create them again. The data includes:
+
+- Zones in the `Default` view, with an internal delegation (`apps.example.com`) and an external one (`mail.example.com`).
+- A split-horizon `Internal` view with a delegated Active Directory domain and forwarding rules for each action, including global forwarders.
+- A few deliberate inconsistencies, so the delegation and rule checks have something to show: `lab.example.com` is not delegated from `example.com`, the `legacy.mail` record is hidden by the `mail` delegation, and `cloud.example.com` forwards a name that the internal `example.com` zone does not delegate.
+
 ### Tests
 
 To run tests against your code, you can run all of the tests that TravisCI runs against any new PR with:

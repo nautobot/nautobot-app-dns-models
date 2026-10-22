@@ -1,0 +1,1 @@
+Added example data for every model to the `generate_nautobot_dns_models_test_data` management command.
