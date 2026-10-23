@@ -1,0 +1,1 @@
+Added DNS forwarders and DNS forwarding rules, so each DNS view can record which upstream name servers resolve queries for a domain.

@@ -15,6 +15,8 @@ from nautobot_dns_models.models import (
     ARecord,
     CNAMERecord,
     DNSDelegation,
+    DNSForwarder,
+    DNSForwardingRule,
     DNSRegistrar,
     DNSView,
     DNSZone,
@@ -869,3 +871,97 @@ class SRVRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}
+
+
+class DNSForwarderViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+    """Test the DNSForwarder views."""
+
+    model = DNSForwarder
+
+    @classmethod
+    def setUpTestData(cls):
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, type="Pool", status=status)
+        cls.ip_address = IPAddress.objects.create(address="192.0.2.53/32", namespace=namespace, status=status)
+        DNSForwarder.objects.create(name="Corp resolver", ip_address=cls.ip_address)
+        DNSForwarder.objects.create(name="Quad9", address="9.9.9.9")
+        DNSForwarder.objects.create(name="Cloudflare", address="1.1.1.1")
+
+        cls.form_data = {"name": "Google", "address": "8.8.8.8", "port": 53, "description": "Public resolver"}
+        cls.csv_data = (
+            "name,address,port",
+            "Resolver A,192.0.2.101,53",
+            "Resolver B,192.0.2.102,53",
+            "Resolver C,2001:db8::53,853",
+        )
+        cls.bulk_edit_data = {"description": "Bulk edit views", "port": 5353}
+
+    def test_ip_address_page_lists_forwarders(self):
+        self.add_permissions("ipam.view_ipaddress", "nautobot_dns_models.view_dnsforwarder")
+
+        response = self.client.get(self.ip_address.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, DNSForwarder.objects.get(name="Corp resolver").get_absolute_url())
+
+    def test_ip_address_page_hides_forwarders_the_user_may_not_view(self):
+        self.add_permissions("ipam.view_ipaddress")
+
+        response = self.client.get(self.ip_address.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertNotContains(response, "DNS Forwarders")
+
+    def test_create_from_an_ipam_ip_address_with_the_address_field_left_empty(self):
+        """Regression test: the empty Address field arrived as `""` and failed the one-address check."""
+        self.add_permissions("nautobot_dns_models.add_dnsforwarder", "ipam.view_ipaddress")
+        status = Status.objects.get(name="Active")
+        ip_address = IPAddress.objects.create(
+            address="192.0.2.54/32", namespace=Namespace.objects.get(name="Global"), status=status
+        )
+        data = {"name": "Second resolver", "ip_address": ip_address.pk, "address": "", "port": 53}
+
+        response = self.client.post(reverse("plugins:nautobot_dns_models:dnsforwarder_add"), data=data)
+
+        self.assertHttpStatus(response, 302)
+        forwarder = DNSForwarder.objects.get(name="Second resolver")
+        self.assertEqual(forwarder.ip_address, ip_address)
+        self.assertIsNone(forwarder.address)
+
+
+class DNSForwardingRuleViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+    """Test the DNSForwardingRule views."""
+
+    model = DNSForwardingRule
+
+    @classmethod
+    def setUpTestData(cls):
+        forwarder = DNSForwarder.objects.create(name="Corp resolver", address="192.0.2.53")
+        for name in ("corp.example.com", "lab.example.com", "partner.example.org"):
+            DNSForwardingRule.objects.create(name=name).forwarders.add(forwarder)
+
+        dns_view = DNSView.objects.get(name="Default")
+        cls.form_data = {
+            "name": "partner.example.net",
+            "dns_view": dns_view.pk,
+            "forwarders": [forwarder.pk],
+            "description": "Partner domain",
+        }
+        cls.csv_data = (
+            "name,dns_view",
+            f"a.example.org,{dns_view.pk}",
+            f"b.example.org,{dns_view.pk}",
+            f"c.example.org,{dns_view.pk}",
+        )
+        cls.bulk_edit_data = {"description": "Bulk edit views"}
+
+    def test_dns_view_page_lists_forwarding_rules(self):
+        self.add_permissions("nautobot_dns_models.view_dnsview", "nautobot_dns_models.view_dnsforwardingrule")
+        dns_view = DNSView.objects.get(name="Default")
+
+        response = self.client.get(dns_view.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Forwarding Rules")
+        self.assertContains(response, DNSForwardingRule.objects.get(name="corp.example.com").get_absolute_url())

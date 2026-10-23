@@ -1,4 +1,5 @@
 """Forms for nautobot_dns_models."""
+# pylint: disable=too-many-lines
 
 from django import forms
 from nautobot.apps.forms import (
@@ -889,4 +890,137 @@ class SRVRecordFilterForm(NautobotFilterForm):
         "weight",
         "port",
         "target",
+    ]
+
+
+class DNSForwarderForm(NautobotModelForm):
+    """DNSForwarder creation/edit form."""
+
+    ip_address = DynamicModelChoiceField(
+        queryset=IPAddress.objects.all(),
+        required=False,
+        label="IP Address",
+    )
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSForwarder
+        fields = "__all__"
+
+
+class DNSForwarderBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
+    """DNSForwarder bulk edit form."""
+
+    pk = forms.ModelMultipleChoiceField(queryset=models.DNSForwarder.objects.all(), widget=forms.MultipleHiddenInput)
+    port = forms.IntegerField(required=False, min_value=1, max_value=65535)
+    description = forms.CharField(required=False)
+
+    class Meta:
+        """Meta attributes."""
+
+        nullable_fields = [
+            "description",
+        ]
+
+
+class DNSForwarderFilterForm(NautobotFilterForm):
+    """Filter form for DNSForwarder searches."""
+
+    q = forms.CharField(
+        required=False,
+        label="Search",
+        help_text="Search within Name, Address and Description.",
+    )
+    name = forms.CharField(required=False, label="Name")
+    ip_address = DynamicModelMultipleChoiceField(
+        queryset=IPAddress.objects.all(),
+        required=False,
+        label="IP Address",
+    )
+    port = forms.IntegerField(required=False, min_value=1, max_value=65535)
+    model = models.DNSForwarder
+    fields = [
+        "q",
+        "name",
+        "ip_address",
+        "port",
+    ]
+
+
+class DNSForwardingRuleForm(NautobotModelForm):
+    """DNSForwardingRule creation/edit form."""
+
+    dns_view = DynamicModelChoiceField(
+        queryset=models.DNSView.objects.all(),
+        required=True,
+        label="View",
+    )
+    forwarders = DynamicModelMultipleChoiceField(
+        queryset=models.DNSForwarder.objects.all(),
+        required=False,
+    )
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSForwardingRule
+        fields = "__all__"
+
+
+class DNSForwardingRuleBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
+    """DNSForwardingRule bulk edit form."""
+
+    pk = forms.ModelMultipleChoiceField(
+        queryset=models.DNSForwardingRule.objects.all(), widget=forms.MultipleHiddenInput
+    )
+    dns_view = DynamicModelChoiceField(
+        queryset=models.DNSView.objects.all(),
+        required=False,
+        label="View",
+    )
+    add_forwarders = DynamicModelMultipleChoiceField(
+        queryset=models.DNSForwarder.objects.all(),
+        required=False,
+        label="Add forwarders",
+    )
+    remove_forwarders = DynamicModelMultipleChoiceField(
+        queryset=models.DNSForwarder.objects.all(),
+        required=False,
+        label="Remove forwarders",
+    )
+    description = forms.CharField(required=False)
+
+    class Meta:
+        """Meta attributes."""
+
+        nullable_fields = [
+            "description",
+        ]
+
+
+class DNSForwardingRuleFilterForm(NautobotFilterForm):
+    """Filter form for DNSForwardingRule searches."""
+
+    q = forms.CharField(
+        required=False,
+        label="Search",
+        help_text="Search within Name and Description.",
+    )
+    name = forms.CharField(required=False, label="Name")
+    dns_view = DynamicModelMultipleChoiceField(
+        queryset=models.DNSView.objects.all(),
+        required=False,
+        label="View",
+    )
+    forwarders = DynamicModelMultipleChoiceField(
+        queryset=models.DNSForwarder.objects.all(),
+        required=False,
+    )
+    model = models.DNSForwardingRule
+    fields = [
+        "q",
+        "name",
+        "dns_view",
+        "forwarders",
     ]

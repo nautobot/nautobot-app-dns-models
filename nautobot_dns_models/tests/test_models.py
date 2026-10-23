@@ -20,6 +20,8 @@ from nautobot_dns_models.models import (
     ARecord,
     CNAMERecord,
     DNSDelegation,
+    DNSForwarder,
+    DNSForwardingRule,
     DNSRegistrar,
     DNSView,
     DNSViewPrefixAssignment,
@@ -1478,3 +1480,88 @@ class DNSModelEnabledFieldTest(TestCase):
 
         record.refresh_from_db()
         self.assertTrue(record.enabled)
+
+
+class DNSForwarderTestCase(TestCase):
+    """Test the DNSForwarder model."""
+
+    @classmethod
+    def setUpTestData(cls):
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, type="Pool", status=status)
+        cls.ip_address = IPAddress.objects.create(address="192.0.2.53/32", namespace=namespace, status=status)
+
+    def test_address_from_ipam(self):
+        forwarder = DNSForwarder(name="Corp resolver", ip_address=self.ip_address)
+        forwarder.validated_save()
+        self.assertEqual(forwarder.get_address(), "192.0.2.53")
+        self.assertEqual(forwarder.port, 53)
+        self.assertEqual(str(forwarder), "Corp resolver")
+
+    def test_literal_address(self):
+        forwarder = DNSForwarder(name="Quad9", address="2620:fe::fe", port=853)
+        forwarder.validated_save()
+        self.assertEqual(forwarder.get_address(), "2620:fe::fe")
+
+    def test_empty_literal_address_counts_as_no_address(self):
+        """Regression test: forms and the REST API submit `""` for an empty Address field."""
+        forwarder = DNSForwarder(name="Corp resolver", ip_address=self.ip_address, address="")
+        forwarder.validated_save()
+        self.assertIsNone(DNSForwarder.objects.get(pk=forwarder.pk).address)
+        with self.assertRaises(ValidationError):
+            DNSForwarder(name="Nothing", address="").full_clean()
+
+    def test_requires_exactly_one_address(self):
+        for kwargs in ({}, {"ip_address": self.ip_address, "address": "192.0.2.53"}):
+            with self.subTest(fields=sorted(kwargs)), self.assertRaises(ValidationError):
+                DNSForwarder(name="Invalid", **kwargs).full_clean()
+
+    def test_address_and_port_may_repeat_but_name_may_not(self):
+        DNSForwarder(name="IPAM", ip_address=self.ip_address).validated_save()
+        DNSForwarder(name="Literal", address="192.0.2.53").validated_save()
+        DNSForwarder(name="Literal again", address="192.0.2.53").validated_save()
+        other_namespace = Namespace.objects.create(name="Other")
+        Prefix.objects.create(
+            prefix="192.0.2.0/24", namespace=other_namespace, type="Pool", status=Status.objects.get(name="Active")
+        )
+        overlapping = IPAddress.objects.create(
+            address="192.0.2.53/32", namespace=other_namespace, status=Status.objects.get(name="Active")
+        )
+        DNSForwarder(name="Other namespace", ip_address=overlapping).validated_save()
+        self.assertEqual(DNSForwarder.objects.filter(port=53).count(), 4)
+
+        with self.assertRaises(ValidationError):
+            DNSForwarder(name="Literal", address="192.0.2.99").full_clean()
+
+    def test_port_range(self):
+        for port in (0, 65536):
+            with self.subTest(port=port), self.assertRaises(ValidationError):
+                DNSForwarder(name="Invalid", address="192.0.2.1", port=port).full_clean()
+
+
+class DNSForwardingRuleTestCase(TestCase):
+    """Test the DNSForwardingRule model."""
+
+    def test_rule_with_forwarders(self):
+        forwarder = DNSForwarder.objects.create(name="Corp resolver", address="192.0.2.53")
+        rule = DNSForwardingRule(name="corp.example.com")
+        rule.validated_save()
+        rule.forwarders.add(forwarder)
+
+        self.assertEqual(rule.dns_view, DNSView.objects.get(name="Default"))
+        self.assertEqual(str(rule), "corp.example.com (Default)")
+        self.assertQuerySetEqual(forwarder.forwarding_rules.all(), [rule])
+
+    def test_root_forwards_all_queries(self):
+        DNSForwardingRule(name=".").validated_save()
+
+    def test_rejects_empty_labels(self):
+        with self.assertRaises(ValidationError):
+            DNSForwardingRule(name="corp..example.com").full_clean()
+
+    def test_name_is_unique_per_view(self):
+        DNSForwardingRule(name="corp.example.com").validated_save()
+        with self.assertRaises(ValidationError):
+            DNSForwardingRule(name="corp.example.com").validated_save()
+        DNSForwardingRule(name="corp.example.com", dns_view=DNSView.objects.create(name="Other")).validated_save()

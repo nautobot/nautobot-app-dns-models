@@ -6,7 +6,7 @@ from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 
 from nautobot_dns_models import forms
-from nautobot_dns_models.models import DNSRegistrar, DNSView, DNSZone
+from nautobot_dns_models.models import DNSForwarder, DNSForwardingRule, DNSRegistrar, DNSView, DNSZone
 
 
 class DNSViewFormTestCase(TestCase):
@@ -669,3 +669,24 @@ class SRVRecordFormTestCase(TestCase):
         self.assertIn("Ensure this value is greater than or equal to 0.", form.errors["priority"])
         self.assertIn("Ensure this value is greater than or equal to 0.", form.errors["weight"])
         self.assertIn("Ensure this value is greater than or equal to 0.", form.errors["port"])
+
+
+class DNSForwardingRuleBulkEditFormTest(TestCase):
+    """Test adding and removing forwarders in bulk."""
+
+    def test_adds_and_removes_forwarders(self):
+        keep, drop, new = (
+            DNSForwarder.objects.create(name=name, address=address)
+            for name, address in (("Keep", "192.0.2.1"), ("Drop", "192.0.2.2"), ("New", "192.0.2.3"))
+        )
+        rule = DNSForwardingRule.objects.create(name="corp.example.com")
+        rule.forwarders.set([keep, drop])
+
+        form = forms.DNSForwardingRuleBulkEditForm(
+            model=DNSForwardingRule,
+            data={"pk": [rule.pk], "add_forwarders": [new.pk], "remove_forwarders": [drop.pk]},
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        form.post_save(rule)
+
+        self.assertQuerySetEqual(rule.forwarders.order_by("name"), [keep, new])

@@ -24,6 +24,8 @@ from nautobot_dns_models.api.serializers import (
     ARecordSerializer,
     CNAMERecordSerializer,
     DNSDelegationSerializer,
+    DNSForwarderSerializer,
+    DNSForwardingRuleSerializer,
     DNSRegistrarSerializer,
     DNSRegistrationSerializer,
     DNSViewSerializer,
@@ -40,6 +42,8 @@ from nautobot_dns_models.filters import (
     ARecordFilterSet,
     CNAMERecordFilterSet,
     DNSDelegationFilterSet,
+    DNSForwarderFilterSet,
+    DNSForwardingRuleFilterSet,
     DNSRegistrarFilterSet,
     DNSRegistrationFilterSet,
     DNSViewFilterSet,
@@ -63,6 +67,12 @@ from nautobot_dns_models.forms import (
     DNSDelegationBulkEditForm,
     DNSDelegationFilterForm,
     DNSDelegationForm,
+    DNSForwarderBulkEditForm,
+    DNSForwarderFilterForm,
+    DNSForwarderForm,
+    DNSForwardingRuleBulkEditForm,
+    DNSForwardingRuleFilterForm,
+    DNSForwardingRuleForm,
     DNSRegistrarBulkEditForm,
     DNSRegistrarFilterForm,
     DNSRegistrarForm,
@@ -96,6 +106,8 @@ from nautobot_dns_models.models import (
     ARecord,
     CNAMERecord,
     DNSDelegation,
+    DNSForwarder,
+    DNSForwardingRule,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -111,6 +123,8 @@ from nautobot_dns_models.tables import (
     ARecordTable,
     CNAMERecordTable,
     DNSDelegationTable,
+    DNSForwarderTable,
+    DNSForwardingRuleTable,
     DNSRegistrarTable,
     DNSRegistrationTable,
     DNSViewTable,
@@ -159,6 +173,15 @@ class DNSViewUIViewSet(views.NautobotUIViewSet):
                 table_class=PrefixTable,
                 table_title="Assigned Prefixes",
                 include_columns=["prefix", "status", "location_count", "namespace"],
+            ),
+            ObjectsTablePanel(
+                weight=300,
+                section=SectionChoices.RIGHT_HALF,
+                table_filter="dns_view",
+                table_class=DNSForwardingRuleTable,
+                table_title="Forwarding Rules",
+                exclude_columns=["dns_view"],
+                prefetch_related_fields=["forwarders"],
             ),
         ],
     )
@@ -686,4 +709,69 @@ class SRVRecordUIViewSet(views.NautobotUIViewSet):
         panels=[
             ObjectFieldsPanel(weight=100, section=SectionChoices.LEFT_HALF, fields="__all__", additional_fields=["ttl"])
         ]
+    )
+
+
+class DNSForwarderUIViewSet(views.NautobotUIViewSet):
+    """DNSForwarder UI ViewSet."""
+
+    form_class = DNSForwarderForm
+    bulk_update_form_class = DNSForwarderBulkEditForm
+    filterset_class = DNSForwarderFilterSet
+    filterset_form_class = DNSForwarderFilterForm
+    serializer_class = DNSForwarderSerializer
+    lookup_field = "pk"
+    queryset = DNSForwarder.objects.select_related("ip_address")
+    table_class = DNSForwarderTable
+
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            ),
+            ObjectsTablePanel(
+                weight=100,
+                section=SectionChoices.RIGHT_HALF,
+                table_filter="forwarders",
+                table_class=DNSForwardingRuleTable,
+                table_title="Forwarding Rules",
+                exclude_columns=["forwarders"],
+                select_related_fields=["dns_view"],
+            ),
+        ],
+    )
+
+
+class DNSForwardingRuleUIViewSet(views.NautobotUIViewSet):
+    """DNSForwardingRule UI ViewSet."""
+
+    form_class = DNSForwardingRuleForm
+    bulk_update_form_class = DNSForwardingRuleBulkEditForm
+    filterset_class = DNSForwardingRuleFilterSet
+    filterset_form_class = DNSForwardingRuleFilterForm
+    serializer_class = DNSForwardingRuleSerializer
+    lookup_field = "pk"
+    queryset = DNSForwardingRule.objects.select_related("dns_view").prefetch_related("forwarders")
+    table_class = DNSForwardingRuleTable
+
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+                exclude_fields=["forwarders"],
+            ),
+            ObjectsTablePanel(
+                weight=100,
+                section=SectionChoices.RIGHT_HALF,
+                table_filter="forwarding_rules",
+                table_class=DNSForwarderTable,
+                table_title="Forwarders",
+                exclude_columns=["pk"],
+                select_related_fields=["ip_address"],
+            ),
+        ],
     )
