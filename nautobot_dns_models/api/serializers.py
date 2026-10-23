@@ -68,6 +68,18 @@ class DNSZoneSerializer(NautobotModelSerializer):
         extra_kwargs = {"dns_view": {"default": models.get_default_view}}
 
 
+class DNSDelegationSerializer(NautobotModelSerializer):
+    """DNSDelegation Serializer."""
+
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnsdelegation-detail")
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSDelegation
+        fields = "__all__"
+
+
 class DNSRecordSerializer(NautobotModelSerializer):
     """DNSRecord Serializer."""
 

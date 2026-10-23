@@ -14,3 +14,5 @@ When the parent `DNSZone` has `auto_create_ptr` enabled, creating an AAAA record
 
 +++ 2.0.0
     `address` field in AAAA Record is now `ip_address`
+
+An address record in a parent zone at the name of a delegation's name server is that delegation's glue. See [DNS Delegation](dnsdelegation.md#name-servers-and-glue).

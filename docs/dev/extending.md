@@ -50,6 +50,12 @@ erDiagram
 
     tenancy_TenantModel {}
 
+    DNSDelegation {
+        DNSZone zone FK
+        charfield name
+        textfield description
+    }
+
     DNSZone {
         charfield name UK
         charfield type
@@ -138,6 +144,8 @@ erDiagram
     DNSZone }o--|| DNSView: "belongs to"
     DNSZone }o--o| tenancy_TenantModel: "belongs to"
     DNSZone }o--o| DNSZone: "child of (derived)"
+    DNSZone ||--o{ DNSDelegation: "contains zone cut"
+    DNSDelegation ||..o{ NSRecord: "name servers (same zone and name)"
 
     DNSZone |o--o{ DNSZone: "catalog_zone"
     DNSZone ||..o| TXTRecord: "auto-creates version TXT (when type is catalog)"
