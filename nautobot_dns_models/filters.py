@@ -127,6 +127,29 @@ class DNSZoneFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
         fields = "__all__"
 
 
+class DNSDelegationFilterSet(NautobotFilterSet):
+    """Filter for DNSDelegation."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "description": "icontains",
+        }
+    )
+    zone = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        label="Zone (name or ID)",
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSDelegation
+        fields = "__all__"
+
+
 # pylint: disable=nb-no-model-found, nb-warn-dunder-filter-field
 class DNSRecordFilterSet(NautobotFilterSet):
     """Base filter for all DNSRecord models, with support for effective TTL."""

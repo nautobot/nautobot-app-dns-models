@@ -56,3 +56,26 @@ def compute_zone_parents(zones: Iterable[tuple]) -> dict:
         view_pks = pks_by_view[dns_view_id]
         parents[pk] = next((view_pks[key] for key in ancestor_keys(dns_name_key(name)) if key in view_pks), None)
     return parents
+
+
+def owner_fqdn(name: str, zone_name: str) -> str:
+    """Return the fully qualified owner name of a record named `name` in zone `zone_name`, without a trailing dot.
+
+    `@` and the empty string denote the zone apex.
+    """
+    zone = zone_name[:-1] if zone_name.endswith(".") else zone_name
+    if name in ("", "@"):
+        return zone or "."
+    return f"{name}.{zone}" if zone else name
+
+
+def relative_owner_name(fqdn_key: str, zone_key: str) -> str:
+    """Return the owner name of `fqdn_key` relative to `zone_key` (`@` for the apex); both are `dns_name_key()` values.
+
+    The caller must ensure the name is at or below the zone.
+    """
+    if fqdn_key == zone_key:
+        return "@"
+    if zone_key == "":
+        return fqdn_key
+    return fqdn_key[: -(len(zone_key) + 1)]

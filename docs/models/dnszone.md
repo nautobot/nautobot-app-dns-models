@@ -41,7 +41,7 @@ The zone detail page lists child zones, and the zone list can be filtered by `pa
 Writes that bypass model saves, such as `QuerySet.update()`, `bulk_create()` or direct SQL, do not update parents. Run `nautobot-server rebuild_dns_zone_hierarchy` afterwards to recompute them.
 
 !!! note
-    A parent/child relationship only reflects zone names. It does not show whether the parent zone delegates the child zone with NS records.
+    A parent/child relationship only reflects zone names. Whether the parent zone delegates the child zone is modeled by a [DNS delegation](dnsdelegation.md) in the parent zone.
 
 ## SOA RNAME Formats
 

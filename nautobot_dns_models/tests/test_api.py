@@ -17,6 +17,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -545,6 +546,28 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
         zone = _create_zone(name="helper-default.example")
 
         self.assertEqual(zone.dns_view, expected_default_view)
+
+
+class DNSDelegationAPITestCase(APIViewTestCases.APIViewTestCase):
+    """Test the Nautobot DNSDelegation API."""
+
+    model = DNSDelegation
+    view_namespace = "plugins-api:nautobot_dns_models"
+    bulk_update_data = {
+        "description": "Example bulk description",
+    }
+
+    @classmethod
+    def setUpTestData(cls):
+        zone = _create_zone(name="example.com")
+        for name in ("apps", "mail", "lab"):
+            DNSDelegation.objects.create(zone=zone, name=name)
+
+        cls.create_data = [
+            {"name": "dev", "zone": zone.pk},
+            {"name": "test", "zone": zone.pk, "description": "Test subdomain"},
+            {"name": "prod.example.com.", "zone": zone.pk},
+        ]
 
 
 class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):

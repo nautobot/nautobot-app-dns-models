@@ -12,6 +12,7 @@ from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSDelegationFilterSet,
     DNSRegistrarFilterSet,
     DNSRegistrationFilterSet,
     DNSViewFilterSet,
@@ -27,6 +28,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -403,6 +405,38 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
                 self.assertQuerySetEqual(self.filterset({"parent": [value]}, self.queryset).qs, [self.child_zone])
         self.assertQuerySetEqual(self.filterset({"has_parent": True}, self.queryset).qs, [self.child_zone])
         self.assertQuerySetEqual(self.filterset({"has_children": True}, self.queryset).qs, [self.parent_zone])
+
+
+class DNSDelegationFilterTestCase(FilterTestCases.FilterTestCase):
+    """DNSDelegation Filter Test Case."""
+
+    queryset = DNSDelegation.objects.all()
+    filterset = DNSDelegationFilterSet
+
+    generic_filter_tests = (
+        ("id",),
+        ("created",),
+        ("last_updated",),
+        ("name",),
+        ("description",),
+        ("zone", "zone__id"),
+        ("zone", "zone__name"),
+    )
+
+    @classmethod
+    def setUpTestData(cls):
+        """Setup test data for DNSDelegation Model."""
+        example = DNSZone.objects.create(name="example.com")
+        DNSDelegation.objects.create(zone=example, name="apps", description="Applications")
+        DNSDelegation.objects.create(zone=example, name="mail", description="Mail")
+        DNSDelegation.objects.create(zone=DNSZone.objects.create(name="example.net"), name="lab", description="Lab")
+        DNSDelegation.objects.create(zone=DNSZone.objects.create(name="example.org"), name="dev", description="Dev")
+
+    def test_search(self):
+        self.assertQuerySetEqual(
+            self.filterset({"q": "example.net"}, self.queryset).qs, DNSDelegation.objects.filter(name="lab")
+        )
+        self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 2)
 
 
 class NSRecordFilterTestCase(TestCase):

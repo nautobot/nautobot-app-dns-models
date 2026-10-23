@@ -11,6 +11,7 @@ from nautobot.extras.models import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from netutils.ip import ipaddress_address
 
+from nautobot_dns_models.choices import NameServerBailiwickChoices
 from nautobot_dns_models.models import (
     TXT_CHARACTER_STRING_MAX_OCTETS,
     TXT_RDATA_MAX_OCTETS,
@@ -18,6 +19,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
     DNSRegistrar,
     DNSView,
     DNSViewPrefixAssignment,
@@ -1194,6 +1196,98 @@ class DNSZoneHierarchyTestCase(TestCase):
 
         self.assertIn("Updated the parent of 1 DNS zone(s).", output.getvalue())
         self._assert_parent(apps, example)
+
+
+class DNSDelegationTestCase(TestCase):
+    """Test the DNSDelegation model and the data it derives from records."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZone.objects.create(name="example.com")
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, type="Pool", status=status)
+        cls.glue_ip = IPAddress.objects.create(address="192.0.2.10/32", namespace=namespace, status=status)
+        cls.sibling_ip = IPAddress.objects.create(address="192.0.2.20/32", namespace=namespace, status=status)
+        cls.external_ip = IPAddress.objects.create(address="192.0.2.30/32", namespace=namespace, status=status)
+
+    def _create_delegation(self, name="apps"):
+        delegation = DNSDelegation(zone=self.zone, name=name)
+        delegation.validated_save()
+        return delegation
+
+    def test_fqdn_and_string(self):
+        delegation = self._create_delegation()
+        self.assertEqual(delegation.get_fqdn(), "apps.example.com")
+        self.assertEqual(str(delegation), "apps.example.com")
+
+    def test_rejects_the_zone_apex(self):
+        for name in ("@", ""):
+            with self.subTest(name=name), self.assertRaises(ValidationError):
+                DNSDelegation(zone=self.zone, name=name).full_clean()
+
+    def test_absolute_name_is_stored_relative_to_the_zone(self):
+        delegation = self._create_delegation(name="apps.Example.com.")
+        self.assertEqual(delegation.name, "apps")
+
+    @override_config(nautobot_dns_models__CNAME_RESTRICTION_ENABLED=True)
+    def test_cannot_share_an_owner_name_with_a_cname(self):
+        CNAMERecord.objects.create(name="apps", alias="elsewhere.example.net", zone=self.zone)
+        with self.assertRaises(ValidationError):
+            DNSDelegation(zone=self.zone, name="apps").full_clean()
+
+    @override_config(nautobot_dns_models__CNAME_RESTRICTION_ENABLED=True)
+    def test_cname_cannot_be_added_at_a_delegation(self):
+        self._create_delegation()
+        with self.assertRaises(ValidationError):
+            CNAMERecord(name="apps", alias="elsewhere.example.net", zone=self.zone).full_clean()
+
+    def test_ns_records_are_the_records_at_the_owner_name(self):
+        delegation = self._create_delegation()
+        at_cut = NSRecord.objects.create(name="Apps", server="ns1.apps.example.com", zone=self.zone)
+        NSRecord.objects.create(name="@", server="ns1.example.net", zone=self.zone)
+        NSRecord.objects.create(name="mail", server="ns1.example.net", zone=self.zone)
+        self.assertQuerySetEqual(delegation.ns_records, [at_cut])
+
+    def test_child_zone_is_the_zone_named_after_the_delegated_domain(self):
+        delegation = self._create_delegation()
+        self.assertIsNone(delegation.get_child_zone())
+        child = DNSZone.objects.create(name="apps.example.com")
+        DNSZone.objects.create(name="apps.example.com", dns_view=DNSView.objects.create(name="Other"))
+        self.assertEqual(delegation.get_child_zone(), child)
+
+    def test_classify_name_server(self):
+        delegation = self._create_delegation()
+        cases = (
+            ("ns1.apps.example.com", NameServerBailiwickChoices.IN_DOMAIN),
+            ("NS1.Apps.Example.com.", NameServerBailiwickChoices.IN_DOMAIN),
+            ("apps.example.com", NameServerBailiwickChoices.IN_DOMAIN),
+            ("ns.example.com", NameServerBailiwickChoices.SIBLING),
+            ("ns.mail.example.com", NameServerBailiwickChoices.SIBLING),
+            ("example.com", NameServerBailiwickChoices.SIBLING),
+            ("ns2.other.net", NameServerBailiwickChoices.OUT_OF_BAILIWICK),
+            ("ns.notexample.com", NameServerBailiwickChoices.OUT_OF_BAILIWICK),
+        )
+        for server, expected in cases:
+            with self.subTest(server=server):
+                self.assertEqual(delegation.classify_name_server(server), expected)
+
+    def test_glue_records_are_address_records_in_the_parent_zone(self):
+        delegation = self._create_delegation()
+        glue = ARecord.objects.create(name="ns1.apps", ip_address=self.glue_ip, zone=self.zone)
+        self.assertEqual(delegation.get_glue_records("ns1.apps.example.com."), [glue])
+        self.assertEqual(delegation.get_glue_records("ns2.apps.example.com"), [])
+        self.assertEqual(delegation.get_glue_records("ns1.other.net"), [])
+
+    def test_name_server_addresses_come_from_the_zone_that_holds_the_name(self):
+        delegation = self._create_delegation()
+        sibling = ARecord.objects.create(name="ns", ip_address=self.sibling_ip, zone=self.zone)
+        other_zone = DNSZone.objects.create(name="other.net")
+        external = ARecord.objects.create(name="ns2", ip_address=self.external_ip, zone=other_zone)
+
+        self.assertEqual(delegation.get_name_server_addresses("ns.example.com"), [sibling])
+        self.assertEqual(delegation.get_name_server_addresses("ns2.other.net"), [external])
+        self.assertEqual(delegation.get_name_server_addresses("ns.unknown.org"), [])
 
 
 class DNSZoneIntegerFieldBoundaryTest(TestCase):
