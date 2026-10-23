@@ -533,3 +533,72 @@ class SRVRecordTable(DNSRecordTable):
             "enabled",
             "actions",
         )
+
+
+class DNSForwarderTable(BaseTable):
+    """Table for DNS Forwarder list view."""
+
+    pk = ToggleColumn()
+    name = tables.Column(linkify=True)
+    ip_address = tables.Column(linkify=True, verbose_name="IP Address")
+    address = tables.Column(accessor="get_address", verbose_name="Effective Address", orderable=False)
+    actions = ButtonsColumn(
+        models.DNSForwarder,
+        buttons=("changelog", "edit", "delete"),
+    )
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.DNSForwarder
+        fields = (
+            "pk",
+            "name",
+            "ip_address",
+            "address",
+            "port",
+            "description",
+            "actions",
+        )
+        default_columns = (
+            "pk",
+            "name",
+            "address",
+            "port",
+            "description",
+            "actions",
+        )
+
+
+class DNSForwardingRuleTable(BaseTable):
+    """Table for DNS Forwarding Rule list view."""
+
+    pk = ToggleColumn()
+    name = tables.Column(linkify=True)
+    dns_view = tables.Column(linkify=True)
+    forwarders = tables.ManyToManyColumn(linkify_item=True)
+    actions = ButtonsColumn(
+        models.DNSForwardingRule,
+        buttons=("changelog", "edit", "delete"),
+    )
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.DNSForwardingRule
+        fields = (
+            "pk",
+            "name",
+            "dns_view",
+            "forwarders",
+            "description",
+            "actions",
+        )
+        default_columns = (
+            "pk",
+            "name",
+            "dns_view",
+            "forwarders",
+            "description",
+            "actions",
+        )
