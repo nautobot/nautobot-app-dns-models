@@ -7,3 +7,5 @@ The DNS View model represents a logical grouping of DNS Zones. A View can be ass
 - `prefixes` (Prefix, many-to-many): IP Prefixes that define the View. Managed through the `DNSViewPrefixAssignment` model.
 
 A `Default` view is created automatically and is used as the default for new DNS Zones when no view is specified.
+
+A DNS view can also hold [DNS forwarding rules](dnsforwardingrule.md), which send queries for a domain to [DNS forwarders](dnsforwarder.md).

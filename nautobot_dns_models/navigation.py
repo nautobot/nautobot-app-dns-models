@@ -38,6 +38,24 @@ menu_items = (
                 ),
             ),
             NavMenuGroup(
+                name="Forwarding",
+                weight=350,
+                items=(
+                    NavMenuItem(
+                        link="plugins:nautobot_dns_models:dnsforwardingrule_list",
+                        name="DNS Forwarding Rules",
+                        weight=100,
+                        permissions=["nautobot_dns_models.view_dnsforwardingrule"],
+                    ),
+                    NavMenuItem(
+                        link="plugins:nautobot_dns_models:dnsforwarder_list",
+                        name="DNS Forwarders",
+                        weight=200,
+                        permissions=["nautobot_dns_models.view_dnsforwarder"],
+                    ),
+                ),
+            ),
+            NavMenuGroup(
                 name="Registration",
                 weight=400,
                 items=(

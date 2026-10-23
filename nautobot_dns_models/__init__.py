@@ -63,6 +63,8 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
         "DNSRegistration",
         "DNSZone",
         "DNSDelegation",
+        "DNSForwarder",
+        "DNSForwardingRule",
         "ARecord",
         "AAAARecord",
         "PTRRecord",
