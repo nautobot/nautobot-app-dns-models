@@ -14,6 +14,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
     DNSRegistrar,
     DNSView,
     DNSZone,
@@ -207,6 +208,53 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         self.assertHttpStatus(response, 200)
         self.assertContains(response, "Child Zones")
         self.assertContains(response, "apps.example.com")
+
+
+class DNSDelegationViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+    """Test the DNSDelegation views."""
+
+    model = DNSDelegation
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZone.objects.create(name="example.com")
+        for name in ("apps", "mail", "lab"):
+            DNSDelegation.objects.create(zone=cls.zone, name=name)
+
+        cls.form_data = {
+            "name": "corp",
+            "zone": cls.zone.pk,
+            "description": "Corporate subdomain",
+        }
+        cls.csv_data = (
+            "name,zone",
+            f"dev,{cls.zone.pk}",
+            f"test,{cls.zone.pk}",
+            f"prod,{cls.zone.pk}",
+        )
+        cls.bulk_edit_data = {"description": "Bulk edit views"}
+
+    def test_detail_view_summarizes_name_servers(self):
+        self.add_permissions("nautobot_dns_models.view_dnsdelegation", "nautobot_dns_models.view_nsrecord")
+        delegation = DNSDelegation.objects.get(name="apps")
+        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
+        NSRecord.objects.create(name="apps", server="ns2.other.net", zone=self.zone)
+
+        response = self.client.get(delegation.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        body = extract_page_body(response.content.decode(response.charset))
+        for text in ("apps.example.com", "ns1.apps.example.com", "In-domain", "ns2.other.net", "Out-of-bailiwick"):
+            self.assertIn(text, body)
+
+    def test_zone_detail_view_lists_delegations(self):
+        self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.view_dnsdelegation")
+
+        response = self.client.get(self.zone.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Delegations")
+        self.assertContains(response, DNSDelegation.objects.get(name="mail").get_absolute_url())
 
 
 class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):

@@ -87,3 +87,47 @@ def format_dns_zone_name_collisions(collisions, limit=None, record_counts=None):
     if limit is not None and len(collisions) > limit:
         lines.append(f"    ...and {len(collisions) - limit} more.")
     return "\n".join(lines)
+
+
+def dns_name_key(name: str) -> str:
+    """Return `name` in the form used to compare DNS names that may be written as absolute names.
+
+    Names compare case-insensitively (RFC 4343 §2) and one trailing root dot is ignored, so NS record `server` values
+    such as `ns1.example.com.` match `ns1.example.com`. The root name itself (`.`) becomes the empty string.
+    """
+    key = name.lower()
+    if key.endswith("."):
+        key = key[:-1]
+    return key
+
+
+def is_subdomain(name_key: str, ancestor_key: str) -> bool:
+    """Return whether `name_key` lies strictly below `ancestor_key`; both are `dns_name_key()` values."""
+    if name_key == ancestor_key:
+        return False
+    if ancestor_key == "":
+        return True
+    return name_key.endswith(f".{ancestor_key}")
+
+
+def owner_fqdn(name: str, zone_name: str) -> str:
+    """Return the fully qualified owner name of a record named `name` in zone `zone_name`, without a trailing dot.
+
+    `@` and the empty string denote the zone apex.
+    """
+    zone = zone_name[:-1] if zone_name.endswith(".") else zone_name
+    if name in ("", "@"):
+        return zone or "."
+    return f"{name}.{zone}" if zone else name
+
+
+def relative_owner_name(fqdn_key: str, zone_key: str) -> str:
+    """Return the owner name of `fqdn_key` relative to `zone_key` (`@` for the apex); both are `dns_name_key()` values.
+
+    The caller must ensure the name is at or below the zone.
+    """
+    if fqdn_key == zone_key:
+        return "@"
+    if zone_key == "":
+        return fqdn_key
+    return fqdn_key[: -(len(zone_key) + 1)]

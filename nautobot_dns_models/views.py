@@ -3,6 +3,8 @@
 from nautobot.apps import views
 from nautobot.apps.ui import (
     ButtonColorChoices,
+    DataTablePanel,
+    KeyValueTablePanel,
     ObjectDetailContent,
     ObjectFieldsPanel,
     ObjectsTablePanel,
@@ -16,6 +18,7 @@ from nautobot_dns_models.api.serializers import (
     AAAARecordSerializer,
     ARecordSerializer,
     CNAMERecordSerializer,
+    DNSDelegationSerializer,
     DNSRegistrarSerializer,
     DNSRegistrationSerializer,
     DNSViewSerializer,
@@ -26,10 +29,12 @@ from nautobot_dns_models.api.serializers import (
     SRVRecordSerializer,
     TXTRecordSerializer,
 )
+from nautobot_dns_models.choices import NameServerBailiwickChoices
 from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSDelegationFilterSet,
     DNSRegistrarFilterSet,
     DNSRegistrationFilterSet,
     DNSViewFilterSet,
@@ -50,6 +55,9 @@ from nautobot_dns_models.forms import (
     CNAMERecordBulkEditForm,
     CNAMERecordFilterForm,
     CNAMERecordForm,
+    DNSDelegationBulkEditForm,
+    DNSDelegationFilterForm,
+    DNSDelegationForm,
     DNSRegistrarBulkEditForm,
     DNSRegistrarFilterForm,
     DNSRegistrarForm,
@@ -82,6 +90,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -96,6 +105,7 @@ from nautobot_dns_models.tables import (
     AAAARecordTable,
     ARecordTable,
     CNAMERecordTable,
+    DNSDelegationTable,
     DNSRegistrarTable,
     DNSRegistrationTable,
     DNSViewTable,
@@ -241,6 +251,15 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                 max_display_count=5,
             ),
             ObjectsTablePanel(
+                weight=350,
+                section=SectionChoices.LEFT_HALF,
+                table_filter="zone",
+                table_class=DNSDelegationTable,
+                table_title="Delegations",
+                exclude_columns=["zone"],
+                max_display_count=5,
+            ),
+            ObjectsTablePanel(
                 weight=400,
                 section=SectionChoices.LEFT_HALF,
                 table_filter="parent",
@@ -356,6 +375,12 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                         required_permissions=["nautobot_dns_models.add_cnamerecord"],
                     ),
                     object_detail.Button(
+                        weight=350,
+                        link_name="plugins:nautobot_dns_models:zone_dns_delegations_add",
+                        label="Delegation",
+                        required_permissions=["nautobot_dns_models.add_dnsdelegation"],
+                    ),
+                    object_detail.Button(
                         weight=400,
                         link_name="plugins:nautobot_dns_models:zone_mx_records_add",
                         label="MX Record",
@@ -389,6 +414,75 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
             ),
         ],
     )
+
+
+class DNSDelegationUIViewSet(views.NautobotUIViewSet):
+    """DNSDelegation UI ViewSet."""
+
+    form_class = DNSDelegationForm
+    bulk_update_form_class = DNSDelegationBulkEditForm
+    filterset_class = DNSDelegationFilterSet
+    filterset_form_class = DNSDelegationFilterForm
+    serializer_class = DNSDelegationSerializer
+    lookup_field = "pk"
+    queryset = DNSDelegation.objects.select_related("zone")
+    table_class = DNSDelegationTable
+
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            ),
+            KeyValueTablePanel(
+                weight=200,
+                section=SectionChoices.LEFT_HALF,
+                label="Delegated Domain",
+                context_data_key="delegated_domain",
+            ),
+            DataTablePanel(
+                weight=100,
+                section=SectionChoices.RIGHT_HALF,
+                label="Name Servers",
+                context_data_key="name_servers",
+                columns=["server", "bailiwick", "addresses"],
+                column_headers=["Name Server", "Bailiwick", "Addresses"],
+            ),
+            ObjectsTablePanel(
+                weight=200,
+                section=SectionChoices.RIGHT_HALF,
+                table_attribute="ns_records",
+                related_field_name="zone",
+                table_class=NSRecordTable,
+                table_title="NS Records",
+                exclude_columns=["zone"],
+                add_button_route=None,
+                enable_related_link=False,
+            ),
+        ],
+    )
+
+    def get_extra_context(self, request, instance=None):
+        """Add the delegated domain and a per-name-server summary for the detail view."""
+        context = super().get_extra_context(request, instance)
+        if self.action == "retrieve" and instance is not None:
+            context["delegated_domain"] = {
+                "FQDN": instance.get_fqdn(),
+                "Child zone": instance.get_child_zone(),
+            }
+            context["name_servers"] = [
+                {
+                    "server": ns_record.server,
+                    "bailiwick": NameServerBailiwickChoices.as_dict()[instance.classify_name_server(ns_record.server)],
+                    "addresses": ", ".join(
+                        str(record.ip_address.host) for record in instance.get_name_server_addresses(ns_record.server)
+                    )
+                    or "—",
+                }
+                for ns_record in instance.ns_records.order_by("server")
+            ]
+        return context
 
 
 class NSRecordUIViewSet(views.NautobotUIViewSet):
