@@ -1,9 +1,12 @@
 """Unit tests for views."""
 
+from urllib.parse import urlencode
+
 from constance import config as constance_config
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 from django.urls import reverse
+from django.utils.html import escape
 from nautobot.apps.testing import ViewTestCases
 from nautobot.core.testing.utils import extract_page_body
 from nautobot.extras.models import Status
@@ -613,8 +616,12 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsM
             zone=zone,
         )
 
+        # The PTR owner name (record name + zone) is the reverse pointer of 10.0.0.1, the ptrdname is the forward name.
+        cls.reverse_zone = DNSZone.objects.create(name="0.0.10.in-addr.arpa")
+        cls.ptr_record = PTRRecord.objects.create(name="1", ptrdname="one.example.com", zone=cls.reverse_zone)
+        # A PTR record holding the reverse pointer in ptrdname must not be associated with the IP address.
         PTRRecord.objects.create(
-            name="one.example.com",
+            name="decoy",
             ptrdname=ipaddress_address(cls.ip_addresses[0].host, "reverse_pointer"),
             zone=zone,
         )
@@ -645,7 +652,7 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsM
         )
 
         address = self.ip_addresses[0]
-        ptrrecord = PTRRecord.objects.get(ptrdname=ipaddress_address(address.host, "reverse_pointer"))
+        ptrrecord = self.ptr_record
         self.detail_view_test_side_panels(
             detail_object=address, render_panel=True, panel_model=PTRRecord, panel_objects=[ptrrecord]
         )
@@ -661,7 +668,7 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsM
         )
 
         address = self.ip_addresses[0]
-        ptrrecord = PTRRecord.objects.get(ptrdname=ipaddress_address(address.host, "reverse_pointer"))
+        ptrrecord = self.ptr_record
         self.detail_view_test_side_panels(
             detail_object=address, render_panel=True, panel_model=PTRRecord, panel_objects=[ptrrecord]
         )
@@ -677,10 +684,24 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsM
         )
 
         address = self.ip_addresses[0]
-        ptrrecord = PTRRecord.objects.get(ptrdname=ipaddress_address(address.host, "reverse_pointer"))
+        ptrrecord = self.ptr_record
         self.detail_view_test_side_panels(
             detail_object=address, render_panel=False, panel_model=PTRRecord, panel_objects=[ptrrecord]
         )
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_ipaddress_detail_view_side_panel_add_url(self):
+        """Test the IP Address side panel add URL prepopulates the PTR record from the IP address."""
+        constance_config.nautobot_dns_models__SHOW_REVERSE_PANEL = "always"
+
+        address = self.ip_addresses_wo_records[0]
+        address.dns_name = "two.example.com"
+        address.save()
+        response = self.client.get(reverse("ipam:ipaddress", args=(address.pk,)))
+        self.assertHttpStatus(response, 200)
+        content = response.content.decode(response.charset)
+        query = urlencode({"name": "2", "zone": self.reverse_zone.pk, "ptrdname": "two.example.com"})
+        self.assertIn(escape(f"{reverse('plugins:nautobot_dns_models:ptrrecord_add')}?{query}"), content)
 
 
 class SRVRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
