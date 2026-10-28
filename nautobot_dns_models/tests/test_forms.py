@@ -345,6 +345,10 @@ class ARecordFormTestCase(TestCase):
         self.assertTrue(form.errors)
         self.assertIn("not a valid UUID.", form.errors["ip_address"][0])
 
+    def test_ip_address_label(self):
+        form = self.form_class()
+        self.assertEqual(form.fields["ip_address"].label, "IP Address")
+
 
 class AAAARecordFormTestCase(TestCase):
     """Test AAAARecord forms."""
@@ -393,6 +397,10 @@ class AAAARecordFormTestCase(TestCase):
         form = self.form_class(data)
         self.assertFalse(form.is_valid())
         self.assertTrue(form.errors)
+
+    def test_ip_address_label(self):
+        form = self.form_class()
+        self.assertEqual(form.fields["ip_address"].label, "IP Address")
 
 
 class CNAMERecordFormTestCase(TestCase):

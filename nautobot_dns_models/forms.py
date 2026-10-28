@@ -433,6 +433,7 @@ class ARecordForm(EnabledBeforeDescriptionMixin, NautobotModelForm):
         queryset=IPAddress.objects.all(),
         required=True,
         query_params={"ip_version": IPAddressVersionChoices.VERSION_4},
+        label="IP Address",
     )
 
     class Meta:
@@ -493,6 +494,7 @@ class AAAARecordForm(EnabledBeforeDescriptionMixin, NautobotModelForm):
         queryset=IPAddress.objects.all(),
         required=True,
         query_params={"ip_version": IPAddressVersionChoices.VERSION_6},
+        label="IP Address",
     )
 
     class Meta:

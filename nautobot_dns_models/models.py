@@ -705,7 +705,7 @@ class MXRecord(DNSRecord):
         default=10,
         help_text="Preference for the MX Record.",
     )
-    mail_server = models.CharField(max_length=200, help_text="FQDN of the Mail Server.")
+    mail_server = models.CharField(max_length=200, help_text="FQDN of the Mail server.")
 
     class Meta:
         """Meta attributes for MXRecord."""
