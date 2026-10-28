@@ -82,18 +82,18 @@ class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
             return False
         if show_panel == "if_present":
             ip_address = get_obj_from_context(context)
-            ptrdname = ipaddress_address(ip_address.host, "reverse_pointer")
-            return PTRRecord.objects.filter(ptrdname=ptrdname).exists()
+            reverse_pointer = ipaddress_address(ip_address.host, "reverse_pointer")
+            return PTRRecord.filter_by_reverse_pointer(reverse_pointer).exists()
         return True
 
     def get_extra_context(self, context):
-        """Set the table class based on the IP version of the IP address."""
-        # Calculate the ptrdname based on the IP address.
+        """Build the PTR records table for the IP address and the add URL."""
+        # The PTR owner name (record name + zone) is the reverse pointer of the IP address.
         ip_address = get_obj_from_context(context)
-        ptrdname = ipaddress_address(ip_address.host, "reverse_pointer")
+        reverse_pointer = ipaddress_address(ip_address.host, "reverse_pointer")
 
         # Construct the table with the filtered PTR records, apply permissions.
-        queryset = PTRRecord.objects.filter(ptrdname=ptrdname)
+        queryset = PTRRecord.filter_by_reverse_pointer(reverse_pointer)
         queryset = queryset.restrict(context.get("request").user, "view")
         ptrdtable = PTRRecordTable(queryset)
 
@@ -102,17 +102,14 @@ class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
         self.context_table_key = "ptrdtable"
 
         # Construct the URL query to auto-populate fields when adding a new record.
-        autopop_fields = {
-            "ip_address": ip_address.id,
-            "name": ip_address.dns_name,
-            "ptrdname": ptrdname,
-        }
-        try:
-            zone = ptrdname.split(".", 1)[1]
-        except ValueError:
-            zone = ""
-        if DNSZone.objects.filter(name=zone).exists():
-            autopop_fields["zone"] = DNSZone.objects.get(name=zone).id
+        autopop_fields = {}
+        # This is a best effort to autopopulate the zone field, it uses the most specific reverse zone in any view.
+        zone_obj = DNSZone.find_reverse_zone_for_ptrdname(reverse_pointer)
+        if zone_obj:
+            autopop_fields["name"] = reverse_pointer.removesuffix(f".{zone_obj.name}")
+            autopop_fields["zone"] = zone_obj.id
+        if ip_address.dns_name:
+            autopop_fields["ptrdname"] = ip_address.dns_name
 
         # Tweak returned ctx
         url = reverse("plugins:nautobot_dns_models:ptrrecord_add")
