@@ -1,0 +1,1 @@
+Fixed the PTR Records panel on the IP Address detail view not showing PTR records, and the panel add button prepopulating the wrong name, PTRDNAME and zone.
