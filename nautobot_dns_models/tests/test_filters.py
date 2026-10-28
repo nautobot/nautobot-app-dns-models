@@ -145,16 +145,20 @@ class DNSRegistrarFilterTestCase(FilterTestCases.FilterTestCase):
 
     generic_filter_tests = [
         ["name"],
-        ["url"],
+        ["portal_url"],
         ["account_number"],
     ]
 
     @classmethod
     def setUpTestData(cls):
-        DNSRegistrar.objects.create(name="Registrar One", url="https://registrar-one.example", account_number="ACC-1")
-        DNSRegistrar.objects.create(name="Registrar Two", url="https://registrar-two.example", account_number="ACC-2")
         DNSRegistrar.objects.create(
-            name="Registrar Three", url="https://registrar-three.example", account_number="ACC-3"
+            name="Registrar One", portal_url="https://registrar-one.example", account_number="ACC-1"
+        )
+        DNSRegistrar.objects.create(
+            name="Registrar Two", portal_url="https://registrar-two.example", account_number="ACC-2"
+        )
+        DNSRegistrar.objects.create(
+            name="Registrar Three", portal_url="https://registrar-three.example", account_number="ACC-3"
         )
 
     def test_search(self):
@@ -163,10 +167,10 @@ class DNSRegistrarFilterTestCase(FilterTestCases.FilterTestCase):
         self.assertEqual(self.filterset({"q": "registrar"}, self.queryset).qs.count(), 3)
         self.assertEqual(self.filterset({"q": "ACC-2"}, self.queryset).qs.count(), 1)
 
-    def test_url_icontains(self):
-        """URL filter should match partial values case-insensitively."""
-        self.assertEqual(self.filterset({"url": "REGISTRAR-TWO"}, self.queryset).qs.count(), 1)
-        self.assertEqual(self.filterset({"url": "registrar"}, self.queryset).qs.count(), 3)
+    def test_portal_url_icontains(self):
+        """Portal URL filter should match partial values case-insensitively."""
+        self.assertEqual(self.filterset({"portal_url": "REGISTRAR-TWO"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"portal_url": "registrar"}, self.queryset).qs.count(), 3)
 
     def test_account_number_icontains(self):
         """Account number filter should support partial case-insensitive matching."""
@@ -200,13 +204,13 @@ class DNSRegistrationFilterTestCase(FilterTestCases.FilterTestCase):
         cls.view = DNSView.objects.create(name="Registration Filter View")
         cls.registrars = (
             DNSRegistrar.objects.create(
-                name="Filter Registrar One", url="https://filter-1.example", account_number="F-001"
+                name="Filter Registrar One", portal_url="https://filter-1.example", account_number="F-001"
             ),
             DNSRegistrar.objects.create(
-                name="Filter Registrar Two", url="https://filter-2.example", account_number="F-002"
+                name="Filter Registrar Two", portal_url="https://filter-2.example", account_number="F-002"
             ),
             DNSRegistrar.objects.create(
-                name="Filter Registrar Three", url="https://filter-3.example", account_number="F-003"
+                name="Filter Registrar Three", portal_url="https://filter-3.example", account_number="F-003"
             ),
         )
         cls.zones = (

@@ -112,15 +112,21 @@ class TestDNSRegistrar(ModelTestCases.BaseModelTestCase):
     def setUpTestData(cls):
         """Create test data for DNSRegistrar Model."""
         super().setUpTestData()
-        DNSRegistrar.objects.create(name="Registrar 1", url="https://registrar1.example", account_number="ACC-001")
-        DNSRegistrar.objects.create(name="Registrar 2", url="https://registrar2.example", account_number="ACC-002")
-        DNSRegistrar.objects.create(name="Registrar 3", url="https://registrar3.example", account_number="ACC-003")
+        DNSRegistrar.objects.create(
+            name="Registrar 1", portal_url="https://registrar1.example", account_number="ACC-001"
+        )
+        DNSRegistrar.objects.create(
+            name="Registrar 2", portal_url="https://registrar2.example", account_number="ACC-002"
+        )
+        DNSRegistrar.objects.create(
+            name="Registrar 3", portal_url="https://registrar3.example", account_number="ACC-003"
+        )
 
     def test_create_dnsregistrar_only_required(self):
         """Create with only required fields."""
         registrar = DNSRegistrar.objects.create(name="Test Registrar")
         self.assertEqual(registrar.name, "Test Registrar")
-        self.assertEqual(registrar.url, "")
+        self.assertEqual(registrar.portal_url, "")
         self.assertEqual(registrar.account_number, "")
         self.assertEqual(str(registrar), "Test Registrar")
 
@@ -128,11 +134,11 @@ class TestDNSRegistrar(ModelTestCases.BaseModelTestCase):
         """Create DNSRegistrar with all fields."""
         registrar = DNSRegistrar.objects.create(
             name="Another Registrar",
-            url="https://another-registrar.example",
+            portal_url="https://another-registrar.example",
             account_number="ACCT-1234",
         )
         self.assertEqual(registrar.name, "Another Registrar")
-        self.assertEqual(registrar.url, "https://another-registrar.example")
+        self.assertEqual(registrar.portal_url, "https://another-registrar.example")
         self.assertEqual(registrar.account_number, "ACCT-1234")
 
     def test_get_absolute_url(self):

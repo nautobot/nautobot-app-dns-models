@@ -108,14 +108,14 @@ class DNSRegistrarBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     """DNSRegistrar bulk edit form."""
 
     pk = forms.ModelMultipleChoiceField(queryset=models.DNSRegistrar.objects.all(), widget=forms.MultipleHiddenInput)
-    url = forms.URLField(required=False)
+    portal_url = forms.URLField(required=False, label="Portal URL")
     account_number = forms.CharField(required=False)
 
     class Meta:
         """Meta attributes."""
 
         nullable_fields = [
-            "url",
+            "portal_url",
             "account_number",
         ]
 
@@ -126,16 +126,16 @@ class DNSRegistrarFilterForm(NautobotFilterForm):
     q = forms.CharField(
         required=False,
         label="Search",
-        help_text="Search within Name, URL, and Account Number.",
+        help_text="Search within Name, Portal URL, and Account Number.",
     )
     name = forms.CharField(required=False, label="Name")
-    url = forms.CharField(required=False, label="URL")
+    portal_url = forms.CharField(required=False, label="Portal URL")
     account_number = forms.CharField(required=False, label="Account Number")
     model = models.DNSRegistrar
     fields = [
         "q",
         "name",
-        "url",
+        "portal_url",
         "account_number",
     ]
 
