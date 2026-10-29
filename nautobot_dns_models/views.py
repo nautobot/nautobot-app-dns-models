@@ -1,5 +1,9 @@
 """DNS Plugin Views."""
 
+from urllib.parse import urlencode
+
+from django.urls import reverse
+from django.utils.html import format_html
 from nautobot.apps import views
 from nautobot.apps.ui import (
     ButtonColorChoices,
@@ -12,6 +16,7 @@ from nautobot.apps.ui import (
     StatsPanel,
 )
 from nautobot.core.ui import object_detail
+from nautobot.core.views.utils import get_obj_from_context
 from nautobot.ipam.tables import PrefixTable
 
 from nautobot_dns_models.api.serializers import (
@@ -116,6 +121,7 @@ from nautobot_dns_models.tables import (
     SRVRecordTable,
     TXTRecordTable,
 )
+from nautobot_dns_models.utils import dns_name_key, relative_owner_name
 
 
 class DNSViewUIViewSet(views.NautobotUIViewSet):
@@ -416,6 +422,14 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
     )
 
 
+class GlueRecordsTablePanel(ObjectsTablePanel):
+    """A table of a delegation's glue records, shown only when there are some."""
+
+    def should_render(self, context):
+        """Render only when the delegation has glue records of this panel's type."""
+        return getattr(get_obj_from_context(context), self.table_attribute).exists()
+
+
 class DNSDelegationUIViewSet(views.NautobotUIViewSet):
     """DNSDelegation UI ViewSet."""
 
@@ -460,6 +474,28 @@ class DNSDelegationUIViewSet(views.NautobotUIViewSet):
                 add_button_route=None,
                 enable_related_link=False,
             ),
+            GlueRecordsTablePanel(
+                weight=300,
+                section=SectionChoices.RIGHT_HALF,
+                table_attribute="glue_a_records",
+                related_field_name="zone",
+                table_class=ARecordTable,
+                table_title="Glue A Records",
+                exclude_columns=["zone"],
+                add_button_route=None,
+                enable_related_link=False,
+            ),
+            GlueRecordsTablePanel(
+                weight=400,
+                section=SectionChoices.RIGHT_HALF,
+                table_attribute="glue_aaaa_records",
+                related_field_name="zone",
+                table_class=AAAARecordTable,
+                table_title="Glue AAAA Records",
+                exclude_columns=["zone"],
+                add_button_route=None,
+                enable_related_link=False,
+            ),
         ],
     )
 
@@ -472,17 +508,36 @@ class DNSDelegationUIViewSet(views.NautobotUIViewSet):
                 "Child zone": instance.get_child_zone(),
             }
             context["name_servers"] = [
-                {
-                    "server": ns_record.server,
-                    "bailiwick": NameServerBailiwickChoices.as_dict()[instance.classify_name_server(ns_record.server)],
-                    "addresses": ", ".join(
-                        str(record.ip_address.host) for record in instance.get_name_server_addresses(ns_record.server)
-                    )
-                    or "—",
-                }
+                self._name_server_row(instance, ns_record.server)
                 for ns_record in instance.ns_records.order_by("server")
             ]
         return context
+
+    @staticmethod
+    def _name_server_row(delegation, server):
+        """Summarize one name server; an in-domain server without glue gets links to add it."""
+        bailiwick = delegation.classify_name_server(server)
+        addresses = ", ".join(str(record.ip_address.host) for record in delegation.get_name_server_addresses(server))
+        if not addresses and bailiwick == NameServerBailiwickChoices.IN_DOMAIN:
+            query = urlencode(
+                {
+                    "zone": delegation.zone_id,
+                    "name": relative_owner_name(dns_name_key(server), dns_name_key(delegation.zone.name)),
+                    "return_url": delegation.get_absolute_url(),
+                }
+            )
+            addresses = format_html(
+                'No glue · <a href="{}?{}">Add A</a> · <a href="{}?{}">Add AAAA</a>',
+                reverse("plugins:nautobot_dns_models:arecord_add"),
+                query,
+                reverse("plugins:nautobot_dns_models:aaaarecord_add"),
+                query,
+            )
+        return {
+            "server": server,
+            "bailiwick": NameServerBailiwickChoices.as_dict()[bailiwick],
+            "addresses": addresses or "—",
+        }
 
 
 class NSRecordUIViewSet(views.NautobotUIViewSet):

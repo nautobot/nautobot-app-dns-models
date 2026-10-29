@@ -42,7 +42,9 @@ Each name server of a delegation is classified by where its name sits relative t
 | Sibling domain | `ns.example.com` | The parent zone's own A/AAAA records, which also serve as glue ([RFC 9471 §2.2](https://www.rfc-editor.org/rfc/rfc9471.html#section-2.2)). |
 | Out-of-bailiwick | `ns2.other.net` | The zone that contains the name. The parent zone does not carry these addresses ([RFC 2181 §5.4.1](https://www.rfc-editor.org/rfc/rfc2181.html#section-5.4.1)). |
 
-The delegation detail page lists each name server with its class and the addresses known in Nautobot. For an out-of-bailiwick name server, the addresses come from the zone in the same DNS view that contains the name, if there is one.
+The delegation detail page lists each name server with its class and the addresses known in Nautobot. For an out-of-bailiwick name server, the addresses come from the zone in the same DNS view that contains the name, if there is one. An in-domain name server without glue shows "No glue", with links that open the A or AAAA record form already filled in with the parent zone and the name server's owner name.
+
+The **Glue A Records** and **Glue AAAA Records** panels list the parent zone's address records at the names of the delegation's in-domain and sibling name servers, so they can be opened, edited or deleted from the delegation. Each panel is shown only when it has records.
 
 If a zone named after the delegated domain exists in the same DNS view, it is shown as the child zone. See [Zone hierarchy](dnszone.md#zone-hierarchy).
 
