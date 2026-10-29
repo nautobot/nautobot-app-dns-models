@@ -573,6 +573,9 @@ class TXTRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.csv_data = (
             "name,text,zone",
             f"Test 3,test-text,{zone.name}",
+            # A 2048-bit DKIM key: CSV import still resolves the natural key with `text` far past the
+            # former 256-character limit.
+            f"Test 4,v=DKIM1; k=rsa; p={'A' * 582},{zone.name}",
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}

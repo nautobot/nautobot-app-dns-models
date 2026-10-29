@@ -9,6 +9,8 @@ from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from netutils.ip import ipaddress_address
 
 from nautobot_dns_models.models import (
+    TXT_CHARACTER_STRING_MAX_OCTETS,
+    TXT_RDATA_MAX_OCTETS,
     UINT32_MAX,
     AAAARecord,
     ARecord,
@@ -23,6 +25,8 @@ from nautobot_dns_models.models import (
     SRVRecord,
     TXTRecord,
     dns_wire_label_length,
+    split_txt_character_strings,
+    txt_wire_rdata_length,
 )
 
 
@@ -343,6 +347,143 @@ class TXTRecordTestCase(TestCase):
     def test_get_absolute_url(self):
         txt_record = TXTRecord.objects.create(name="txt-record", text="spf-record", zone=self.dns_zone)
         self.assertEqual(txt_record.get_absolute_url(), f"/plugins/dns/txt-records/{txt_record.id}/")
+
+
+class TXTRecordTextValidationTest(TestCase):
+    """Test TXT record content validation rules from RFC 1035 §3.3.14."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZone.objects.create(name="example.com")
+
+    @staticmethod
+    def _dkim_value(length):
+        """Return a DKIM-shaped TXT value of exactly `length` characters."""
+        prefix = "v=DKIM1; k=rsa; p="
+        return prefix + "A" * (length - len(prefix))
+
+    # Per-character-string length (RFC 1035 §3.3)
+    def test_accepts_character_string_of_255_octets(self):
+        record = TXTRecord(name="txt", text="a" * TXT_CHARACTER_STRING_MAX_OCTETS, zone=self.zone)
+        record.full_clean()  # Should not raise
+
+    def test_rejects_quoted_character_string_exceeding_255_octets(self):
+        record = TXTRecord(name="txt", text='"' + "a" * 300 + '"', zone=self.zone)
+        with self.assertRaises(ValidationError) as context:
+            record.full_clean()
+        self.assertIn("Character-string 1 is 300 bytes (octets); the maximum is 255", str(context.exception))
+
+    def test_reports_position_of_the_offending_character_string(self):
+        record = TXTRecord(name="txt", text='"short" "' + "a" * 256 + '"', zone=self.zone)
+        with self.assertRaises(ValidationError) as context:
+            record.full_clean()
+        self.assertIn("Character-string 2 is 256 bytes (octets)", str(context.exception))
+
+    # Long plain values are chunked rather than rejected
+    def test_accepts_text_longer_than_the_former_256_character_limit(self):
+        """Regression test: 257 characters was rejected before TXT length followed RFC 1035."""
+        record = TXTRecord(name="txt", text="a" * 257, zone=self.zone)
+        record.validated_save()
+        self.assertEqual(len(TXTRecord.objects.get(pk=record.pk).text), 257)
+
+    def test_accepts_and_chunks_a_2048_bit_dkim_key(self):
+        value = self._dkim_value(600)
+        record = TXTRecord(name="dkim", text=value, zone=self.zone)
+        record.validated_save()
+
+        self.assertEqual([len(chunk) for chunk in record.character_strings], [255, 255, 90])
+        self.assertEqual("".join(record.character_strings), value)
+
+    def test_accepts_explicit_quoted_multi_string(self):
+        record = TXTRecord(name="spf", text='"v=spf1 include:_spf.example.com" "~all"', zone=self.zone)
+        record.validated_save()
+        self.assertEqual(record.character_strings, ["v=spf1 include:_spf.example.com", "~all"])
+
+    # Escape handling (RFC 1035 §5.1) -- octets are counted on the decoded value
+    def test_counts_decimal_escape_as_a_single_octet(self):
+        record = TXTRecord(name="txt", text=r'"\065bc"', zone=self.zone)
+        record.validated_save()
+        self.assertEqual(record.character_strings, ["Abc"])
+        self.assertEqual(txt_wire_rdata_length(record.character_strings), 4)
+
+    def test_accepts_255_octets_expressed_with_escapes(self):
+        record = TXTRecord(name="txt", text='"' + r"\065" * TXT_CHARACTER_STRING_MAX_OCTETS + '"', zone=self.zone)
+        record.full_clean()  # 1020 characters of presentation format, but only 255 octets on the wire
+
+    def test_rejects_unterminated_quoted_character_string(self):
+        record = TXTRecord(name="txt", text='"abc', zone=self.zone)
+        with self.assertRaises(ValidationError) as context:
+            record.full_clean()
+        self.assertIn("Unterminated quoted character-string", str(context.exception))
+
+    # Chunking must respect UTF-8 character boundaries
+    def test_never_splits_a_multibyte_character(self):
+        value = "😀" * 100  # 4 octets each
+        chunk_list = split_txt_character_strings(value)
+        self.assertEqual([len(chunk.encode("utf-8")) for chunk in chunk_list], [252, 148])
+        self.assertEqual("".join(chunk_list), value)
+
+    # Total RDATA length (16-bit RDLENGTH)
+    def test_rejects_total_rdata_exceeding_65535_octets(self):
+        record = TXTRecord(name="txt", text="a" * 66000, zone=self.zone)
+        with self.assertRaises(ValidationError) as context:
+            record.full_clean()
+        self.assertIn(f"the maximum is {TXT_RDATA_MAX_OCTETS}", str(context.exception))
+
+    # Enforcement flag
+    @override_config(nautobot_dns_models__DNS_VALIDATION_LEVEL="none")
+    def test_skips_length_validation_when_enforcement_disabled(self):
+        record = TXTRecord(name="txt", text='"' + "a" * 300 + '"', zone=self.zone)
+        record.full_clean()  # Should not raise
+
+    # Uniqueness digest -- asserted through a queryset filter so the stored column value is checked
+    def _assert_stored_digest(self, record, text):
+        self.assertTrue(TXTRecord.objects.filter(pk=record.pk, _text_hash=TXTRecord.hash_text(text)).exists())
+
+    def test_text_hash_populated_by_validated_save(self):
+        record = TXTRecord(name="txt", text="spf-record", zone=self.zone)
+        record.validated_save()
+        self._assert_stored_digest(record, "spf-record")
+
+    def test_text_hash_populated_by_objects_create(self):
+        """`objects.create()` calls `save()` without `clean()`, so `save()` must set the digest too."""
+        record = TXTRecord.objects.create(name="txt", text="spf-record", zone=self.zone)
+        self._assert_stored_digest(record, "spf-record")
+
+    def test_text_hash_refreshed_when_text_changes(self):
+        record = TXTRecord.objects.create(name="txt", text="original", zone=self.zone)
+        record.text = "updated"
+        record.validated_save()
+        self._assert_stored_digest(record, "updated")
+
+    def test_rejects_duplicate_name_zone_and_text(self):
+        TXTRecord.objects.create(name="txt", text="spf-record", zone=self.zone)
+        with self.assertRaises(ValidationError) as context:
+            TXTRecord(name="txt", text="spf-record", zone=self.zone).validated_save()
+        self.assertIn("TXT Record with this Name, Zone and Text already exists", str(context.exception))
+
+    def test_allows_same_name_and_zone_with_different_text(self):
+        TXTRecord(name="txt", text="spf-record", zone=self.zone).validated_save()
+        TXTRecord(name="txt", text="dkim-record", zone=self.zone).validated_save()
+        self.assertEqual(TXTRecord.objects.filter(name="txt", zone=self.zone).count(), 2)
+
+    def test_long_values_differing_past_the_first_chunk_are_distinct(self):
+        base = "a" * 300
+        TXTRecord(name="txt", text=base + "one", zone=self.zone).validated_save()
+        TXTRecord(name="txt", text=base + "two", zone=self.zone).validated_save()
+        self.assertEqual(TXTRecord.objects.filter(name="txt", zone=self.zone).count(), 2)
+
+    # Natural key must be unaffected by the digest column
+    def test_natural_key_includes_text_and_not_the_digest(self):
+        """Moving the unique constraint onto the digest must not change the natural key (CSV, API lookups)."""
+        lookups = list(TXTRecord.natural_key_field_lookups)
+        self.assertEqual(lookups[:2], ["name", "text"])
+        self.assertNotIn("_text_hash", lookups)
+
+    def test_natural_key_round_trips_a_long_value(self):
+        value = self._dkim_value(600)
+        record = TXTRecord.objects.create(name="dkim", text=value, zone=self.zone)
+        self.assertEqual(TXTRecord.objects.get_by_natural_key(*record.natural_key()), record)
 
 
 class PTRRecordTestCase(TestCase):

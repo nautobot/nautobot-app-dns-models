@@ -1,0 +1,1 @@
+Added a Data Validation Engine compliance rule for TXT record content length, so TXT records that break RFC 1035 §3.3.14 are reported under Data Compliance when `DNS_VALIDATION_LEVEL` is disabled.
