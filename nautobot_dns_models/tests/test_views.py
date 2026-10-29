@@ -247,6 +247,39 @@ class DNSDelegationViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         for text in ("apps.example.com", "ns1.apps.example.com", "In-domain", "ns2.other.net", "Out-of-bailiwick"):
             self.assertIn(text, body)
 
+    def test_detail_view_lists_glue_records(self):
+        self.add_permissions(
+            "nautobot_dns_models.view_dnsdelegation",
+            "nautobot_dns_models.view_nsrecord",
+            "nautobot_dns_models.view_arecord",
+        )
+        delegation = DNSDelegation.objects.get(name="apps")
+        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, type="Pool", status=status)
+        address = IPAddress.objects.create(address="192.0.2.10/32", namespace=namespace, status=status)
+        glue = ARecord.objects.create(name="ns1.apps", ip_address=address, zone=self.zone)
+
+        response = self.client.get(delegation.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Glue A Records")
+        self.assertContains(response, glue.get_absolute_url())
+        self.assertNotContains(response, "Glue AAAA Records")
+
+    def test_detail_view_links_to_add_missing_glue(self):
+        self.add_permissions("nautobot_dns_models.view_dnsdelegation", "nautobot_dns_models.view_nsrecord")
+        delegation = DNSDelegation.objects.get(name="apps")
+        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
+
+        response = self.client.get(delegation.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "No glue")
+        add_url = reverse("plugins:nautobot_dns_models:arecord_add")
+        self.assertContains(response, f"{add_url}?zone={self.zone.pk}&amp;name=ns1.apps&amp;return_url=")
+
     def test_zone_detail_view_lists_delegations(self):
         self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.view_dnsdelegation")
 

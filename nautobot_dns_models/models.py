@@ -1214,6 +1214,33 @@ class DNSDelegation(PrimaryModel):
         """Return the A and AAAA records in the parent zone at the name `server`."""
         return get_address_records(self.zone, server)
 
+    def _glue_owner_filter(self):
+        """Return a filter matching the parent-zone owner names of this delegation's in-domain and sibling servers."""
+        zone_key = dns_name_key(self.zone.name)
+        query = Q(pk=None)
+        for server in self.ns_records.values_list("server", flat=True):
+            if self.classify_name_server(server) == NameServerBailiwickChoices.OUT_OF_BAILIWICK:
+                continue
+            owner = relative_owner_name(dns_name_key(server), zone_key)
+            query |= Q(name__in=["@", ""]) if owner == "@" else Q(name__iexact=owner)
+        return query
+
+    @property
+    def glue_a_records(self):
+        """Return the parent zone's A records at this delegation's name server names.
+
+        Building the queryset reads the delegation's NS records once.
+        """
+        return ARecord.objects.filter(self._glue_owner_filter(), zone_id=self.zone_id)
+
+    @property
+    def glue_aaaa_records(self):
+        """Return the parent zone's AAAA records at this delegation's name server names.
+
+        Building the queryset reads the delegation's NS records once.
+        """
+        return AAAARecord.objects.filter(self._glue_owner_filter(), zone_id=self.zone_id)
+
     def get_name_server_addresses(self, server):
         """Return the address records known for `server`.
 

@@ -1279,6 +1279,23 @@ class DNSDelegationTestCase(TestCase):
         self.assertEqual(delegation.get_glue_records("ns2.apps.example.com"), [])
         self.assertEqual(delegation.get_glue_records("ns1.other.net"), [])
 
+    def test_glue_querysets_hold_the_address_records_of_in_zone_name_servers(self):
+        delegation = self._create_delegation()
+        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
+        NSRecord.objects.create(name="apps", server="NS.Example.com.", zone=self.zone)
+        NSRecord.objects.create(name="apps", server="ns2.other.net", zone=self.zone)
+        in_domain = ARecord.objects.create(name="ns1.apps", ip_address=self.glue_ip, zone=self.zone)
+        sibling = ARecord.objects.create(name="ns", ip_address=self.sibling_ip, zone=self.zone)
+        ARecord.objects.create(name="www", ip_address=self.external_ip, zone=self.zone)
+
+        self.assertQuerySetEqual(delegation.glue_a_records.order_by("name"), [sibling, in_domain])
+        self.assertFalse(delegation.glue_aaaa_records.exists())
+
+    def test_glue_querysets_are_empty_without_ns_records(self):
+        delegation = self._create_delegation()
+        ARecord.objects.create(name="ns1.apps", ip_address=self.glue_ip, zone=self.zone)
+        self.assertFalse(delegation.glue_a_records.exists())
+
     def test_name_server_addresses_come_from_the_zone_that_holds_the_name(self):
         delegation = self._create_delegation()
         sibling = ARecord.objects.create(name="ns", ip_address=self.sibling_ip, zone=self.zone)
