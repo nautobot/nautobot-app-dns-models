@@ -228,12 +228,17 @@ class DNSRegistrar(PrimaryModel):
         return self.name
 
 
-def get_default_view_pk():
-    """Return the default DNSView ID, creating it if necessary."""
+def get_default_view():
+    """Return the default DNSView instance, creating it if necessary."""
     default_view, _ = DNSView.objects.get_or_create(
         name="Default", defaults={"description": "Default DNS view. Created by Nautobot DNS Models app."}
     )
-    return default_view.pk
+    return default_view
+
+
+def get_default_view_pk():
+    """Return the default DNSView ID, creating it if necessary."""
+    return get_default_view().pk
 
 
 @extras_features(

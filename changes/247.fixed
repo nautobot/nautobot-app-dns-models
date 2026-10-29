@@ -1,0 +1,1 @@
+Fixed creating a DNS Zone through the API without specifying a DNS View (defaults to Default view).
