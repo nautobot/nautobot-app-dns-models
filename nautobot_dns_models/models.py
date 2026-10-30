@@ -4,6 +4,7 @@ from constance import config as constance_config
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, validate_email
 from django.db import models
+from django.db.models import Q
 from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 from nautobot.extras.models import StatusField
@@ -768,6 +769,21 @@ class PTRRecord(DNSRecord):
     def __str__(self):
         """String representation of PTRRecord."""
         return self.ptrdname
+
+    @classmethod
+    def filter_by_reverse_pointer(cls, reverse_pointer):
+        """Return the PTR records whose owner name (record name relative to its zone) equals `reverse_pointer`."""
+        labels = reverse_pointer.split(".")
+        query = Q()
+        for i in range(1, len(labels)):
+            zone_name = ".".join(labels[i:])
+            # We shouldn't match those cause are reserved to IANA
+            if zone_name in RESERVED_ROOTS:
+                break
+            query |= Q(name=".".join(labels[:i]), zone__name=zone_name)
+        if not query:
+            return cls.objects.none()
+        return cls.objects.filter(query)
 
 
 @extras_features(

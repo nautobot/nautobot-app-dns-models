@@ -868,6 +868,47 @@ class TestDNSZoneFindForPtrdname(TestCase):
         )
 
 
+class TestPTRRecordFilterByReversePointer(TestCase):
+    """Test PTRRecord.filter_by_reverse_pointer classmethod."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.view_a = DNSView.objects.create(name="View A")
+        cls.view_b = DNSView.objects.create(name="View B")
+        cls.zone_24 = DNSZone.objects.create(name="0.0.10.in-addr.arpa", dns_view=cls.view_a)
+        cls.zone_8 = DNSZone.objects.create(name="10.in-addr.arpa", dns_view=cls.view_b)
+        cls.forward_zone = DNSZone.objects.create(name="example.com", dns_view=cls.view_a)
+
+    def test_matches_owner_name_across_zones_and_views(self):
+        ptr_24 = PTRRecord.objects.create(name="1", ptrdname="host1.example.com", zone=self.zone_24)
+        ptr_8 = PTRRecord.objects.create(name="1.0.0", ptrdname="host1.example.com", zone=self.zone_8)
+        PTRRecord.objects.create(name="2", ptrdname="host2.example.com", zone=self.zone_24)
+        self.assertQuerysetEqualAndNotEmpty(
+            PTRRecord.filter_by_reverse_pointer("1.0.0.10.in-addr.arpa"), [ptr_24, ptr_8], ordered=False
+        )
+
+    def test_does_not_match_ptrdname(self):
+        PTRRecord.objects.create(name="host1", ptrdname="1.0.0.10.in-addr.arpa", zone=self.forward_zone)
+        self.assertFalse(PTRRecord.filter_by_reverse_pointer("1.0.0.10.in-addr.arpa").exists())
+
+    def test_does_not_match_zone_qualified_name_in_wrong_zone(self):
+        PTRRecord.objects.create(name="1.0.0", ptrdname="host1.example.com", zone=self.zone_24)
+        self.assertFalse(PTRRecord.filter_by_reverse_pointer("1.0.0.10.in-addr.arpa").exists())
+
+    def test_matches_ipv6(self):
+        reverse_pointer = ipaddress_address("2001:db8::1", "reverse_pointer")
+        zone_name = reverse_pointer.split(".", 16)[16]
+        zone = DNSZone.objects.create(name=zone_name, dns_view=self.view_a)
+        ptr = PTRRecord.objects.create(
+            name=reverse_pointer.removesuffix(f".{zone_name}"), ptrdname="v6host.example.com", zone=zone
+        )
+        self.assertQuerysetEqualAndNotEmpty(PTRRecord.filter_by_reverse_pointer(reverse_pointer), [ptr])
+
+    def test_empty_reverse_pointer_returns_none(self):
+        PTRRecord.objects.create(name="1", ptrdname="host1.example.com", zone=self.zone_24)
+        self.assertFalse(PTRRecord.filter_by_reverse_pointer("").exists())
+
+
 class DNSZoneIntegerFieldBoundaryTest(TestCase):
     """Boundary tests for integer fields on DNSZone.
 
