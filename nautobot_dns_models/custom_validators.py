@@ -55,7 +55,7 @@ class TXTRecordRFC1035LengthRule(DataComplianceRule):
             raise ComplianceError(error.message_dict) from error
 
         for position, character_string in enumerate(character_string_list, start=1):
-            octets = len(character_string.encode("utf-8"))
+            octets = len(character_string)
             if octets > TXT_CHARACTER_STRING_MAX_OCTETS:
                 raise ComplianceError(
                     {

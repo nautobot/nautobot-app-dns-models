@@ -392,23 +392,43 @@ class TXTRecordTextValidationTest(TestCase):
         record.validated_save()
 
         self.assertEqual([len(chunk) for chunk in record.character_strings], [255, 255, 90])
-        self.assertEqual("".join(record.character_strings), value)
+        self.assertEqual(b"".join(record.character_strings), value.encode("utf-8"))
 
     def test_accepts_explicit_quoted_multi_string(self):
         record = TXTRecord(name="spf", text='"v=spf1 include:_spf.example.com" "~all"', zone=self.zone)
         record.validated_save()
-        self.assertEqual(record.character_strings, ["v=spf1 include:_spf.example.com", "~all"])
+        self.assertEqual(record.character_strings, [b"v=spf1 include:_spf.example.com", b"~all"])
 
     # Escape handling (RFC 1035 §5.1) -- octets are counted on the decoded value
     def test_counts_decimal_escape_as_a_single_octet(self):
         record = TXTRecord(name="txt", text=r'"\065bc"', zone=self.zone)
         record.validated_save()
-        self.assertEqual(record.character_strings, ["Abc"])
+        self.assertEqual(record.character_strings, [b"Abc"])
         self.assertEqual(txt_wire_rdata_length(record.character_strings), 4)
 
     def test_accepts_255_octets_expressed_with_escapes(self):
         record = TXTRecord(name="txt", text='"' + r"\065" * TXT_CHARACTER_STRING_MAX_OCTETS + '"', zone=self.zone)
         record.full_clean()  # 1020 characters of presentation format, but only 255 octets on the wire
+
+    def test_counts_decimal_escapes_above_127_as_a_single_octet(self):
+        r"""Regression test: `\200` was decoded to a Unicode character and counted as two UTF-8 bytes."""
+        for escape, octet in ((r"\128", 128), (r"\200", 200), (r"\255", 255)):
+            with self.subTest(escape=escape):
+                record = TXTRecord(name="txt", text=f'"{escape * TXT_CHARACTER_STRING_MAX_OCTETS}"', zone=self.zone)
+                record.full_clean()
+                self.assertEqual(record.character_strings, [bytes([octet]) * TXT_CHARACTER_STRING_MAX_OCTETS])
+
+    def test_rejects_256_high_octet_escapes(self):
+        record = TXTRecord(name="txt", text='"' + r"\200" * (TXT_CHARACTER_STRING_MAX_OCTETS + 1) + '"', zone=self.zone)
+        with self.assertRaises(ValidationError) as context:
+            record.full_clean()
+        self.assertIn("Character-string 1 is 256 bytes (octets)", str(context.exception))
+
+    def test_counts_typed_non_ascii_characters_as_their_utf8_bytes(self):
+        record = TXTRecord(name="txt", text='"' + "é" * 128 + '"', zone=self.zone)  # 2 octets each in UTF-8
+        with self.assertRaises(ValidationError) as context:
+            record.full_clean()
+        self.assertIn("Character-string 1 is 256 bytes (octets)", str(context.exception))
 
     def test_rejects_unterminated_quoted_character_string(self):
         record = TXTRecord(name="txt", text='"abc', zone=self.zone)
@@ -420,8 +440,8 @@ class TXTRecordTextValidationTest(TestCase):
     def test_never_splits_a_multibyte_character(self):
         value = "😀" * 100  # 4 octets each
         chunk_list = split_txt_character_strings(value)
-        self.assertEqual([len(chunk.encode("utf-8")) for chunk in chunk_list], [252, 148])
-        self.assertEqual("".join(chunk_list), value)
+        self.assertEqual([len(chunk) for chunk in chunk_list], [252, 148])
+        self.assertEqual(b"".join(chunk_list), value.encode("utf-8"))
 
     # Total RDATA length (16-bit RDLENGTH)
     def test_rejects_total_rdata_exceeding_65535_octets(self):

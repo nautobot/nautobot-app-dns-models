@@ -37,13 +37,18 @@ def dns_wire_label_length(label):
 
 
 def _decode_txt_escapes(value, field="text"):
-    r"""Decode RFC 1035 §5.1 escape sequences (``\DDD``, ``\X``) in a quoted <character-string>."""
-    decoded = []
+    r"""Decode a quoted <character-string> into the octets it represents on the wire.
+
+    `\DDD` becomes the single octet DDD and `\X` becomes X (RFC 1035 §5.1). Other characters become their UTF-8
+    bytes. Building bytes rather than a string keeps an escaped octet above 127 at one octet: as a string it would
+    be a Unicode character that encodes to two.
+    """
+    decoded = bytearray()
     index = 0
     while index < len(value):
         character = value[index]
         if character != "\\":
-            decoded.append(character)
+            decoded.extend(character.encode("utf-8"))
             index += 1
             continue
 
@@ -52,16 +57,16 @@ def _decode_txt_escapes(value, field="text"):
             octet = int(escape)
             if octet > 255:
                 raise ValidationError({field: rf"Invalid escape '\{escape}': decimal escapes must be 0-255."})
-            decoded.append(chr(octet))
+            decoded.append(octet)
             index += 4
             continue
 
         if index + 1 >= len(value):
             raise ValidationError({field: "Invalid trailing backslash in quoted character-string."})
-        decoded.append(value[index + 1])
+        decoded.extend(value[index + 1].encode("utf-8"))
         index += 2
 
-    return "".join(decoded)
+    return bytes(decoded)
 
 
 def _parse_quoted_txt_character_strings(value, field="text"):
@@ -101,7 +106,7 @@ def _parse_quoted_txt_character_strings(value, field="text"):
 
 
 def _chunk_utf8_octets(value, max_octets):
-    """Split a string into chunks of at most ``max_octets`` UTF-8 bytes, never splitting a character."""
+    """Split a string into UTF-8 encoded chunks of at most `max_octets` bytes, never splitting a character."""
     chunk_list = []
     current = []
     current_octets = 0
@@ -117,14 +122,16 @@ def _chunk_utf8_octets(value, max_octets):
     if current:
         chunk_list.append("".join(current))
 
-    return chunk_list
+    return [chunk.encode("utf-8") for chunk in chunk_list]
 
 
 def split_txt_character_strings(value, field="text"):
-    r"""Return the TXT RDATA of ``value`` as a list of <character-string> values per RFC 1035 §3.3.14.
+    r"""Return the TXT RDATA of `value` as a list of <character-string> values per RFC 1035 §3.3.14.
+
+    Each value is `bytes`: the octets of that character-string on the wire, so `len()` is its wire length.
 
     A value that begins with a double quote is parsed as presentation-format: a whitespace-separated
-    sequence of quoted character-strings, with ``\DDD`` and ``\X`` escapes decoded (RFC 1035 §5.1).
+    sequence of quoted character-strings, with `\DDD` and `\X` escapes decoded (RFC 1035 §5.1).
     This lets the author control where the wire-format boundaries fall, which matters for long DKIM
     keys. Any other value is treated as a single logical string and split into 255-octet chunks.
     """
@@ -135,14 +142,14 @@ def split_txt_character_strings(value, field="text"):
         return _parse_quoted_txt_character_strings(value.strip(), field=field)
 
     if value == "":
-        return [""]
+        return [b""]
 
     return _chunk_utf8_octets(value, TXT_CHARACTER_STRING_MAX_OCTETS)
 
 
 def txt_wire_rdata_length(character_string_list):
     """Return the wire-format TXT RDATA length: each <character-string> plus its length octet."""
-    return sum(1 + len(character_string.encode("utf-8")) for character_string in character_string_list)
+    return sum(1 + len(character_string) for character_string in character_string_list)
 
 
 def _find_unescaped_dot(value):
@@ -876,7 +883,7 @@ class TXTRecord(DNSRecord):
 
     @property
     def character_strings(self):
-        """Return `text` as the list of <character-string> values it represents on the wire."""
+        """Return `text` as the list of <character-string> values it represents on the wire, each as `bytes`."""
         return split_txt_character_strings(self.text)
 
     def clean(self):
@@ -896,8 +903,7 @@ class TXTRecord(DNSRecord):
     def unique_error_message(self, model_class, unique_check):
         """Report the digest-based uniqueness violation in terms of `text` rather than `_text_hash`.
 
-        Without this the default message names the internal field: "... with this Name, Zone and Text
-        hash already exists."
+        Without this the default message names the internal field `_text_hash`.
         """
         if set(unique_check) == {"name", "zone", "_text_hash"}:
             return ValidationError(

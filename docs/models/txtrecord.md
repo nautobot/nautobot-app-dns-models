@@ -44,7 +44,7 @@ Mixing quoted and unquoted text in one value is not supported.
 
 ### Reading the wire-format strings
 
-The `character_strings` property returns the list of `<character-string>` values a record represents, whichever style was used to enter it. Integrations that publish these records should use it rather than splitting `text` themselves.
+The `character_strings` property returns the list of `<character-string>` values a record represents, whichever style was used to enter it. Each value is `bytes`: the exact octets sent on the wire, with escapes decoded, so `\200` is the single octet 200. Integrations that publish these records should use it rather than splitting `text` themselves.
 
 ### Enforcement and Data Compliance
 
