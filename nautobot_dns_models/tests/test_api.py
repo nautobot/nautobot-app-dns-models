@@ -566,8 +566,26 @@ class DNSDelegationAPITestCase(APIViewTestCases.APIViewTestCase):
         cls.create_data = [
             {"name": "dev", "zone": zone.pk},
             {"name": "test", "zone": zone.pk, "description": "Test subdomain"},
-            {"name": "prod.example.com.", "zone": zone.pk},
+            {"name": "prod", "zone": zone.pk},
         ]
+
+    def test_absolute_name_is_stored_relative_to_the_zone(self):
+        """Regression test: the API validates a copy of the object, so normalizing only in `clean()` was lost."""
+        self.add_permissions(
+            "nautobot_dns_models.add_dnsdelegation",
+            "nautobot_dns_models.view_dnsdelegation",
+            "nautobot_dns_models.view_dnszone",
+        )
+        zone = DNSZone.objects.get(name="example.com")
+        url = reverse("plugins-api:nautobot_dns_models-api:dnsdelegation-list")
+
+        response = self.client.post(
+            url, data={"name": "corp.Example.com.", "zone": zone.pk}, format="json", **self.header
+        )
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["name"], "corp")
+        self.assertEqual(DNSDelegation.objects.get(pk=response.data["id"]).get_fqdn(), "corp.example.com")
 
 
 class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):

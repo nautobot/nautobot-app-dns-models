@@ -1230,6 +1230,16 @@ class DNSDelegationTestCase(TestCase):
         delegation = self._create_delegation(name="apps.Example.com.")
         self.assertEqual(delegation.name, "apps")
 
+    def test_absolute_name_is_normalized_by_save_without_clean(self):
+        delegation = DNSDelegation.objects.create(zone=self.zone, name="apps.example.com.")
+        self.assertEqual(delegation.name, "apps")
+
+    def test_rejects_a_name_differing_only_by_case(self):
+        self._create_delegation(name="apps")
+        with self.assertRaises(ValidationError) as context:
+            DNSDelegation(zone=self.zone, name="Apps").full_clean()
+        self.assertIn("ignoring case", str(context.exception))
+
     @override_config(nautobot_dns_models__CNAME_RESTRICTION_ENABLED=True)
     def test_cannot_share_an_owner_name_with_a_cname(self):
         CNAMERecord.objects.create(name="apps", alias="elsewhere.example.net", zone=self.zone)

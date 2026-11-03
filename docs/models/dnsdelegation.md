@@ -3,7 +3,7 @@
 A DNS delegation marks a zone cut: the owner name in a parent zone below which authority passes to other name servers ([RFC 1034 §4.2.1](https://www.rfc-editor.org/rfc/rfc1034.html#section-4.2.1)). For example, a delegation named `apps` in the zone `example.com` delegates `apps.example.com`.
 
 - `zone` (DNSZone): The parent zone that contains the zone cut.
-- `name` (string): The owner name of the zone cut, relative to the zone, e.g. `apps`. An absolute name such as `apps.example.com.` is stored relative to the zone. The zone apex (`@`) cannot be delegated.
+- `name` (string): The owner name of the zone cut, relative to the zone, e.g. `apps`. An absolute name such as `apps.example.com.` is stored relative to the zone. The zone apex (`@`) cannot be delegated, and names are unique within a zone ignoring letter case.
 - `description` (string): Description of the delegation.
 
 A delegation stores no name server data. Its name servers and glue are ordinary records in the parent zone:
@@ -42,7 +42,7 @@ Each name server of a delegation is classified by where its name sits relative t
 | Sibling domain | `ns.example.com` | The parent zone's own A/AAAA records, which also serve as glue ([RFC 9471 §2.2](https://www.rfc-editor.org/rfc/rfc9471.html#section-2.2)). |
 | Out-of-bailiwick | `ns2.other.net` | The zone that contains the name. The parent zone does not carry these addresses ([RFC 2181 §5.4.1](https://www.rfc-editor.org/rfc/rfc2181.html#section-5.4.1)). |
 
-The delegation detail page lists each name server with its class and the addresses known in Nautobot. For an out-of-bailiwick name server, the addresses come from the zone in the same DNS view that contains the name, if there is one. An in-domain name server without glue shows "No glue", with links that open the A or AAAA record form already filled in with the parent zone and the name server's owner name.
+The delegation detail page shows only the records and zones the user has permission to view. It lists each name server with its class and the addresses known in Nautobot. For an out-of-bailiwick name server, the addresses come from the zone in the same DNS view that contains the name, if there is one. An in-domain name server without glue shows "No glue", with links, for users who may add records, that open the A or AAAA record form already filled in with the parent zone and the name server's owner name.
 
 The **Glue A Records** and **Glue AAAA Records** panels list the parent zone's address records at the names of the delegation's in-domain and sibling name servers, so they can be opened, edited or deleted from the delegation. Each panel is shown only when it has records.
 
