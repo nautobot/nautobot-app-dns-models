@@ -263,6 +263,7 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                 table_class=DNSDelegationTable,
                 table_title="Delegations",
                 exclude_columns=["zone"],
+                select_related_fields=["zone"],
                 max_display_count=5,
             ),
             ObjectsTablePanel(
@@ -426,8 +427,11 @@ class GlueRecordsTablePanel(ObjectsTablePanel):
     """A table of a delegation's glue records, shown only when there are some."""
 
     def should_render(self, context):
-        """Render only when the delegation has glue records of this panel's type."""
-        return getattr(get_obj_from_context(context), self.table_attribute).exists()
+        """Render only when the delegation has glue records of this panel's type that the user may view."""
+        if not super().should_render(context):
+            return False
+        glue_records = getattr(get_obj_from_context(context), self.table_attribute)
+        return glue_records.restrict(context["request"].user, "view").exists()
 
 
 class DNSDelegationUIViewSet(views.NautobotUIViewSet):
@@ -503,21 +507,24 @@ class DNSDelegationUIViewSet(views.NautobotUIViewSet):
         """Add the delegated domain and a per-name-server summary for the detail view."""
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve" and instance is not None:
+            user = request.user
             context["delegated_domain"] = {
                 "FQDN": instance.get_fqdn(),
-                "Child zone": instance.get_child_zone(),
+                "Child zone": instance.get_child_zone(user=user),
             }
             context["name_servers"] = [
-                self._name_server_row(instance, ns_record.server)
-                for ns_record in instance.ns_records.order_by("server")
+                self._name_server_row(instance, ns_record.server, user)
+                for ns_record in instance.ns_records.restrict(user, "view").order_by("server")
             ]
         return context
 
     @staticmethod
-    def _name_server_row(delegation, server):
-        """Summarize one name server; an in-domain server without glue gets links to add it."""
+    def _name_server_row(delegation, server, user):
+        """Summarize one name server; an in-domain server without glue gets links to add it, if the user may."""
         bailiwick = delegation.classify_name_server(server)
-        addresses = ", ".join(str(record.ip_address.host) for record in delegation.get_name_server_addresses(server))
+        addresses = ", ".join(
+            str(record.ip_address.host) for record in delegation.get_name_server_addresses(server, user=user)
+        )
         if not addresses and bailiwick == NameServerBailiwickChoices.IN_DOMAIN:
             query = urlencode(
                 {
@@ -526,13 +533,11 @@ class DNSDelegationUIViewSet(views.NautobotUIViewSet):
                     "return_url": delegation.get_absolute_url(),
                 }
             )
-            addresses = format_html(
-                'No glue · <a href="{}?{}">Add A</a> · <a href="{}?{}">Add AAAA</a>',
-                reverse("plugins:nautobot_dns_models:arecord_add"),
-                query,
-                reverse("plugins:nautobot_dns_models:aaaarecord_add"),
-                query,
-            )
+            addresses = "No glue"
+            for label, model_name in (("Add A", "arecord"), ("Add AAAA", "aaaarecord")):
+                if user.has_perm(f"nautobot_dns_models.add_{model_name}"):
+                    url = reverse(f"plugins:nautobot_dns_models:{model_name}_add")
+                    addresses = format_html('{} · <a href="{}?{}">{}</a>', addresses, url, query, label)
         return {
             "server": server,
             "bailiwick": NameServerBailiwickChoices.as_dict()[bailiwick],
