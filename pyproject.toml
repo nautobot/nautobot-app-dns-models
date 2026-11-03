@@ -13,7 +13,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -28,7 +27,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.15"
+python = ">=3.11,<3.15"
 # Used for local development
 nautobot = ">=3.1.0,<4.0.0"
 
@@ -53,7 +52,6 @@ djlint = ">=1.36.4,<2.0.0"
 djhtml = ">=3.0.8,<4.0.0"
 snakeviz = "^2.2.0"
 gitpython = "^3.1.41"
-tomli = { version = "*", markers = "python_version < '3.11'" }  # tomli is included in the stdlib as of Python 3.11
 
 [tool.poetry.group.docs.dependencies]
 # Render custom markdown for version added/changed/remove notes
@@ -105,7 +103,7 @@ notes = """,
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = [
