@@ -1,19 +1,25 @@
 """Unit tests for views."""
 
+import re
+
 from constance import config as constance_config
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 from django.urls import reverse
-from nautobot.apps.testing import ViewTestCases
+from nautobot.apps.testing import TestCase, ViewTestCases
 from nautobot.core.testing.utils import extract_page_body
 from nautobot.extras.models import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from netutils.ip import ipaddress_address
 
+from nautobot_dns_models.choices import DNSZoneTypeChoices
+from nautobot_dns_models.forms import DNSZoneBulkEditForm
 from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSRecord,
     DNSRegistrar,
     DNSView,
     DNSZone,
@@ -23,6 +29,7 @@ from nautobot_dns_models.models import (
     SRVRecord,
     TXTRecord,
 )
+from nautobot_dns_models.tests.test_models import create_zone
 
 User = get_user_model()
 
@@ -171,6 +178,7 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         dns_view = DNSView.objects.get(name="Default")
         cls.form_data = {
             "name": "Test 1",
+            "type": DNSZoneTypeChoices.TYPE_PRIMARY,
             "dns_view": dns_view.id,
             "ttl": 3600,
             "description": "Initial model",
@@ -196,6 +204,112 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             # DNSZone.soa_rname accepts a DNS-style mailbox, not only an email address
             "soa_rname": "admin.example.com",
         }
+
+
+@override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+class ZoneDetailViewByZoneTypeTest(TestCase):
+    """Tests for the panels and buttons a zone's detail page offers, which vary by zone type."""
+
+    RECORD_PANELS = frozenset(
+        model._meta.verbose_name_plural.upper() for model in apps.get_models() if issubclass(model, DNSRecord)
+    )
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.catalog_zone = create_zone("catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
+        cls.primary_zone = create_zone("primary.example")
+        cls.primary_zone_record = TXTRecord(name="txt", text="a user record", zone=cls.primary_zone)
+        cls.primary_zone_record.validated_save()
+
+    def test_primary_zone_offers_every_record_panel(self):
+        """An ordinary zone's detail page lists a panel for every record type."""
+        self.assertLessEqual(self.RECORD_PANELS, self._panel_headings(self.primary_zone))
+
+    def test_catalog_zone_keeps_only_the_record_panels_it_has_records_for(self):
+        """A catalog zone lists only the NS and TXT panels, the record types it holds."""
+        self.assertEqual(self.RECORD_PANELS & self._panel_headings(self.catalog_zone), {"NS RECORDS", "TXT RECORDS"})
+
+    def test_catalog_zone_shows_the_version_record(self):
+        """A catalog zone links the schema version TXT it auto-creates (RFC 9432 §4.2.1)."""
+        record = TXTRecord.objects.get(zone=self.catalog_zone)
+        self.assertIn(record.get_absolute_url(), self._detail(self.catalog_zone))
+
+    def test_catalog_zone_shows_the_apex_ns_record(self):
+        """A catalog zone links the apex NS record it auto-creates (RFC 9432 §4)."""
+        record = NSRecord.objects.get(zone=self.catalog_zone)
+        self.assertIn(record.get_absolute_url(), self._detail(self.catalog_zone))
+
+    def test_catalog_zone_offers_no_write_controls_for_the_version_record(self):
+        """With `change_txtrecord`, the version TXT still renders no edit link."""
+        self.add_permissions("nautobot_dns_models.change_txtrecord")
+        record = TXTRecord.objects.get(zone=self.catalog_zone)
+        url = reverse("plugins:nautobot_dns_models:txtrecord_edit", args=(record.pk,))
+        self.assertNotIn(url, self._detail(self.catalog_zone))
+
+    def test_catalog_zone_offers_no_write_controls_for_the_apex_ns_record(self):
+        """With `change_nsrecord`, the apex NS still renders no edit link."""
+        self.add_permissions("nautobot_dns_models.change_nsrecord")
+        record = NSRecord.objects.get(zone=self.catalog_zone)
+        url = reverse("plugins:nautobot_dns_models:nsrecord_edit", args=(record.pk,))
+        self.assertNotIn(url, self._detail(self.catalog_zone))
+
+    def test_primary_zone_keeps_write_controls_for_its_records(self):
+        """With `change_txtrecord`, an ordinary zone's TXT record still renders its edit link."""
+        self.add_permissions("nautobot_dns_models.change_txtrecord")
+        url = reverse("plugins:nautobot_dns_models:txtrecord_edit", args=(self.primary_zone_record.pk,))
+        self.assertIn(url, self._detail(self.primary_zone))
+
+    def test_catalog_zone_offers_no_add_button_for_records(self):
+        """With `add_txtrecord`, a catalog zone's TXT panel renders no Add button."""
+        self.add_permissions("nautobot_dns_models.add_txtrecord")
+        url = reverse("plugins:nautobot_dns_models:txtrecord_add")
+        self.assertNotIn(url, self._detail(self.catalog_zone))
+
+    def test_primary_zone_keeps_the_add_button_on_its_record_panels(self):
+        """With `add_txtrecord`, an ordinary zone's TXT panel still renders its Add button."""
+        self.add_permissions("nautobot_dns_models.add_txtrecord")
+        url = reverse("plugins:nautobot_dns_models:txtrecord_add")
+        self.assertIn(url, self._detail(self.primary_zone))
+
+    def test_catalog_zone_hides_the_add_records_menu(self):
+        """With `add_arecord`, a catalog zone renders no Add Records dropdown."""
+        self.add_permissions("nautobot_dns_models.change_dnszone", "nautobot_dns_models.add_arecord")
+        self.assertNotIn("Add Records", self._detail(self.catalog_zone))
+
+    def test_primary_zone_keeps_the_add_records_menu(self):
+        """With `add_arecord`, an ordinary zone still renders the Add Records dropdown."""
+        self.add_permissions("nautobot_dns_models.change_dnszone", "nautobot_dns_models.add_arecord")
+        self.assertIn("Add Records", self._detail(self.primary_zone))
+
+    def test_catalog_zone_has_no_record_statistics(self):
+        """A catalog zone renders no Records Statistics panel, holding no user records to count."""
+        self.assertNotIn("RECORDS STATISTICS", self._panel_headings(self.catalog_zone))
+
+    def test_catalog_zone_has_no_registration_panel(self):
+        """A catalog zone renders no Registration panel, not being a registered name."""
+        self.assertNotIn("REGISTRATION", self._panel_headings(self.catalog_zone))
+
+    def test_primary_zone_keeps_the_registration_panel(self):
+        """An ordinary zone still renders the Registration panel."""
+        self.assertIn("REGISTRATION", self._panel_headings(self.primary_zone))
+
+    def test_primary_zone_keeps_record_statistics(self):
+        """An ordinary zone still renders the Records Statistics panel."""
+        self.assertIn("RECORDS STATISTICS", self._panel_headings(self.primary_zone))
+
+    def _detail(self, zone):
+        """Return the rendered body of `zone`'s detail page."""
+        response = self.client.get(zone.get_absolute_url())
+        self.assertHttpStatus(response, 200)
+        return extract_page_body(response.content.decode(response.charset))
+
+    def _panel_headings(self, zone):
+        """Return the panel headings on `zone`'s detail page, upper-cased since Nautobot's own casing varies.
+
+        Headings rather than raw page text: a hidden panel's title survives elsewhere in the markup, in
+        the table configuration drawer and the navigation menu, so a substring search sees it either way.
+        """
+        return {label.upper() for label in re.findall(r"<strong>([^<]*)</strong>", self._detail(zone))}
 
 
 class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
@@ -739,3 +853,66 @@ class SRVRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}
+
+
+class ZoneBulkEditPTRControlTest(TestCase):
+    """Tests that a bulk edit withdraws the PTR control once a catalog zone is among the selection.
+
+    A catalog zone refuses `auto_create_ptr`, and the bulk edit job saves each object in turn outside
+    a transaction, so offering the control would write the primary zones and then fail on the first
+    catalog zone.
+    """
+
+    WITHDRAWN = "Catalog zones cannot enable this, and the selection includes one."
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.catalog_zone = create_zone("bulk-catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
+        cls.primary_zones = [create_zone(f"bulk-primary-{index}.example") for index in range(2)]
+        cls.bulk_edit_path = reverse("plugins:nautobot_dns_models:dnszone_bulk_edit")
+
+    def setUp(self):
+        """Grant the permissions a bulk edit needs before its selection is judged."""
+        super().setUp()
+        self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.change_dnszone")
+
+    def test_a_selection_of_primary_zones_offers_the_control(self):
+        """A selection of primary zones renders the `auto_create_ptr` control."""
+        content = self._bulk_edit_form(pk_list=[zone.pk for zone in self.primary_zones])
+        self.assertIn('name="auto_create_ptr"', content)
+        self.assertNotIn(self.WITHDRAWN, content)
+
+    def test_a_selection_holding_a_catalog_zone_withdraws_the_control(self):
+        """One catalog zone among primary zones withdraws the control for the whole selection."""
+        content = self._bulk_edit_form(pk_list=[self.primary_zones[0].pk, self.catalog_zone.pk])
+        self.assertIn(self.WITHDRAWN, content)
+
+    def test_select_all_withdraws_the_control_when_it_includes_a_catalog_zone(self):
+        """An unfiltered "select all" withdraws the control, resolving to every zone including the catalog zone."""
+        self.assertIn(self.WITHDRAWN, self._bulk_edit_form(edit_all=True))
+
+    def test_select_all_keeps_the_control_when_filtered_to_primary_zones(self):
+        """With `?type=primary`, "select all" resolves to primary zones alone and keeps the control."""
+        content = self._bulk_edit_form(edit_all=True, query=f"?type={DNSZoneTypeChoices.TYPE_PRIMARY}")
+        self.assertIn('name="auto_create_ptr"', content)
+        self.assertNotIn(self.WITHDRAWN, content)
+
+    def test_a_withdrawn_control_discards_a_submitted_value(self):
+        """A disabled `auto_create_ptr` cleans to None, so a submitted value never reaches the job."""
+        form = DNSZoneBulkEditForm(
+            DNSZone,
+            {"pk": [str(zone.pk) for zone in self.primary_zones], "auto_create_ptr": "True"},
+            selection=DNSZone.objects.filter(pk__in=[self.primary_zones[0].pk, self.catalog_zone.pk]),
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertIsNone(form.cleaned_data["auto_create_ptr"])
+
+    def _bulk_edit_form(self, pk_list=None, edit_all=False, query=""):
+        """Return the bulk edit page rendered for a selection, named by pk or claimed wholesale."""
+        data = {"pk": [str(pk) for pk in pk_list or []]}
+        if edit_all:
+            data["_all"] = "on"
+
+        response = self.client.post(f"{self.bulk_edit_path}{query}", data)
+        self.assertHttpStatus(response, 200)
+        return extract_page_body(response.content.decode(response.charset))

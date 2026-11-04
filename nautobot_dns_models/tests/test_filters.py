@@ -8,6 +8,7 @@ from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from nautobot.tenancy.models import Tenant, TenantGroup
 
+from nautobot_dns_models.choices import DNSZoneTypeChoices
 from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
@@ -366,6 +367,16 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
             soa_expire=1209200,
             soa_minimum=7200,
         )
+        # Named so it stays out of the "Test"/"zone" search assertions below.
+        cls.catalog_zone = DNSZone.objects.create(
+            name="Catalog One",
+            filename="catalog1.conf",
+            type=DNSZoneTypeChoices.TYPE_CATALOG,
+            tenant=cls.tenant2,
+            description="Catalog one",
+            soa_mname="ns1.catalog.example",
+            soa_rname="admin.catalog.example",
+        )
 
     def test_single_name(self):
         """Test using Q search with name of DNSZone."""
@@ -382,6 +393,15 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
         params = {"name": "wrong-name"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 
+    def test_zone_type(self):
+        """Test filtering by `type`.
+
+        `type` is not covered by `generic_filter_tests` because those require at least three
+        distinct values and only two zone types exist.
+        """
+        self.assertEqual(self.filterset({"type": [DNSZoneTypeChoices.TYPE_CATALOG]}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"type": [DNSZoneTypeChoices.TYPE_PRIMARY]}, self.queryset).qs.count(), 3)
+
     def test_search(self):
         """Test filtering by Q search value."""
         self.assertEqual(self.filterset({"q": "Test One"}, self.queryset).qs.count(), 1)
@@ -391,7 +411,7 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
 
     def test_enabled_filter(self):
         """enabled filter should match only zones with the given enabled value."""
-        self.assertEqual(self.filterset({"enabled": "true"}, self.queryset).qs.count(), 2)
+        self.assertEqual(self.filterset({"enabled": "true"}, self.queryset).qs.count(), 3)
         self.assertEqual(self.filterset({"enabled": "false"}, self.queryset).qs.count(), 1)
 
 

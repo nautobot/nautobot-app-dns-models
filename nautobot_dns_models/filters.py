@@ -10,6 +10,7 @@ from nautobot.core.filters import MultiValueCharFilter, NaturalKeyOrPKMultipleCh
 from netaddr import IPAddress as NetIPAddress
 
 from nautobot_dns_models import models
+from nautobot_dns_models.choices import DNSZoneTypeChoices
 
 EXPIRATION_DATE_INPUT_FORMATS = ("%Y-%m-%d",)
 
@@ -87,6 +88,13 @@ class DNSRegistrationFilterSet(NautobotFilterSet):
             "dns_zone__name": "icontains",
             "status__name": "icontains",
         }
+    )
+
+    dns_zone = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=models.DNSZone.objects.all(),
+        query_params={"type__n": DNSZoneTypeChoices.TYPE_CATALOG},
+        to_field_name="name",
+        label="Zone (name or ID)",
     )
 
     class Meta:

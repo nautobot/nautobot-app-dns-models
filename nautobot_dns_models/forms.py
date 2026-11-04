@@ -10,6 +10,7 @@ from nautobot.apps.forms import (
     NautobotFilterForm,
     NautobotModelForm,
     StaticSelect2,
+    StaticSelect2Multiple,
     TagsBulkEditFormMixin,
 )
 
@@ -22,6 +23,7 @@ from nautobot.tenancy.forms import TenancyFilterForm, TenancyForm
 from nautobot.tenancy.models import Tenant
 
 from nautobot_dns_models import models
+from nautobot_dns_models.choices import DNSZoneTypeChoices
 
 EXPIRATION_DATE_INPUT_FORMATS = ("%Y-%m-%d",)
 
@@ -148,6 +150,14 @@ class DNSRegistrationForm(NautobotModelForm):
         widget=DatePicker(),
         input_formats=EXPIRATION_DATE_INPUT_FORMATS,
     )
+    dns_zone = DynamicModelChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        required=True,
+        query_params={
+            "type__n": DNSZoneTypeChoices.TYPE_CATALOG,
+        },
+        label="Zone",
+    )
 
     class Meta:
         """Meta attributes."""
@@ -167,6 +177,10 @@ class DNSRegistrationBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     dns_zone = DynamicModelChoiceField(
         queryset=models.DNSZone.objects.all(),
         required=False,
+        query_params={
+            "type__n": DNSZoneTypeChoices.TYPE_CATALOG,
+        },
+        label="Zone",
     )
     status = DynamicModelChoiceField(
         queryset=Status.objects.all(),
@@ -210,6 +224,9 @@ class DNSRegistrationFilterForm(NautobotFilterForm):
     dns_zone = DynamicModelChoiceField(
         queryset=models.DNSZone.objects.all(),
         required=False,
+        query_params={
+            "type__n": DNSZoneTypeChoices.TYPE_CATALOG,
+        },
         label="Zone",
     )
     status = DynamicModelChoiceField(
@@ -263,11 +280,36 @@ class DNSZoneForm(EnabledBeforeDescriptionMixin, NautobotModelForm, TenancyForm)
         label="View",
     )
 
+    field_order = ["name", "type", "dns_view", "auto_create_ptr"]
+
     class Meta:
         """Meta attributes."""
 
         model = models.DNSZone
         fields = "__all__"
+        widgets = {"type": StaticSelect2()}
+
+    class Media:
+        """Load create-time toggling of the controls a catalog zone cannot use."""
+
+        js = ("nautobot_dns_models/js/dns_zone_form.js",)
+
+    def __init__(self, *args, **kwargs):
+        """Configure fields according to the stored zone state."""
+        super().__init__(*args, **kwargs)
+
+        # New zones keep their create-time controls editable.
+        if not self.instance.present_in_database:
+            return
+
+        # Every stored zone keeps its type fixed.
+        self.fields["type"].disabled = True
+        self.fields["type"].help_text = "Zone type cannot be changed after creation."
+
+        # Catalog zones cannot enable automatic PTR creation.
+        if self.instance.is_catalog_zone:
+            self.fields["auto_create_ptr"].disabled = True
+            self.fields["auto_create_ptr"].help_text = "Catalog zones cannot enable automatic PTR creation."
 
 
 class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -346,6 +388,16 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
             "tenant",
         ]
 
+    def __init__(self, *args, selection=None, **kwargs):
+        """Take the zones this edit will reach, which the posted zones do not cover under "select all"."""
+        super().__init__(*args, **kwargs)
+
+        # A catalog zone refuses `auto_create_ptr`, and one refusal rolls the whole batch back.
+        if selection is not None and selection.filter(type=DNSZoneTypeChoices.TYPE_CATALOG).exists():
+            auto_create_ptr = self.fields["auto_create_ptr"]
+            auto_create_ptr.disabled = True
+            auto_create_ptr.help_text = "Catalog zones cannot enable this, and the selection includes one."
+
 
 class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
     """Filter form to filter searches."""
@@ -356,6 +408,11 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
         help_text="Search within Name, Filename, SOA MNAME, and SOA RNAME.",
     )
     name = forms.CharField(required=False, label="Name")
+    type = forms.MultipleChoiceField(
+        required=False,
+        choices=DNSZoneTypeChoices,
+        widget=StaticSelect2Multiple(),
+    )
     enabled = forms.NullBooleanField(
         required=False,
         widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
@@ -366,6 +423,7 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
     fields = [
         "q",
         "name",
+        "type",
         "enabled",
         "filename",
     ]

@@ -1,5 +1,7 @@
 """DNS Plugin Views."""
 
+from functools import partial
+
 from nautobot.apps import views
 from nautobot.apps.ui import (
     ButtonColorChoices,
@@ -9,7 +11,12 @@ from nautobot.apps.ui import (
     SectionChoices,
     StatsPanel,
 )
+from nautobot.apps.views import get_obj_from_context
 from nautobot.core.ui import object_detail
+
+# Not re-exported through `nautobot.apps`, but this is the helper core's own bulk edit view and job
+# use to resolve a selection: pk_list, "select all" with its filters, saved views, and permissions.
+from nautobot.core.views.utils import get_bulk_queryset_from_view
 from nautobot.ipam.tables import PrefixTable
 
 from nautobot_dns_models.api.serializers import (
@@ -26,6 +33,7 @@ from nautobot_dns_models.api.serializers import (
     SRVRecordSerializer,
     TXTRecordSerializer,
 )
+from nautobot_dns_models.choices import DNSZoneTypeChoices
 from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
@@ -106,6 +114,97 @@ from nautobot_dns_models.tables import (
     SRVRecordTable,
     TXTRecordTable,
 )
+
+
+class ZoneRecordsTablePanel(ObjectsTablePanel):
+    """A table of one record type on the zone detail page, shown according to the zone's type."""
+
+    def __init__(self, **kwargs):
+        """Instantiate a zone-records panel.
+
+        Keyword Args:
+            system_managed (bool): Show this panel on catalog zones only, without write controls.
+                Defaults to False, which shows it on zones whose type lets users manage records.
+            **kwargs: Passed to `ObjectsTablePanel`.
+        """
+        self.system_managed = kwargs.pop("system_managed", False)
+        table_class = kwargs.get("table_class") or self.table_class
+        kwargs.setdefault("table_title", table_class.Meta.model._meta.verbose_name_plural)
+        kwargs.setdefault("table_filter", "zone")
+        kwargs.setdefault("max_display_count", 5)
+
+        if self.system_managed:
+            kwargs.setdefault("add_button_route", None)
+            kwargs.setdefault("exclude_columns", ["zone", "actions"])
+        else:
+            kwargs.setdefault("exclude_columns", ["zone"])
+
+        super().__init__(**kwargs)
+
+    def should_render(self, context):
+        """Render a user-managed panel where users manage records, or a system panel on a catalog."""
+        if not super().should_render(context):
+            return False
+
+        zone = get_obj_from_context(context)
+        if zone is None:
+            return False
+
+        if self.system_managed:
+            return zone.is_catalog_zone
+
+        return zone.type in DNSZoneTypeChoices.USER_RECORD_ZONE_TYPES
+
+
+class ZoneRegistrationPanel(ObjectsTablePanel):
+    """The zone's registrar row, omitted on catalog zones, which are not registered names."""
+
+    def should_render(self, context):
+        """Render only for zones that are not catalogs."""
+        if not super().should_render(context):
+            return False
+
+        zone = get_obj_from_context(context)
+        return zone is not None and not zone.is_catalog_zone
+
+
+class RecordStatsPanel(StatsPanel):
+    """Record counts for a zone that holds user-managed records."""
+
+    def should_render(self, context):
+        """Render only where the zone permits users to manage records."""
+        zone = get_obj_from_context(context)
+        return zone is not None and zone.type in DNSZoneTypeChoices.USER_RECORD_ZONE_TYPES
+
+
+class AddRecordButton(object_detail.Button):
+    """An Add Records menu entry, offered only on zones whose type lets users manage records."""
+
+    def __init__(self, *, record_model, **kwargs):
+        """Bind the record type this entry creates."""
+        self.record_model = record_model
+        kwargs.setdefault("label", record_model._meta.verbose_name)
+        super().__init__(**kwargs)
+
+    def should_render(self, context):
+        """Render only where the zone's type lets users manage records."""
+        if not super().should_render(context):
+            return False
+
+        zone = get_obj_from_context(context)
+        return zone is not None and zone.type in DNSZoneTypeChoices.USER_RECORD_ZONE_TYPES
+
+
+class AddRecordsDropdownButton(object_detail.DropdownButton):
+    """The Add Records menu, hidden when the zone's type leaves it with nothing to offer."""
+
+    def should_render(self, context):
+        """Render only while at least one record type remains on offer."""
+        if not super().should_render(context):
+            return False
+
+        # `DropdownButton` filters its children but still draws itself, even with none left.
+        return any(child.should_render(context) for child in self.children)
 
 
 class DNSViewUIViewSet(views.NautobotUIViewSet):
@@ -222,7 +321,7 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                 section=SectionChoices.LEFT_HALF,
                 fields="__all__",
             ),
-            ObjectsTablePanel(
+            ZoneRegistrationPanel(
                 weight=200,
                 section=SectionChoices.LEFT_HALF,
                 table_filter="dns_zone",
@@ -231,17 +330,26 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                 include_columns=["dns_registrar", "status", "expiration_date", "auto_renewal", "actions"],
                 max_display_count=1,
             ),
-            ObjectsTablePanel(
+            # Same weight: only one of these renders, so they occupy the same left-pane slot.
+            ZoneRecordsTablePanel(
                 weight=300,
                 section=SectionChoices.LEFT_HALF,
-                table_filter="zone",
                 table_class=NSRecordTable,
-                table_title="NS Records",
-                exclude_columns=["zone"],
-                max_display_count=5,
+            ),
+            ZoneRecordsTablePanel(
+                weight=300,
+                section=SectionChoices.LEFT_HALF,
+                table_class=NSRecordTable,
+                system_managed=True,
+            ),
+            ZoneRecordsTablePanel(
+                weight=400,
+                section=SectionChoices.LEFT_HALF,
+                table_class=TXTRecordTable,
+                system_managed=True,
             ),
             # Right pane
-            StatsPanel(
+            RecordStatsPanel(
                 weight=10,
                 section=SectionChoices.RIGHT_HALF,
                 label="Records Statistics",
@@ -256,130 +364,112 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                     TXTRecord,
                 ],
             ),
-            ObjectsTablePanel(
+            ZoneRecordsTablePanel(
                 weight=100,
                 section=SectionChoices.RIGHT_HALF,
-                table_filter="zone",
                 table_class=ARecordTable,
-                table_title="A Records",
-                exclude_columns=["zone"],
-                max_display_count=5,
             ),
-            ObjectsTablePanel(
+            ZoneRecordsTablePanel(
                 weight=200,
                 section=SectionChoices.RIGHT_HALF,
-                table_filter="zone",
                 table_class=AAAARecordTable,
-                table_title="AAAA Records",
-                exclude_columns=["zone"],
-                max_display_count=5,
             ),
-            ObjectsTablePanel(
+            ZoneRecordsTablePanel(
                 weight=300,
                 section=SectionChoices.RIGHT_HALF,
-                table_filter="zone",
                 table_class=CNAMERecordTable,
-                table_title="CNAME Records",
-                exclude_columns=["zone"],
-                max_display_count=5,
             ),
-            ObjectsTablePanel(
+            ZoneRecordsTablePanel(
                 weight=400,
                 section=SectionChoices.RIGHT_HALF,
-                table_filter="zone",
                 table_class=MXRecordTable,
-                table_title="MX Records",
-                exclude_columns=["zone"],
-                max_display_count=5,
             ),
-            ObjectsTablePanel(
+            ZoneRecordsTablePanel(
                 weight=500,
                 section=SectionChoices.RIGHT_HALF,
-                table_filter="zone",
                 table_class=PTRRecordTable,
-                table_title="PTR Records",
-                exclude_columns=["zone"],
-                max_display_count=5,
             ),
-            ObjectsTablePanel(
+            ZoneRecordsTablePanel(
                 weight=600,
                 section=SectionChoices.RIGHT_HALF,
-                table_filter="zone",
                 table_class=SRVRecordTable,
-                table_title="SRV Records",
-                exclude_columns=["zone"],
-                max_display_count=5,
             ),
-            ObjectsTablePanel(
+            ZoneRecordsTablePanel(
                 weight=700,
                 section=SectionChoices.RIGHT_HALF,
-                table_filter="zone",
                 table_class=TXTRecordTable,
-                table_title="TXT Records",
-                exclude_columns=["zone"],
-                max_display_count=5,
             ),
         ],
         extra_buttons=[
-            object_detail.DropdownButton(
+            AddRecordsDropdownButton(
                 weight=100,
                 color=ButtonColorChoices.BLUE,
                 label="Add Records",
                 icon="mdi-plus-thick",
                 required_permissions=["nautobot_dns_models.change_dnszone"],
                 children=(
-                    object_detail.Button(
+                    AddRecordButton(
                         weight=100,
+                        record_model=ARecord,
                         link_name="plugins:nautobot_dns_models:zone_a_records_add",
-                        label="A Record",
                         required_permissions=["nautobot_dns_models.add_arecord"],
                     ),
-                    object_detail.Button(
+                    AddRecordButton(
                         weight=200,
+                        record_model=AAAARecord,
                         link_name="plugins:nautobot_dns_models:zone_aaaa_records_add",
-                        label="AAAA Record",
                         required_permissions=["nautobot_dns_models.add_aaaarecord"],
                     ),
-                    object_detail.Button(
+                    AddRecordButton(
                         weight=300,
+                        record_model=CNAMERecord,
                         link_name="plugins:nautobot_dns_models:zone_cname_records_add",
-                        label="CNAME Record",
                         required_permissions=["nautobot_dns_models.add_cnamerecord"],
                     ),
-                    object_detail.Button(
+                    AddRecordButton(
                         weight=400,
+                        record_model=MXRecord,
                         link_name="plugins:nautobot_dns_models:zone_mx_records_add",
-                        label="MX Record",
                         required_permissions=["nautobot_dns_models.add_mxrecord"],
                     ),
-                    object_detail.Button(
+                    AddRecordButton(
                         weight=500,
+                        record_model=NSRecord,
                         link_name="plugins:nautobot_dns_models:zone_ns_records_add",
-                        label="NS Record",
                         required_permissions=["nautobot_dns_models.add_nsrecord"],
                     ),
-                    object_detail.Button(
+                    AddRecordButton(
                         weight=600,
+                        record_model=PTRRecord,
                         link_name="plugins:nautobot_dns_models:zone_ptr_records_add",
-                        label="PTR Record",
                         required_permissions=["nautobot_dns_models.add_ptrrecord"],
                     ),
-                    object_detail.Button(
+                    AddRecordButton(
                         weight=700,
+                        record_model=SRVRecord,
                         link_name="plugins:nautobot_dns_models:zone_srv_records_add",
-                        label="SRV Record",
                         required_permissions=["nautobot_dns_models.add_srvrecord"],
                     ),
-                    object_detail.Button(
+                    AddRecordButton(
                         weight=800,
+                        record_model=TXTRecord,
                         link_name="plugins:nautobot_dns_models:zone_txt_records_add",
-                        label="TXT Record",
                         required_permissions=["nautobot_dns_models.add_txtrecord"],
                     ),
                 ),
             ),
         ],
     )
+
+    def get_form_class(self, **kwargs):
+        """Bind the bulk edit form to the zones it will reach."""
+        if self.action == "bulk_update":
+            # Core builds the form from the posted zones, which under "select all" are only those on
+            # the page that submitted, while the job it queues edits everything the filter matched.
+            selection = get_bulk_queryset_from_view(user=self.request.user, action="change", **self.key_params)
+            return partial(super().get_form_class(**kwargs), selection=selection)
+
+        return super().get_form_class(**kwargs)
 
 
 class NSRecordUIViewSet(views.NautobotUIViewSet):

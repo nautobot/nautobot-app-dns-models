@@ -1,18 +1,18 @@
 """Unit tests for nautobot_dns_models."""
 # pylint: disable=too-many-lines
 
-# pylint: disable=too-many-lines
-
 from datetime import date
 
 from constance.test import override_config
 from django.contrib.contenttypes.models import ContentType
+from django.test import override_settings
 from django.urls import reverse
 from nautobot.apps.testing import APIViewTestCases
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from rest_framework import status
 
+from nautobot_dns_models.choices import DNSZoneTypeChoices
 from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
@@ -30,7 +30,7 @@ from nautobot_dns_models.models import (
 )
 
 
-def _create_zone(name, dns_view=None):
+def _create_zone(name, dns_view=None, **kwargs):
     zone_data = {
         "name": name,
         "filename": f"{name}.zone",
@@ -39,6 +39,7 @@ def _create_zone(name, dns_view=None):
     }
     if dns_view is not None:
         zone_data["dns_view"] = dns_view
+    zone_data.update(kwargs)
 
     return DNSZone.objects.create(
         **zone_data,
@@ -415,6 +416,7 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
         "soa_mname",
         "soa_rname",
     ]
+    choices_fields = ["type"]
 
     @classmethod
     def setUpTestData(cls):
@@ -574,6 +576,70 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
         zone = _create_zone(name="helper-default.example")
 
         self.assertEqual(zone.dns_view, expected_default_view)
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_create_defaults_to_primary_zone_type(self):
+        """Omitting type on create yields a primary zone."""
+        self.add_permissions("nautobot_dns_models.add_dnszone")
+        response = self.client.post(
+            self._get_list_url(),
+            {
+                "name": "api-default-type.example",
+                "dns_view": DNSView.objects.get(name="Default").id,
+                "filename": "api-default-type.zone",
+                "soa_mname": "ns1.api-default-type.example",
+                "soa_rname": "admin@api-default-type.example",
+            },
+            format="json",
+            **self.header,
+        )
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["type"], DNSZoneTypeChoices.TYPE_PRIMARY)
+        self.assertEqual(
+            DNSZone.objects.get(name="api-default-type.example").type,
+            DNSZoneTypeChoices.TYPE_PRIMARY,
+        )
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_create_rejects_auto_create_ptr_on_catalog_zone(self):
+        """The API refuses auto_create_ptr on a catalog zone rather than silently dropping it."""
+        self.add_permissions("nautobot_dns_models.add_dnszone")
+        response = self.client.post(
+            self._get_list_url(),
+            {
+                "name": "api-catalog-ptr.example",
+                "dns_view": DNSView.objects.get(name="Default").id,
+                "filename": "api-catalog-ptr.zone",
+                "soa_mname": "ns1.api-catalog-ptr.example",
+                "soa_rname": "admin@api-catalog-ptr.example",
+                "type": DNSZoneTypeChoices.TYPE_CATALOG,
+                "auto_create_ptr": True,
+            },
+            format="json",
+            **self.header,
+        )
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["auto_create_ptr"][0],
+            "Catalog zones cannot enable automatic PTR creation.",
+        )
+        self.assertFalse(DNSZone.objects.filter(name="api-catalog-ptr.example").exists())
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_patch_rejects_zone_type_change(self):
+        """The API refuses to change type on an existing zone."""
+        self.add_permissions("nautobot_dns_models.change_dnszone")
+        zone = _create_zone(name="api-immutable.example")
+        response = self.client.patch(
+            self._get_detail_url(zone),
+            {"type": DNSZoneTypeChoices.TYPE_CATALOG},
+            format="json",
+            **self.header,
+        )
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["type"][0], "Zone type cannot be changed after creation.")
+        zone.refresh_from_db()
+        self.assertEqual(zone.type, DNSZoneTypeChoices.TYPE_PRIMARY)
 
 
 class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):
@@ -942,6 +1008,35 @@ class TXTRecordAPITestCase(APIViewTestCases.APIViewTestCase):
                 "zone": dns_zone.id,
             },
         ]
+
+    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
+    def test_create_in_catalog_zone_rejected(self):
+        """The REST API refuses a record a user may not create in a catalog zone."""
+        self.add_permissions("nautobot_dns_models.add_txtrecord")
+        catalog_zone = _create_zone("catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
+        response = self.client.post(
+            self._get_list_url(),
+            {"name": "note", "text": "added by hand", "zone": catalog_zone.id},
+            format="json",
+            **self.header,
+        )
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["zone"][0],
+            "Records in a catalog zone are system-managed and cannot be created or edited directly.",
+        )
+        self.assertFalse(TXTRecord.objects.filter(name="note", zone=catalog_zone).exists())
+
+    def test_delete_in_catalog_zone_rejected(self):
+        """The REST API refuses to delete a system-managed catalog record."""
+        self.add_permissions("nautobot_dns_models.delete_txtrecord")
+        catalog_zone = _create_zone("catalog-delete.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
+        record = TXTRecord.objects.get(name="version", zone=catalog_zone)
+
+        response = self.client.delete(self._get_detail_url(record), **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_409_CONFLICT)
+        self.assertTrue(TXTRecord.objects.filter(pk=record.pk).exists())
 
     def _post_txt(self, name, text):
         """POST a TXT record with the given text content."""
