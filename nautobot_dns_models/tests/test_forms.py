@@ -120,6 +120,33 @@ class DNSZoneTest(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("This field is required.", form.errors["name"])
 
+    def test_name_case_variant_in_same_view_fails(self):
+        DNSZone.objects.create(
+            name="development",
+            filename="development.zone",
+            soa_mname="ns1.example.com",
+            soa_rname="admin@example.com",
+        )
+        form = forms.DNSZoneForm(
+            data={
+                "name": "Development",
+                "dns_view": DNSView.objects.get(name="Default").id,
+                "ttl": 3600,
+                "filename": "development.zone",
+                "soa_mname": "ns1.example.com",
+                "soa_rname": "admin@example.com",
+                "soa_refresh": 10800,
+                "soa_retry": 3600,
+                "soa_expire": 604800,
+                "soa_serial": 202,
+                "soa_minimum": 3600,
+            }
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn(
+            "A DNS zone with this name (ignoring letter case) already exists in this view.", form.errors["name"]
+        )
+
     def test_expiration_date_accepts_date_picker_value(self):
         form = forms.DNSZoneForm(
             data={

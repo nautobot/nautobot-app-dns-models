@@ -1,11 +1,13 @@
 """Models for Nautobot DNS Models."""
+# pylint: disable=too-many-lines
 
 import hashlib
 
 from constance import config as constance_config
-from django.core.exceptions import ValidationError
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, validate_email
 from django.db import models
+from django.db.models.functions import Lower
 from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 from nautobot.extras.models import StatusField
@@ -26,6 +28,9 @@ TXT_CHARACTER_STRING_MAX_OCTETS = 255
 # RFC 1035 §3.3.14 defines TXT RDATA as one or more <character-string>; RFC 1035 §4.1.3 bounds the
 # whole RDATA by the 16-bit RDLENGTH field, counting the length octet that prefixes each string.
 TXT_RDATA_MAX_OCTETS = 2**16 - 1
+
+# RFC 1035 §2.3.3 and RFC 4343 §2: domain name comparisons are case-insensitive.
+DNS_ZONE_NAME_UNIQUE_ERROR_CODE = "dns_zone_name_not_unique"
 
 
 def dns_wire_label_length(label):
@@ -448,16 +453,38 @@ class DNSZone(DNSModel):
         verbose_name="Auto-create PTR Records",
     )
 
+    # The case-insensitive UniqueConstraint has no `fields`, so Nautobot cannot derive the natural key from it.
+    natural_key_field_names = ["name", "dns_view"]
+
     class Meta:
         """Meta attributes for DNSZone."""
 
-        unique_together = [["name", "dns_view"]]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                "dns_view",
+                name="nautobot_dns_models_dnszone_name_ci_unique",
+                violation_error_code=DNS_ZONE_NAME_UNIQUE_ERROR_CODE,
+                violation_error_message="A DNS zone with this name (ignoring letter case) already exists in this view.",
+            ),
+        ]
         verbose_name = "DNS Zone"
         verbose_name_plural = "DNS Zones"
 
     def __str__(self):
         """Stringify instance."""
         return f"{self.name} ({self.dns_view})"
+
+    def validate_constraints(self, exclude=None):
+        """Report a zone name that collides with another zone in the same view as an error on `name`."""
+        try:
+            super().validate_constraints(exclude=exclude)
+        except ValidationError as error:
+            errors = error.update_error_dict({})
+            for non_field_error in errors.pop(NON_FIELD_ERRORS, []):
+                field = "name" if non_field_error.code == DNS_ZONE_NAME_UNIQUE_ERROR_CODE else NON_FIELD_ERRORS
+                errors.setdefault(field, []).append(non_field_error)
+            raise ValidationError(errors) from error
 
     def clean(self):
         """Normalize plain DNS-style RNAME mailboxes to email form."""
