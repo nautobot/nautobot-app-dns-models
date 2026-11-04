@@ -58,10 +58,29 @@ The app registers the following [Data Validation Engine](https://docs.nautobot.c
 | DNS Delegation In-Domain Glue | Every in-domain name server has an A or AAAA record in the parent zone. | [RFC 9471 §2.1](https://www.rfc-editor.org/rfc/rfc9471.html#section-2.1) |
 | DNS Delegation Glue Matches Child Zone | When the child zone exists, its own addresses for each in-domain name server match the glue. | [RFC 9471](https://www.rfc-editor.org/rfc/rfc9471.html) |
 | DNS Delegation Name Servers Match Child Zone | When the child zone exists, its apex NS records (`name` `@`) name the same servers as the delegation. | [RFC 1034 §4.2.2](https://www.rfc-editor.org/rfc/rfc1034.html#section-4.2.2) |
-| DNS Zone Delegated From Parent | A zone with a parent zone is delegated from it: the parent has NS records, or a DNS delegation, at the zone's name. | [RFC 1034 §4.2.1](https://www.rfc-editor.org/rfc/rfc1034.html#section-4.2.1) |
+| DNS Zone Delegated From Parent | A zone with a parent zone is delegated from it: the parent has NS records, or a DNS delegation, at the zone's name. Zones delegated by a zone outside Nautobot are not checked; see [Parent zone and delegating zone](#parent-zone-and-delegating-zone). | [RFC 1034 §4.2.1](https://www.rfc-editor.org/rfc/rfc1034.html#section-4.2.1) |
 | *Type* Record Not Below a Zone Cut | A record is not at or below a delegation in its zone. NS records at the cut and A/AAAA records at a delegation's name server names (glue) are exempt. One rule exists per record type. | [RFC 1034 §4.2.1](https://www.rfc-editor.org/rfc/rfc1034.html#section-4.2.1) |
 
 These rules compare several objects, and a result is recorded when the checked object is saved. A result can therefore go stale when a related object changes, for example when glue is added after its delegation was saved. Run the job **Run Registered Data Compliance Rules** to refresh every result.
 
 !!! note
     After upgrading, existing zones that sit below another zone in the same DNS view are reported by "DNS Zone Delegated From Parent" unless the parent zone already has NS records at their name. For example, `test.acme.com` needs an NS record named `test` in `acme.com`.
+
+### Parent zone and delegating zone
+
+A zone's [parent](dnszone.md#zone-hierarchy) is the nearest zone above it in Nautobot. That is not always the zone that delegates it: the delegating zone can be one that is not in Nautobot.
+
+For example, `example.com` delegates `apps.example.com` to a partner, and the partner delegates `dev.apps.example.com` back to you. With `example.com` and `dev.apps.example.com` in Nautobot, and `apps.example.com` only at the partner:
+
+```zone
+$ORIGIN example.com.
+apps      NS  ns1.partner.net.        ; example.com delegates apps.example.com
+
+$ORIGIN apps.example.com.             ; partner's zone, not in Nautobot
+dev       NS  ns1.example.com.        ; partner delegates dev.apps.example.com
+```
+
+- The parent of `dev.apps.example.com` in Nautobot is `example.com`, because `apps.example.com` is not modeled.
+- `dev.apps.example.com` is delegated by `apps.example.com`, not by `example.com`. NS records for `dev.apps` in `example.com` would be wrong: they would sit below the `apps` cut, where "Record Not Below a Zone Cut" reports them.
+
+So "DNS Zone Delegated From Parent" does not report a zone when the parent marks a cut at a name between itself and the zone, here `apps`, with NS records or a DNS delegation. The delegating zone is outside Nautobot, so its NS records cannot be checked. Mark that cut in the parent, as `example.com` does for `apps`, so the rule can tell this case apart from a missing delegation.

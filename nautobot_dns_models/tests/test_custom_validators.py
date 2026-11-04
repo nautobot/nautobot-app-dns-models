@@ -142,6 +142,23 @@ class DNSZoneDelegatedRuleTestCase(DNSComplianceRuleTestCase):
         zone.name = "x.lab.example.net"
         self.assert_compliant(zone, custom_validators.DNSZoneDelegatedRule.name)
 
+    def test_zone_below_another_cut_in_the_parent_is_not_reported(self):
+        """`example.com` delegates `apps` outside Nautobot, which delegates `dev.apps.example.com` back to Nautobot."""
+        NSRecord.objects.create(name="apps", server="ns1.partner.net", zone=self.zone)
+        DNSDelegation(zone=self.zone, name="apps").validated_save()
+        self.assert_compliant(_create_zone("dev.apps.example.com"), custom_validators.DNSZoneDelegatedRule.name)
+
+    def test_zone_below_a_cut_marked_only_by_ns_records_is_not_reported(self):
+        NSRecord.objects.create(name="apps", server="ns1.partner.net", zone=self.zone)
+        self.assert_compliant(_create_zone("dev.apps.example.com"), custom_validators.DNSZoneDelegatedRule.name)
+
+    def test_zone_two_labels_below_the_parent_without_any_cut_is_reported(self):
+        self.assert_not_compliant(
+            _create_zone("dev.apps.example.com"),
+            custom_validators.DNSZoneDelegatedRule.name,
+            "has no NS records at `dev.apps`",
+        )
+
     def test_zone_without_a_parent_is_compliant(self):
         self.assert_compliant(self.zone, custom_validators.DNSZoneDelegatedRule.name)
 
