@@ -79,10 +79,11 @@ class TXTRecordRFC1035LengthRule(DataComplianceRule):
             )
 
     def compliance_result(self, message, attribute=None, valid=True):
-        """Record a DataCompliance result, truncating the stored attribute value to fit its column.
+        """Save this rule's result to Data Compliance, shortening the stored `text` value to fit.
 
-        Mirrors `DataComplianceRule.compliance_result()`, which stores the raw value in a 255-character
-        column: TXT content can be up to 65535 octets, and the values that fail this rule are the long ones.
+        Copied from core `DataComplianceRule.compliance_result()`, which stores the checked field's value
+        unchanged in `DataCompliance.validated_attribute_value`, a 255-character column. TXT values can be up to
+        65535 octets, so storing a long one, whether it passed or failed, would fail with a database error.
         """
         attribute_value = ""
         if attribute:
