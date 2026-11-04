@@ -137,6 +137,10 @@ class DNSZoneDelegatedRule(DNSComplianceRule):
 
     The cut is marked by NS records in the parent zone at the child's owner name. A `DNSDelegation` there counts as
     well, since it states the cut even before its NS records exist.
+
+    A zone below a different cut in the parent zone is not checked. For example, with `example.com` delegating
+    `apps` and `dev.apps.example.com` in Nautobot, `dev.apps.example.com` is delegated from `apps.example.com`, a zone
+    outside Nautobot; `example.com` must not hold its NS records.
     """
 
     name = "DNS Zone Delegated From Parent"
@@ -150,9 +154,10 @@ class DNSZoneDelegatedRule(DNSComplianceRule):
         if parent is None:
             return
         owner = relative_owner_name(dns_name_key(zone.name), dns_name_key(parent.name))
-        if NSRecord.objects.filter(zone=parent, name__iexact=owner).exists():
+        if self._has_cut(parent, owner):
             return
-        if DNSDelegation.objects.filter(zone=parent, name__iexact=owner).exists():
+        if any(self._has_cut(parent, intermediate) for intermediate in self._intermediate_owners(owner)):
+            # Delegated by a zone between `parent` and this one that is not in Nautobot, so not checkable here.
             return
         raise ComplianceError(
             {
@@ -163,6 +168,21 @@ class DNSZoneDelegatedRule(DNSComplianceRule):
                 )
             }
         )
+
+    @staticmethod
+    def _has_cut(parent, owner):
+        """Return whether `parent` marks a zone cut at `owner`, with NS records or a DNS delegation."""
+        return (
+            NSRecord.objects.filter(zone=parent, name__iexact=owner).exists()
+            or DNSDelegation.objects.filter(zone=parent, name__iexact=owner).exists()
+        )
+
+    @staticmethod
+    def _intermediate_owners(owner):
+        """Yield the owner names strictly between the parent zone apex and `owner`; `dev.apps` yields `apps`."""
+        labels = owner.split(".")
+        for index in range(1, len(labels)):
+            yield ".".join(labels[index:])
 
 
 class RecordNotOccludedRule(DNSComplianceRule):  # pylint: disable=abstract-method
