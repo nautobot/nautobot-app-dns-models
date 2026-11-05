@@ -82,7 +82,7 @@ This setting controls the DNS validation level applied to zones and records:
     - Each `<character-string>` within a TXT record must be no more than 255 bytes
     - The total TXT record data, including the length byte that prefixes each character-string, must not exceed 65535 bytes
 
-    See the [TXT Record model](../models/txtrecord.md#txt-record-content) documentation for how long values are split into character-strings. When this setting is **Disabled**, TXT records that break these rules are still saved but are reported under Data Compliance; see [Enforcement and Data Compliance](../models/txtrecord.md#enforcement-and-data-compliance).
+    See the [TXT Record model](../models/txtrecord.md#txt-record-content) documentation for how long values are split into character-strings.
 
 `CNAME_RESTRICTION_ENABLED` (default: "False")
 

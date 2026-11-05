@@ -456,6 +456,11 @@ class TXTRecordTextValidationTest(TestCase):
         record = TXTRecord(name="txt", text='"' + "a" * 300 + '"', zone=self.zone)
         record.full_clean()  # Should not raise
 
+    @override_config(nautobot_dns_models__DNS_VALIDATION_LEVEL="none")
+    def test_skips_presentation_format_parsing_when_enforcement_disabled(self):
+        record = TXTRecord(name="txt", text='"abc', zone=self.zone)
+        record.full_clean()  # Should not raise
+
     # Uniqueness digest -- asserted through a queryset filter so the stored column value is checked
     def _assert_stored_digest(self, record, text):
         self.assertTrue(TXTRecord.objects.filter(pk=record.pk, _text_hash=TXTRecord.hash_text(text)).exists())
