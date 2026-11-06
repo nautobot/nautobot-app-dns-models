@@ -512,6 +512,34 @@ class PTRRecordFormTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.dns_zone = DNSZone.objects.create(name="example.com")
+        cls.reverse_zone = DNSZone.objects.create(name="0.0.10.in-addr.arpa")
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status)
+        cls.ip_address = IPAddress.objects.create(address="10.0.0.1/32", namespace=namespace, status=status)
+        cls.ip_address_other = IPAddress.objects.create(address="10.0.0.2/32", namespace=namespace, status=status)
+
+    def test_specifying_ip_address_success(self):
+        data = {
+            "name": "1",
+            "ptrdname": "host1.example.com",
+            "zone": self.reverse_zone,
+            "ip_address": self.ip_address,
+        }
+        form = self.form_class(data)
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.save().ip_address, self.ip_address)
+
+    def test_specifying_mismatched_ip_address_fails(self):
+        data = {
+            "name": "1",
+            "ptrdname": "host1.example.com",
+            "zone": self.reverse_zone,
+            "ip_address": self.ip_address_other,
+        }
+        form = self.form_class(data)
+        self.assertFalse(form.is_valid())
+        self.assertIn("ip_address", form.errors)
 
     def test_specifying_only_required_success(self):
         data = {

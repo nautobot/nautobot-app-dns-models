@@ -17,7 +17,7 @@ Domain registration attributes are modeled separately in `DNSRegistration`.
 - `soa_serial`: (integer): Serial number of the zone. This value must be incremented each time the zone is changed, and secondary DNS servers must be able to retrieve this value to check if the zone has been updated.
 - `soa_minimum`: (integer): Minimum TTL for records in this zone.
 - `tenant` (Tenant, optional): Reference to the Tenant model for multi-tenancy support.
-- `auto_create_ptr` (boolean, default `False`): When enabled, creating an A or AAAA record in this zone automatically creates a matching PTR record in the most-specific reverse zone within the same DNS view. If no matching reverse zone exists, the A/AAAA creation fails with a validation error.
+- `auto_create_ptr` (boolean, default `False`): When enabled, creating an A or AAAA record in this zone automatically creates a matching PTR record in the most-specific reverse zone within the same DNS view. If no matching reverse zone exists, the A/AAAA creation fails with a validation error. The created PTR record is linked to the A/AAAA record's IP Address. If a PTR record with the same name already exists in the reverse zone, no new record is created, and the existing record is linked to the IP Address if it is not already linked to one.
 
 ## SOA RNAME Formats
 

@@ -1,0 +1,2 @@
+Changed the PTR records panel on the IP Address detail page to show PTR records linked through `ip_address`, instead of matching `ptrdname` against the IP Address's reverse pointer. Run `link_ptr_records_to_ip_addresses` to link existing PTR records.
+Changed auto-created PTR records to be linked to the IP Address of the A/AAAA record that created them.

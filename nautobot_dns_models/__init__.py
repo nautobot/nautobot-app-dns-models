@@ -91,6 +91,11 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
             help_text="Enforce CNAME exclusivity",
             field_type=bool,
         ),
+        "PTR_IP_ADDRESS_MATCH_ENFORCED": ConstanceConfigItem(
+            default=True,
+            help_text="Require a PTR record's name and zone to match the reverse pointer of its linked IP Address.",
+            field_type=bool,
+        ),
     }
 
 

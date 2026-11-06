@@ -1,5 +1,7 @@
 """Models for Nautobot DNS Models."""
 
+import ipaddress
+
 from constance import config as constance_config
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, validate_email
@@ -79,6 +81,32 @@ def prior_checks_ptr_record_creation(record):
         )
 
 
+def reverse_pointer_to_ip(fqdn):
+    """Return the IP address encoded in a full reverse pointer name, otherwise None.
+
+    Only fully specified names are parsed: 4 octets under `in-addr.arpa` (RFC 1035 §3.5)
+    or 32 nibbles under `ip6.arpa` (RFC 3596 §2.5).
+    """
+    labels = fqdn.lower().removesuffix(".").split(".")
+    try:
+        if labels[-2:] == ["in-addr", "arpa"] and len(labels) == 6:
+            return ipaddress.IPv4Address(".".join(reversed(labels[:4])))
+        if labels[-2:] == ["ip6", "arpa"] and len(labels) == 34:
+            nibbles = labels[:32]
+            if not all(len(nibble) == 1 for nibble in nibbles):
+                return None
+            hex_value = "".join(reversed(nibbles))
+            return ipaddress.IPv6Address(int(hex_value, 16))
+    except ValueError:
+        return None
+    return None
+
+
+def ptr_record_fqdn(record):
+    """Return the fully qualified owner name of a PTR record (name + zone)."""
+    return f"{record.name}.{record.zone.name}"
+
+
 def create_auto_ptr_record(record):
     """Create a PTR record for the given A/AAAA record's IP address.
 
@@ -102,10 +130,17 @@ def create_auto_ptr_record(record):
     # RFC 1035 §3.3.12: PTR RDATA (PTRDNAME) is the FQDN of the forward name.
     # Creating a PTR record for A record www in example.com, this should be `www.example.com`
     forward_fqdn = f"{record.name}.{record.zone.name}"
-    if PTRRecord.objects.filter(name=relative_name, zone=reverse_zone).exists():
+    existing = PTRRecord.objects.filter(name=relative_name, zone=reverse_zone).first()
+    if existing is not None:
+        # Link a pre-existing, unlinked PTR to this IP rather than creating a duplicate.
+        if existing.ip_address_id is None:
+            existing.ip_address = record.ip_address
+            existing.validated_save()
         return
 
-    PTRRecord(name=relative_name, ptrdname=forward_fqdn, zone=reverse_zone).validated_save()
+    PTRRecord(
+        name=relative_name, ptrdname=forward_fqdn, zone=reverse_zone, ip_address=record.ip_address
+    ).validated_save()
 
 
 class DNSModel(PrimaryModel):
@@ -757,6 +792,15 @@ class PTRRecord(DNSRecord):
     ptrdname = models.CharField(
         max_length=200, help_text="A domain name that points to some location in the domain name space."
     )
+    ip_address = models.ForeignKey(
+        to="ipam.IPAddress",
+        on_delete=models.SET_NULL,
+        related_name="ptr_records",
+        blank=True,
+        null=True,
+        help_text="IP address this PTR record resolves.",
+        verbose_name="IP Address",
+    )
 
     class Meta:
         """Meta attributes for PTRRecord."""
@@ -768,6 +812,29 @@ class PTRRecord(DNSRecord):
     def __str__(self):
         """String representation of PTRRecord."""
         return self.ptrdname
+
+    def clean(self):
+        """Validate that the linked IP address matches the record's reverse pointer name, if enforcement is enabled."""
+        super().clean()
+        self._enforce_ip_address_match_if_enabled()
+
+    def _enforce_ip_address_match_if_enabled(self) -> None:
+        """Ensure name + zone equals the reverse pointer of the linked IP address."""
+        enforce = getattr(constance_config, "nautobot_dns_models__PTR_IP_ADDRESS_MATCH_ENFORCED", True)
+        if not enforce or self.ip_address_id is None:
+            return
+
+        expected = ipaddress_address(self.ip_address.host, "reverse_pointer")
+        actual = ptr_record_fqdn(self)
+        if actual.lower().removesuffix(".") != expected:
+            raise ValidationError(
+                {
+                    "ip_address": (
+                        f"PTR record name '{actual}' does not match the reverse pointer '{expected}' "
+                        f"of IP address {self.ip_address}."
+                    )
+                }
+            )
 
 
 @extras_features(

@@ -84,3 +84,10 @@ This setting controls the DNS validation level applied to zones and records:
     - A CNAME cannot co-exist with any other record type that has the exact same `name` in the same `zone`.
     - Conversely, a non‑CNAME record cannot co-exist where a CNAME with the exact same `name` exists in the same `zone`.
     - Name comparison is exact. A zone‑qualified `name` such as `host.example.com` is distinct from the relative `host` under zone `example.com`. A trailing dot is ignored (e.g., `host.example.com.` is treated as `host.example.com`).
+
+`PTR_IP_ADDRESS_MATCH_ENFORCED` (default: "True")
+
+- **Enabled** - A PTR record linked to an IP Address must have a fully qualified name (`name` + `zone`) equal to that IP Address's reverse pointer, as defined in [RFC 1035 §3.5](https://datatracker.ietf.org/doc/html/rfc1035#section-3.5) and [RFC 3596 §2.5](https://datatracker.ietf.org/doc/html/rfc3596#section-2.5). For example, a PTR record with name `1` in zone `0.0.10.in-addr.arpa` may only be linked to `10.0.0.1`.
+- **Disabled** - A PTR record may be linked to any IP Address.
+
+PTR records without a linked IP Address are never checked.

@@ -792,8 +792,20 @@ class PTRRecordFilterTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.zone = DNSZone.objects.create(name="example.com")
-        PTRRecord.objects.create(name="ptr-record-01", ptrdname="ptr-record-01", zone=cls.zone)
-        PTRRecord.objects.create(name="ptr-record-02", ptrdname="ptr-record-02", zone=cls.zone)
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status)
+        cls.ip_addresses = (
+            IPAddress.objects.create(address="10.0.0.1/32", namespace=namespace, status=status),
+            IPAddress.objects.create(address="10.0.0.2/32", namespace=namespace, status=status),
+            IPAddress.objects.create(address="10.0.0.3/32", namespace=namespace, status=status),
+        )
+        PTRRecord.objects.create(
+            name="ptr-record-01", ptrdname="ptr-record-01", zone=cls.zone, ip_address=cls.ip_addresses[0]
+        )
+        PTRRecord.objects.create(
+            name="ptr-record-02", ptrdname="ptr-record-02", zone=cls.zone, ip_address=cls.ip_addresses[1]
+        )
 
     def test_single_name(self):
         """Test filter with name of PTRRecord."""
@@ -828,11 +840,29 @@ class PTRRecordFilterTestCase(TestCase):
         params = {"zone": [self.zone]}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
 
+    def test_ipaddress(self):
+        """Test filter with IP address of PTRRecord."""
+        params = {"ip_address": [self.ip_addresses[0]]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
+
+    def test_ipaddress_multiple(self):
+        """Test filter with multiple IP addresses of PTRRecord."""
+        params = {"ip_address": [self.ip_addresses[0], self.ip_addresses[1]]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+
+    def test_ipaddress_unlinked(self):
+        """Test filter with an IP address that has no PTRRecord."""
+        params = {"ip_address": [self.ip_addresses[2]]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
+
     def test_search(self):
         """Test filtering by Q search value."""
         self.assertEqual(self.filterset({"q": "ptr-record-01"}, self.queryset).qs.count(), 1)
         self.assertEqual(self.filterset({"q": "ptr-record"}, self.queryset).qs.count(), 2)
         self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 2)
+        self.assertEqual(self.filterset({"q": self.ip_addresses[0].host}, self.queryset).qs.count(), 1)
+        # Full FQDN (record name + zone name) should match the single record.
+        self.assertEqual(self.filterset({"q": "ptr-record-01.example.com"}, self.queryset).qs.count(), 1)
 
 
 class SRVRecordFilterTestCase(TestCase):

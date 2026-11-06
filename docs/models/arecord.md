@@ -10,7 +10,7 @@ The A Record model is used to represent IPv4 address records in DNS. It maps a h
 - `enabled` (boolean, default `True`): Indicates whether the record is eligible for publication by external integrations. This app does not publish records or enforce this setting.
 - `ip_address` (IPAddress): IPv4 address for the record (A records must use IPv4).
 
-When the parent `DNSZone` has `auto_create_ptr` enabled, creating an A record automatically creates a matching PTR record in the most-specific reverse zone within the same DNS view. See [DNS Zone](dnszone.md) for details.
+When the parent `DNSZone` has `auto_create_ptr` enabled, creating an A record automatically creates a matching PTR record in the most-specific reverse zone within the same DNS view. The PTR record is linked to the A record's IP Address. See [DNS Zone](dnszone.md) for details.
 
 +++ 2.0.0
     `address` field in A Record is now `ip_address`

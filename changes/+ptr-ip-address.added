@@ -1,0 +1,3 @@
+Added an optional `ip_address` field to `PTRRecord`, linking each PTR record to at most one IP Address and each IP Address to many PTR records.
+Added the `PTR_IP_ADDRESS_MATCH_ENFORCED` setting (default `True`) to require a linked PTR record's name to match the IP Address's reverse pointer.
+Added the `link_ptr_records_to_ip_addresses` management command to preview and link existing PTR records to IP Addresses.

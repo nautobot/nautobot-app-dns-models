@@ -23,6 +23,7 @@ from nautobot_dns_models.models import (
     SRVRecord,
     TXTRecord,
     dns_wire_label_length,
+    reverse_pointer_to_ip,
 )
 
 
@@ -361,6 +362,90 @@ class PTRRecordTestCase(TestCase):
     def test_get_absolute_url(self):
         ptr_record = PTRRecord.objects.create(ptrdname="ptr-record", zone=self.dns_zone)
         self.assertEqual(ptr_record.get_absolute_url(), f"/plugins/dns/ptr-records/{ptr_record.id}/")
+
+
+class PTRRecordIPAddressTestCase(TestCase):
+    """Test the PTRRecord to IPAddress relationship."""
+
+    @classmethod
+    def setUpTestData(cls):
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status)
+        Prefix.objects.create(prefix="2001:db8::/32", namespace=namespace, type="Pool", status=status)
+        cls.ipv4 = IPAddress.objects.create(address="10.0.0.1/32", namespace=namespace, status=status)
+        cls.ipv4_other = IPAddress.objects.create(address="10.0.0.2/32", namespace=namespace, status=status)
+        cls.ipv6 = IPAddress.objects.create(address="2001:db8::1/128", namespace=namespace, status=status)
+        cls.reverse_zone = DNSZone.objects.create(name="0.0.10.in-addr.arpa")
+        cls.reverse_v6_zone = DNSZone.objects.create(name="8.b.d.0.1.0.0.2.ip6.arpa")
+
+    def test_ip_address_is_optional(self):
+        ptr_record = PTRRecord(name="1", ptrdname="host1.example.com", zone=self.reverse_zone)
+        ptr_record.validated_save()
+        self.assertIsNone(ptr_record.ip_address)
+
+    def test_ip_address_has_many_ptr_records(self):
+        PTRRecord(name="1", ptrdname="host1.example.com", zone=self.reverse_zone, ip_address=self.ipv4).validated_save()
+        PTRRecord(name="1", ptrdname="alias.example.com", zone=self.reverse_zone, ip_address=self.ipv4).validated_save()
+        self.assertEqual(self.ipv4.ptr_records.count(), 2)
+
+    def test_deleting_ip_address_unlinks_ptr_record(self):
+        ptr_record = PTRRecord.objects.create(
+            name="1", ptrdname="host1.example.com", zone=self.reverse_zone, ip_address=self.ipv4
+        )
+        self.ipv4.delete()
+        ptr_record.refresh_from_db()
+        self.assertIsNone(ptr_record.ip_address)
+
+    @override_config(nautobot_dns_models__PTR_IP_ADDRESS_MATCH_ENFORCED=True)
+    def test_mismatched_ip_address_rejected_when_enforced(self):
+        ptr_record = PTRRecord(
+            name="1", ptrdname="host1.example.com", zone=self.reverse_zone, ip_address=self.ipv4_other
+        )
+        with self.assertRaises(ValidationError) as context:
+            ptr_record.validated_save()
+        self.assertIn("ip_address", context.exception.message_dict)
+
+    @override_config(nautobot_dns_models__PTR_IP_ADDRESS_MATCH_ENFORCED=True)
+    def test_matching_ipv6_address_accepted_when_enforced(self):
+        name = ipaddress_address("2001:db8::1", "reverse_pointer").removesuffix(f".{self.reverse_v6_zone.name}")
+        ptr_record = PTRRecord(
+            name=name, ptrdname="v6host.example.com", zone=self.reverse_v6_zone, ip_address=self.ipv6
+        )
+        ptr_record.validated_save()
+        self.assertEqual(ptr_record.ip_address, self.ipv6)
+
+    @override_config(nautobot_dns_models__PTR_IP_ADDRESS_MATCH_ENFORCED=False)
+    def test_mismatched_ip_address_allowed_when_not_enforced(self):
+        ptr_record = PTRRecord(
+            name="1", ptrdname="host1.example.com", zone=self.reverse_zone, ip_address=self.ipv4_other
+        )
+        ptr_record.validated_save()
+        self.assertEqual(ptr_record.ip_address, self.ipv4_other)
+
+
+class ReversePointerToIPTestCase(TestCase):
+    """Test the reverse_pointer_to_ip helper."""
+
+    def test_ipv4(self):
+        self.assertEqual(str(reverse_pointer_to_ip("1.0.0.10.in-addr.arpa")), "10.0.0.1")
+        self.assertEqual(str(reverse_pointer_to_ip("1.0.0.10.IN-ADDR.ARPA.")), "10.0.0.1")
+
+    def test_ipv6(self):
+        self.assertEqual(str(reverse_pointer_to_ip(ipaddress_address("2001:db8::1", "reverse_pointer"))), "2001:db8::1")
+
+    def test_invalid(self):
+        for value in (
+            "0.0.10.in-addr.arpa",
+            "256.0.0.10.in-addr.arpa",
+            "host.0.0.10.in-addr.arpa",
+            "1.8.b.d.0.1.0.0.2.ip6.arpa",
+            ipaddress_address("2001:db8::1", "reverse_pointer").replace("1.0.0", "g.0.0", 1),
+            "www.example.com",
+            "",
+        ):
+            with self.subTest(value=value):
+                self.assertIsNone(reverse_pointer_to_ip(value))
 
 
 class SRVRecordTestCase(TestCase):
@@ -804,6 +889,7 @@ class AutoCreatePTRRecordTestCase(TestCase):
         ARecord.objects.create(name="host1", ip_address=self.ipv4, zone=self.fwd_on)
         ptr = PTRRecord.objects.get(zone=self.reverse_zone, name="1")
         self.assertEqual(ptr.ptrdname, "host1.auto.example.com")
+        self.assertEqual(ptr.ip_address, self.ipv4)
 
     def test_auto_ptr_raises_when_no_reverse_zone(self):
         """No matching reverse zone in same view raises ValidationError pre-insert; A record is not persisted."""
@@ -827,6 +913,17 @@ class AutoCreatePTRRecordTestCase(TestCase):
         ptrs = PTRRecord.objects.filter(name="1", zone=self.reverse_zone)
         self.assertEqual(ptrs.count(), 1)
         self.assertEqual(ptrs.first().pk, existing.pk)
+        self.assertEqual(ptrs.first().ip_address, self.ipv4)
+
+    def test_auto_ptr_does_not_relink_existing_ptr(self):
+        """An existing PTR already linked to an IP is left untouched."""
+        existing = PTRRecord.objects.create(
+            name="1", ptrdname="host1.auto.example.com", zone=self.reverse_zone, ip_address=self.ipv4_other
+        )
+        ARecord.objects.create(name="host1", ip_address=self.ipv4, zone=self.fwd_on)
+        existing.refresh_from_db()
+        self.assertEqual(existing.ip_address, self.ipv4_other)
+        self.assertEqual(PTRRecord.objects.filter(name="1", zone=self.reverse_zone).count(), 1)
 
     def test_auto_ptr_for_aaaa_record(self):
         """AAAARecord triggers PTR creation similarly when flag is on."""
@@ -836,6 +933,7 @@ class AutoCreatePTRRecordTestCase(TestCase):
         AAAARecord.objects.create(name="v6host", ip_address=self.ipv6, zone=self.fwd_on)
         ptr = PTRRecord.objects.get(zone=reverse_v6, name="1")
         self.assertEqual(ptr.ptrdname, "v6host.auto.example.com")
+        self.assertEqual(ptr.ip_address, self.ipv6)
 
 
 class TestDNSZoneFindForPtrdname(TestCase):

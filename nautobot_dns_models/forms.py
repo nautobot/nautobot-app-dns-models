@@ -714,6 +714,12 @@ class TXTRecordFilterForm(NautobotFilterForm):
 class PTRRecordForm(EnabledBeforeDescriptionMixin, NautobotModelForm):
     """PTRRecord creation/edit form."""
 
+    ip_address = DynamicModelChoiceField(
+        queryset=IPAddress.objects.all(),
+        required=False,
+        label="IP Address",
+    )
+
     class Meta:
         """Meta attributes."""
 
@@ -725,6 +731,11 @@ class PTRRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     """PTRRecord bulk edit form."""
 
     pk = forms.ModelMultipleChoiceField(queryset=models.PTRRecord.objects.all(), widget=forms.MultipleHiddenInput)
+    ip_address = DynamicModelChoiceField(
+        queryset=IPAddress.objects.all(),
+        required=False,
+        label="IP Address",
+    )
     description = forms.CharField(required=False)
     enabled = forms.NullBooleanField(required=False, widget=BulkEditNullBooleanSelect)
 
@@ -732,6 +743,7 @@ class PTRRecordBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
         """Meta attributes."""
 
         nullable_fields = [
+            "ip_address",
             "description",
         ]
 
@@ -751,6 +763,11 @@ class PTRRecordFilterForm(NautobotFilterForm):
         required=False,
         label="Zone",
     )
+    ip_address = DynamicModelMultipleChoiceField(
+        queryset=IPAddress.objects.all(),
+        required=False,
+        label="IP Address",
+    )
     enabled = forms.NullBooleanField(
         required=False,
         widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
@@ -760,6 +777,7 @@ class PTRRecordFilterForm(NautobotFilterForm):
     fields = [
         "q",
         "name",
+        "ip_address",
         "enabled",
         "ttl",
         "comment",

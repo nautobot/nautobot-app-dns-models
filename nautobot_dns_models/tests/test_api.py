@@ -905,6 +905,11 @@ class PTRRecordAPITestCase(APIViewTestCases.APIViewTestCase):
     @classmethod
     def setUpTestData(cls):
         dns_zone = _create_zone(name="example.com")
+        reverse_zone = _create_zone(name="0.0.10.in-addr.arpa")
+        status_active = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status_active)
+        ip_address = IPAddress.objects.create(address="10.0.0.1/32", namespace=namespace, status=status_active)
 
         PTRRecord.objects.create(name="ptr-record-01", ptrdname="ptr-01", zone=dns_zone)
         PTRRecord.objects.create(name="ptr-record-02", ptrdname="ptr-02", zone=dns_zone)
@@ -920,11 +925,13 @@ class PTRRecordAPITestCase(APIViewTestCases.APIViewTestCase):
                 "name": "ptr-record-05",
                 "ptrdname": "ptr-05",
                 "zone": dns_zone.id,
+                "ip_address": None,
             },
             {
-                "name": "ptr-record-06",
-                "ptrdname": "ptr-06",
-                "zone": dns_zone.id,
+                "name": "1",
+                "ptrdname": "host1.example.com",
+                "zone": reverse_zone.id,
+                "ip_address": ip_address.id,
             },
         ]
 

@@ -57,6 +57,8 @@ The A record will be displayed under the record's DNS Zone Detail view, along wi
 
 A/AAAA and PTR records will also be shown in the IP Address detail view as side panels. You may configure when these panels appear by selecting the appropriate option in the App settings (`Admin -> Configuration -> Config -> Nautobot DNS Models`).
 
+The PTR records panel shows PTR records linked to the IP Address through their `ip_address` field. To link PTR records that were created before this field existed, see [Linking Existing PTR Records](../models/ptrrecord.md#linking-existing-ptr-records).
+
 ![IP Address with DNS Records](../images/getting-started-ip-address-dns-panels-light.png#only-light){ .on-glb }
 ![IP Address with DNS Records](../images/getting-started-ip-address-dns-panels-dark.png#only-dark){ .on-glb }
 

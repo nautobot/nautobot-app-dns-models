@@ -171,12 +171,14 @@ def ip_address_preprocessor(value):
     return value
 
 
-def search_address_record(queryset, name, value):  # pylint: disable=unused-argument
-    """Search A/AAAA records by name, zone, full FQDN, or IP address."""
+def search_address_record(queryset, name, value, extra_query=None):  # pylint: disable=unused-argument
+    """Search A/AAAA/PTR records by name, zone, full FQDN, or IP address."""
     queryset = queryset.annotate(
         fqdn=Concat("name", Value("."), "zone__name", output_field=CharField()),
     )
     query = Q(name__icontains=value) | Q(zone__name__icontains=value) | Q(fqdn__icontains=value)
+    if extra_query is not None:
+        query |= extra_query
 
     try:
         uuid.UUID(value)
@@ -193,6 +195,11 @@ def search_address_record(queryset, name, value):  # pylint: disable=unused-argu
         query |= Q(ip_address__host__net_host=ip_value)
 
     return queryset.filter(query).distinct()
+
+
+def search_ptr_record(queryset, name, value):
+    """Search PTR records by name, zone, full FQDN, PTRDNAME, or IP address."""
+    return search_address_record(queryset, name, value, extra_query=Q(ptrdname__icontains=value))
 
 
 class ARecordFilterSet(DNSRecordFilterSet):
@@ -276,13 +283,7 @@ class TXTRecordFilterSet(DNSRecordFilterSet):
 class PTRRecordFilterSet(DNSRecordFilterSet):
     """Filter for PTRRecord."""
 
-    q = SearchFilter(
-        filter_predicates={
-            "name": "icontains",
-            "zone__name": "icontains",
-            "ptrdname": "icontains",
-        }
-    )
+    q = django_filters.CharFilter(method=search_ptr_record, label="Search")
 
     class Meta:
         """Meta attributes for filter."""

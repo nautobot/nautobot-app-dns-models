@@ -400,6 +400,7 @@ class TXTRecordTable(DNSRecordTable):
 class PTRRecordTable(DNSRecordTable):
     """Table for list view."""
 
+    ip_address = tables.Column(linkify=True)
     actions = ButtonsColumn(
         models.PTRRecord,
         buttons=("changelog", "edit", "delete"),
@@ -413,6 +414,7 @@ class PTRRecordTable(DNSRecordTable):
             "pk",
             "name",
             "ptrdname",
+            "ip_address",
             "zone",
             "comment",
             "ttl",
@@ -426,6 +428,7 @@ class PTRRecordTable(DNSRecordTable):
             "pk",
             "name",
             "ptrdname",
+            "ip_address",
             "zone",
             "comment",
             "ttl",

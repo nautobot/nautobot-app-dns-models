@@ -8,7 +8,6 @@ from nautobot.apps.testing import ViewTestCases
 from nautobot.core.testing.utils import extract_page_body
 from nautobot.extras.models import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
-from netutils.ip import ipaddress_address
 
 from nautobot_dns_models.models import (
     AAAARecord,
@@ -589,6 +588,7 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsM
         zone = DNSZone.objects.create(
             name="example.com",
         )
+        reverse_zone = DNSZone.objects.create(name="0.0.10.in-addr.arpa")
         status = Status.objects.get(name="Active")
         namespace = Namespace.objects.get(name="Global")
         Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status)
@@ -614,16 +614,18 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsM
         )
 
         PTRRecord.objects.create(
-            name="one.example.com",
-            ptrdname=ipaddress_address(cls.ip_addresses[0].host, "reverse_pointer"),
-            zone=zone,
+            name="1",
+            ptrdname="one.example.com",
+            zone=reverse_zone,
+            ip_address=cls.ip_addresses[0],
         )
 
         cls.form_data = {
-            "name": "test record",
-            "ptrdname": "ptr-test-record",
+            "name": "2",
+            "ptrdname": "two.example.com",
             "ttl": 3600,
-            "zone": zone.pk,
+            "zone": reverse_zone.pk,
+            "ip_address": cls.ip_addresses_wo_records[0].pk,
             "enabled": True,
         }
 
@@ -645,7 +647,7 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsM
         )
 
         address = self.ip_addresses[0]
-        ptrrecord = PTRRecord.objects.get(ptrdname=ipaddress_address(address.host, "reverse_pointer"))
+        ptrrecord = PTRRecord.objects.get(ip_address=address)
         self.detail_view_test_side_panels(
             detail_object=address, render_panel=True, panel_model=PTRRecord, panel_objects=[ptrrecord]
         )
@@ -661,7 +663,7 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsM
         )
 
         address = self.ip_addresses[0]
-        ptrrecord = PTRRecord.objects.get(ptrdname=ipaddress_address(address.host, "reverse_pointer"))
+        ptrrecord = PTRRecord.objects.get(ip_address=address)
         self.detail_view_test_side_panels(
             detail_object=address, render_panel=True, panel_model=PTRRecord, panel_objects=[ptrrecord]
         )
@@ -677,7 +679,7 @@ class PTRRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase, SidePanelTestsM
         )
 
         address = self.ip_addresses[0]
-        ptrrecord = PTRRecord.objects.get(ptrdname=ipaddress_address(address.host, "reverse_pointer"))
+        ptrrecord = PTRRecord.objects.get(ip_address=address)
         self.detail_view_test_side_panels(
             detail_object=address, render_panel=False, panel_model=PTRRecord, panel_objects=[ptrrecord]
         )
