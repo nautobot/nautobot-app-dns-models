@@ -895,7 +895,7 @@ class TXTRecord(DNSRecord):
                 raise ValidationError(
                     {
                         "text": (
-                            f"Character-string {position} is {octets} bytes (octets), the maximum is {TXT_CHARACTER_STRING_MAX_OCTETS}. "
+                            f"Character-string {position} is {octets} bytes (octets) but the maximum is {TXT_CHARACTER_STRING_MAX_OCTETS}. "
                             'Split the value into multiple double-quoted character-strings, e.g. "part one" "part two".'
                         )
                     }

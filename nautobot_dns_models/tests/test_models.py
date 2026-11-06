@@ -371,7 +371,7 @@ class TXTRecordTextValidationTest(TestCase):
         record = TXTRecord(name="txt", text='"' + "a" * 300 + '"', zone=self.zone)
         with self.assertRaises(ValidationError) as context:
             record.full_clean()
-        self.assertIn("Character-string 1 is 300 bytes (octets); the maximum is 255", str(context.exception))
+        self.assertIn("Character-string 1 is 300 bytes (octets) but the maximum is 255", str(context.exception))
 
     def test_reports_position_of_the_offending_character_string(self):
         record = TXTRecord(name="txt", text='"short" "' + "a" * 256 + '"', zone=self.zone)
