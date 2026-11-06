@@ -116,6 +116,7 @@ nav:
       - External Interactions: "user/external_interactions.md"
       - Data Models:
           - DNS Zone: "models/dnszone.md"
+          - DNS Delegation: "models/dnsdelegation.md"
           - DNS Registrar: "models/dnsregistrar.md"
           - DNS Registration: "models/dnsregistration.md"
           - DNS View: "models/dnsview.md"
@@ -129,6 +130,9 @@ nav:
           - SRV Record: "models/srvrecord.md"
           - TXT Record: "models/txtrecord.md"
           - DNS View Prefix Assignment: "models/dnsviewprefixassignment.md"
+          - DNS Forwarding Rule: "models/dnsforwardingrule.md"
+          - DNS Forwarder: "models/dnsforwarder.md"
+          - DNS Forwarding Rule Forwarder Assignment: "models/dnsforwardingruleforwarderassignment.md"
   - Administrator Guide:
       - Install and Configure: "admin/install.md"
       - Upgrade: "admin/upgrade.md"

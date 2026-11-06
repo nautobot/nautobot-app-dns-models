@@ -6,6 +6,10 @@ from nautobot_dns_models.api.serializers import (
     AAAARecordSerializer,
     ARecordSerializer,
     CNAMERecordSerializer,
+    DNSDelegationSerializer,
+    DNSForwarderSerializer,
+    DNSForwardingRuleForwarderAssignmentSerializer,
+    DNSForwardingRuleSerializer,
     DNSRegistrarSerializer,
     DNSRegistrationSerializer,
     DNSViewPrefixAssignmentSerializer,
@@ -21,6 +25,10 @@ from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSDelegationFilterSet,
+    DNSForwarderFilterSet,
+    DNSForwardingRuleFilterSet,
+    DNSForwardingRuleForwarderAssignmentFilterSet,
     DNSRegistrarFilterSet,
     DNSRegistrationFilterSet,
     DNSViewFilterSet,
@@ -36,6 +44,10 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
+    DNSForwarder,
+    DNSForwardingRule,
+    DNSForwardingRuleForwarderAssignment,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -91,6 +103,16 @@ class DNSZoneViewSet(NautobotModelViewSet):
     queryset = DNSZone.objects.all()
     serializer_class = DNSZoneSerializer
     filterset_class = DNSZoneFilterSet
+
+    lookup_field = "pk"
+
+
+class DNSDelegationViewSet(NautobotModelViewSet):
+    """DNSDelegation API ViewSet."""
+
+    queryset = DNSDelegation.objects.select_related("zone")
+    serializer_class = DNSDelegationSerializer
+    filterset_class = DNSDelegationFilterSet
 
     lookup_field = "pk"
 
@@ -173,3 +195,27 @@ class SRVRecordViewSet(NautobotModelViewSet):
     filterset_class = SRVRecordFilterSet
 
     lookup_field = "pk"
+
+
+class DNSForwarderViewSet(NautobotModelViewSet):
+    """DNSForwarder API ViewSet."""
+
+    queryset = DNSForwarder.objects.select_related("ip_address")
+    serializer_class = DNSForwarderSerializer
+    filterset_class = DNSForwarderFilterSet
+
+
+class DNSForwardingRuleViewSet(NautobotModelViewSet):
+    """DNSForwardingRule API ViewSet."""
+
+    queryset = DNSForwardingRule.objects.select_related("dns_view").prefetch_related("forwarders")
+    serializer_class = DNSForwardingRuleSerializer
+    filterset_class = DNSForwardingRuleFilterSet
+
+
+class DNSForwardingRuleForwarderAssignmentViewSet(NautobotModelViewSet):
+    """DNSForwardingRuleForwarderAssignment API ViewSet."""
+
+    queryset = DNSForwardingRuleForwarderAssignment.objects.select_related("forwarding_rule", "forwarder")
+    serializer_class = DNSForwardingRuleForwarderAssignmentSerializer
+    filterset_class = DNSForwardingRuleForwarderAssignmentFilterSet

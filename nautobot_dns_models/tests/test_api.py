@@ -9,6 +9,7 @@ from constance.test import override_config
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from nautobot.apps.testing import APIViewTestCases
+from nautobot.extras.models import ObjectChange
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from rest_framework import status
@@ -17,6 +18,10 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
+    DNSForwarder,
+    DNSForwardingRule,
+    DNSForwardingRuleForwarderAssignment,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -506,6 +511,30 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
         zone.refresh_from_db()
         self.assertFalse(zone.enabled)
 
+    def test_parent_is_derived_and_read_only(self):
+        """The API reports the derived parent zone and ignores a parent supplied by the client."""
+        self.add_permissions(
+            "nautobot_dns_models.add_dnszone", "nautobot_dns_models.view_dnszone", "nautobot_dns_models.view_dnsview"
+        )
+        dns_view = DNSView.objects.get(name="Default")
+        example = _create_zone(name="example.com", dns_view=dns_view)
+        unrelated = _create_zone(name="unrelated.example", dns_view=dns_view)
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnszone-list")
+        data = {
+            "name": "apps.example.com",
+            "dns_view": dns_view.id,
+            "filename": "apps.example.com.zone",
+            "soa_mname": "ns1.example.com",
+            "soa_rname": "admin@example.com",
+            "parent": unrelated.id,
+        }
+        response = self.client.post(url, data=data, format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["parent"]["id"], example.id)
+        self.assertEqual(DNSZone.objects.get(pk=response.data["id"]).parent, example)
+
     def test_create_zone_helper_uses_supplied_dns_view(self):
         """_create_zone should use the DNSView explicitly provided by the caller."""
         custom_view = DNSView.objects.create(name="Helper Supplied View")
@@ -521,6 +550,46 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
         zone = _create_zone(name="helper-default.example")
 
         self.assertEqual(zone.dns_view, expected_default_view)
+
+
+class DNSDelegationAPITestCase(APIViewTestCases.APIViewTestCase):
+    """Test the Nautobot DNSDelegation API."""
+
+    model = DNSDelegation
+    view_namespace = "plugins-api:nautobot_dns_models"
+    bulk_update_data = {
+        "description": "Example bulk description",
+    }
+
+    @classmethod
+    def setUpTestData(cls):
+        zone = _create_zone(name="example.com")
+        for name in ("apps", "mail", "lab"):
+            DNSDelegation.objects.create(zone=zone, name=name)
+
+        cls.create_data = [
+            {"name": "dev", "zone": zone.pk},
+            {"name": "test", "zone": zone.pk, "description": "Test subdomain"},
+            {"name": "prod", "zone": zone.pk},
+        ]
+
+    def test_absolute_name_is_stored_relative_to_the_zone(self):
+        """Regression test: the API validates a copy of the object, so normalizing only in `clean()` was lost."""
+        self.add_permissions(
+            "nautobot_dns_models.add_dnsdelegation",
+            "nautobot_dns_models.view_dnsdelegation",
+            "nautobot_dns_models.view_dnszone",
+        )
+        zone = DNSZone.objects.get(name="example.com")
+        url = reverse("plugins-api:nautobot_dns_models-api:dnsdelegation-list")
+
+        response = self.client.post(
+            url, data={"name": "corp.Example.com.", "zone": zone.pk}, format="json", **self.header
+        )
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["name"], "corp")
+        self.assertEqual(DNSDelegation.objects.get(pk=response.data["id"]).get_fqdn(), "corp.example.com")
 
 
 class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):
@@ -1121,3 +1190,137 @@ class CNAMEExclusivityAPITestCase(APIViewTestCases.APIViewTestCase):
         data_c = {"name": "opt", "alias": "opt.example.com", "zone": self.zone.id}
         response = self.client.post(url_c, data=data_c, format="json", **self.header)
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
+
+
+class DNSForwarderAPITestCase(APIViewTestCases.APIViewTestCase):
+    """Test the Nautobot DNSForwarder API."""
+
+    model = DNSForwarder
+    view_namespace = "plugins-api:nautobot_dns_models"
+    bulk_update_data = {"description": "Example bulk description"}
+
+    @classmethod
+    def setUpTestData(cls):
+        active_status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, type="Pool", status=active_status)
+        ip_address = IPAddress.objects.create(address="192.0.2.53/32", namespace=namespace, status=active_status)
+        DNSForwarder.objects.create(name="Corp resolver", ip_address=ip_address)
+        DNSForwarder.objects.create(name="Quad9", address="9.9.9.9")
+        DNSForwarder.objects.create(name="Cloudflare", address="1.1.1.1")
+
+        cls.create_data = [
+            {"name": "Google", "address": "8.8.8.8"},
+            {"name": "Google IPv6", "address": "2001:4860:4860::8888", "port": 853},
+            {"name": "Lab", "address": "192.0.2.10", "description": "Lab resolver"},
+        ]
+
+    def test_rejects_both_address_sources(self):
+        self.add_permissions("nautobot_dns_models.add_dnsforwarder", "ipam.view_ipaddress")
+        url = reverse("plugins-api:nautobot_dns_models-api:dnsforwarder-list")
+        data = {
+            "name": "Both",
+            "ip_address": DNSForwarder.objects.get(name="Corp resolver").ip_address.pk,
+            "address": "192.0.2.99",
+        }
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_from_an_ipam_ip_address_with_a_null_address(self):
+        """`address: null` alongside `ip_address` is accepted; DRF itself rejects `""` as blank."""
+        self.add_permissions("nautobot_dns_models.add_dnsforwarder", "ipam.view_ipaddress")
+        ip_address = IPAddress.objects.create(
+            address="192.0.2.54/32",
+            namespace=Namespace.objects.get(name="Global"),
+            status=Status.objects.get(name="Active"),
+        )
+        url = reverse("plugins-api:nautobot_dns_models-api:dnsforwarder-list")
+        data = {"name": "Second resolver", "ip_address": ip_address.pk, "address": None}
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertIsNone(DNSForwarder.objects.get(pk=response.data["id"]).address)
+
+
+class DNSForwardingRuleAPITestCase(APIViewTestCases.APIViewTestCase):
+    """Test the Nautobot DNSForwardingRule API."""
+
+    model = DNSForwardingRule
+    view_namespace = "plugins-api:nautobot_dns_models"
+    bulk_update_data = {"description": "Example bulk description"}
+
+    @classmethod
+    def setUpTestData(cls):
+        dns_view = DNSView.objects.get(name="Default")
+        for name in ("corp.example.com", "lab.example.com", "."):
+            DNSForwardingRule.objects.create(name=name, dns_view=dns_view)
+
+        cls.create_data = [
+            {"name": "a.example.org", "dns_view": dns_view.pk},
+            {"name": "b.example.org", "dns_view": dns_view.pk, "description": "B"},
+            {"name": "c.example.org", "dns_view": dns_view.pk},
+        ]
+
+    def test_forwarders_are_read_only_on_the_rule(self):
+        """Forwarders are assigned through the assignment endpoint; DRF makes a through-model M2M read-only."""
+        self.add_permissions(
+            "nautobot_dns_models.add_dnsforwardingrule",
+            "nautobot_dns_models.view_dnsview",
+            "nautobot_dns_models.view_dnsforwarder",
+        )
+        forwarder = DNSForwarder.objects.create(name="Quad9", address="9.9.9.9")
+        url = reverse("plugins-api:nautobot_dns_models-api:dnsforwardingrule-list")
+        data = {
+            "name": "d.example.org",
+            "dns_view": DNSView.objects.get(name="Default").pk,
+            "forwarders": [forwarder.pk],
+        }
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertFalse(DNSForwardingRule.objects.get(pk=response.data["id"]).forwarders.exists())
+
+
+class DNSForwardingRuleForwarderAssignmentAPITestCase(APIViewTestCases.APIViewTestCase):
+    """Test the Nautobot DNSForwardingRuleForwarderAssignment API."""
+
+    model = DNSForwardingRuleForwarderAssignment
+    view_namespace = "plugins-api:nautobot_dns_models"
+    brief_fields = ["forwarder", "forwarding_rule"]
+
+    @classmethod
+    def setUpTestData(cls):
+        forwarders = [
+            DNSForwarder.objects.create(name=f"Resolver {index}", address=f"192.0.2.{index}") for index in range(1, 4)
+        ]
+        rules = [DNSForwardingRule.objects.create(name=f"zone{index}.example.com") for index in range(1, 4)]
+        DNSForwardingRuleForwarderAssignment.objects.create(forwarding_rule=rules[0], forwarder=forwarders[0])
+        DNSForwardingRuleForwarderAssignment.objects.create(forwarding_rule=rules[0], forwarder=forwarders[1])
+        DNSForwardingRuleForwarderAssignment.objects.create(forwarding_rule=rules[2], forwarder=forwarders[1])
+
+        cls.create_data = [
+            {"forwarding_rule": rules[1].pk, "forwarder": forwarders[0].pk},
+            {"forwarding_rule": rules[1].pk, "forwarder": forwarders[2].pk},
+        ]
+
+    def test_assignment_changes_are_change_logged(self):
+        self.add_permissions(
+            "nautobot_dns_models.add_dnsforwardingruleforwarderassignment",
+            "nautobot_dns_models.view_dnsforwardingrule",
+            "nautobot_dns_models.view_dnsforwarder",
+        )
+        url = reverse("plugins-api:nautobot_dns_models-api:dnsforwardingruleforwarderassignment-list")
+
+        response = self.client.post(url, data=self.create_data[0], format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertTrue(
+            ObjectChange.objects.filter(
+                changed_object_type=ContentType.objects.get_for_model(DNSForwardingRuleForwarderAssignment),
+                changed_object_id=response.data["id"],
+            ).exists()
+        )

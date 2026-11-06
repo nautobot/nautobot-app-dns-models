@@ -9,3 +9,5 @@ The NS Record model represents a Name Server record in DNS. It identifies an aut
 - `comment` (string): Comment for the record.
 - `enabled` (boolean, default `True`): Indicates whether the record is eligible for publication by external integrations. This app does not publish records or enforce this setting.
 - `server` (string): FQDN of the authoritative name server.
+
+NS records whose `name` matches a [DNS delegation](dnsdelegation.md) in the same zone are that delegation's name servers. Other NS records are not treated as delegations.

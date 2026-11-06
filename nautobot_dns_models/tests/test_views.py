@@ -14,6 +14,9 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
+    DNSForwarder,
+    DNSForwardingRule,
     DNSRegistrar,
     DNSView,
     DNSZone,
@@ -196,6 +199,135 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             # DNSZone.soa_rname accepts a DNS-style mailbox, not only an email address
             "soa_rname": "admin.example.com",
         }
+
+    def test_detail_view_lists_child_zones(self):
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+        parent = DNSZone.objects.create(name="example.com")
+        DNSZone.objects.create(name="apps.example.com")
+
+        response = self.client.get(parent.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Child Zones")
+        self.assertContains(response, "apps.example.com")
+
+
+class DNSDelegationViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+    """Test the DNSDelegation views."""
+
+    model = DNSDelegation
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZone.objects.create(name="example.com")
+        for name in ("apps", "mail", "lab"):
+            DNSDelegation.objects.create(zone=cls.zone, name=name)
+
+        cls.form_data = {
+            "name": "corp",
+            "zone": cls.zone.pk,
+            "description": "Corporate subdomain",
+        }
+        cls.csv_data = (
+            "name,zone",
+            f"dev,{cls.zone.pk}",
+            f"test,{cls.zone.pk}",
+            f"prod,{cls.zone.pk}",
+        )
+        cls.bulk_edit_data = {"description": "Bulk edit views"}
+
+    def test_detail_view_summarizes_name_servers(self):
+        self.add_permissions("nautobot_dns_models.view_dnsdelegation", "nautobot_dns_models.view_nsrecord")
+        delegation = DNSDelegation.objects.get(name="apps")
+        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
+        NSRecord.objects.create(name="apps", server="ns2.other.net", zone=self.zone)
+
+        response = self.client.get(delegation.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        body = extract_page_body(response.content.decode(response.charset))
+        for text in ("apps.example.com", "ns1.apps.example.com", "In-domain", "ns2.other.net", "Out-of-bailiwick"):
+            self.assertIn(text, body)
+
+    def test_detail_view_lists_glue_records(self):
+        self.add_permissions(
+            "nautobot_dns_models.view_dnsdelegation",
+            "nautobot_dns_models.view_nsrecord",
+            "nautobot_dns_models.view_arecord",
+        )
+        delegation = DNSDelegation.objects.get(name="apps")
+        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, type="Pool", status=status)
+        address = IPAddress.objects.create(address="192.0.2.10/32", namespace=namespace, status=status)
+        glue = ARecord.objects.create(name="ns1.apps", ip_address=address, zone=self.zone)
+
+        response = self.client.get(delegation.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Glue A Records")
+        self.assertContains(response, glue.get_absolute_url())
+        self.assertNotContains(response, "Glue AAAA Records")
+
+    def test_detail_view_links_to_add_missing_glue(self):
+        self.add_permissions(
+            "nautobot_dns_models.view_dnsdelegation",
+            "nautobot_dns_models.view_nsrecord",
+            "nautobot_dns_models.add_arecord",
+            "nautobot_dns_models.add_aaaarecord",
+        )
+        delegation = DNSDelegation.objects.get(name="apps")
+        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
+
+        response = self.client.get(delegation.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "No glue")
+        for route in ("arecord_add", "aaaarecord_add"):
+            add_url = reverse(f"plugins:nautobot_dns_models:{route}")
+            self.assertContains(response, f"{add_url}?zone={self.zone.pk}&amp;name=ns1.apps&amp;return_url=")
+
+    def test_detail_view_hides_add_glue_links_without_add_permission(self):
+        self.add_permissions("nautobot_dns_models.view_dnsdelegation", "nautobot_dns_models.view_nsrecord")
+        delegation = DNSDelegation.objects.get(name="apps")
+        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
+
+        response = self.client.get(delegation.get_absolute_url())
+
+        self.assertContains(response, "No glue")
+        self.assertNotContains(response, reverse("plugins:nautobot_dns_models:arecord_add"))
+        self.assertNotContains(response, reverse("plugins:nautobot_dns_models:aaaarecord_add"))
+
+    def test_detail_view_shows_only_related_data_the_user_may_view(self):
+        """A user who may view the delegation but not its records or child zone sees none of them."""
+        self.add_permissions("nautobot_dns_models.view_dnsdelegation")
+        delegation = DNSDelegation.objects.get(name="apps")
+        child = DNSZone.objects.create(name="apps.example.com")
+        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, type="Pool", status=status)
+        address = IPAddress.objects.create(address="192.0.2.10/32", namespace=namespace, status=status)
+        ARecord.objects.create(name="ns1.apps", ip_address=address, zone=self.zone)
+
+        response = self.client.get(delegation.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        body = extract_page_body(response.content.decode(response.charset))
+        self.assertNotIn("ns1.apps.example.com", body)
+        self.assertNotIn("192.0.2.10", body)
+        self.assertNotIn("Glue A Records", body)
+        self.assertNotIn(child.get_absolute_url(), body)
+
+    def test_zone_detail_view_lists_delegations(self):
+        self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.view_dnsdelegation")
+
+        response = self.client.get(self.zone.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Delegations")
+        self.assertContains(response, DNSDelegation.objects.get(name="mail").get_absolute_url())
 
 
 class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
@@ -739,3 +871,97 @@ class SRVRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}
+
+
+class DNSForwarderViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+    """Test the DNSForwarder views."""
+
+    model = DNSForwarder
+
+    @classmethod
+    def setUpTestData(cls):
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, type="Pool", status=status)
+        cls.ip_address = IPAddress.objects.create(address="192.0.2.53/32", namespace=namespace, status=status)
+        DNSForwarder.objects.create(name="Corp resolver", ip_address=cls.ip_address)
+        DNSForwarder.objects.create(name="Quad9", address="9.9.9.9")
+        DNSForwarder.objects.create(name="Cloudflare", address="1.1.1.1")
+
+        cls.form_data = {"name": "Google", "address": "8.8.8.8", "port": 53, "description": "Public resolver"}
+        cls.csv_data = (
+            "name,address,port",
+            "Resolver A,192.0.2.101,53",
+            "Resolver B,192.0.2.102,53",
+            "Resolver C,2001:db8::53,853",
+        )
+        cls.bulk_edit_data = {"description": "Bulk edit views", "port": 5353}
+
+    def test_ip_address_page_lists_forwarders(self):
+        self.add_permissions("ipam.view_ipaddress", "nautobot_dns_models.view_dnsforwarder")
+
+        response = self.client.get(self.ip_address.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, DNSForwarder.objects.get(name="Corp resolver").get_absolute_url())
+
+    def test_ip_address_page_hides_forwarders_the_user_may_not_view(self):
+        self.add_permissions("ipam.view_ipaddress")
+
+        response = self.client.get(self.ip_address.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertNotContains(response, "DNS Forwarders")
+
+    def test_create_from_an_ipam_ip_address_with_the_address_field_left_empty(self):
+        """Regression test: the empty Address field arrived as `""` and failed the one-address check."""
+        self.add_permissions("nautobot_dns_models.add_dnsforwarder", "ipam.view_ipaddress")
+        status = Status.objects.get(name="Active")
+        ip_address = IPAddress.objects.create(
+            address="192.0.2.54/32", namespace=Namespace.objects.get(name="Global"), status=status
+        )
+        data = {"name": "Second resolver", "ip_address": ip_address.pk, "address": "", "port": 53}
+
+        response = self.client.post(reverse("plugins:nautobot_dns_models:dnsforwarder_add"), data=data)
+
+        self.assertHttpStatus(response, 302)
+        forwarder = DNSForwarder.objects.get(name="Second resolver")
+        self.assertEqual(forwarder.ip_address, ip_address)
+        self.assertIsNone(forwarder.address)
+
+
+class DNSForwardingRuleViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+    """Test the DNSForwardingRule views."""
+
+    model = DNSForwardingRule
+
+    @classmethod
+    def setUpTestData(cls):
+        forwarder = DNSForwarder.objects.create(name="Corp resolver", address="192.0.2.53")
+        for name in ("corp.example.com", "lab.example.com", "partner.example.org"):
+            DNSForwardingRule.objects.create(name=name).forwarders.add(forwarder)
+
+        dns_view = DNSView.objects.get(name="Default")
+        cls.form_data = {
+            "name": "partner.example.net",
+            "dns_view": dns_view.pk,
+            "forwarders": [forwarder.pk],
+            "description": "Partner domain",
+        }
+        cls.csv_data = (
+            "name,dns_view",
+            f"a.example.org,{dns_view.pk}",
+            f"b.example.org,{dns_view.pk}",
+            f"c.example.org,{dns_view.pk}",
+        )
+        cls.bulk_edit_data = {"description": "Bulk edit views"}
+
+    def test_dns_view_page_lists_forwarding_rules(self):
+        self.add_permissions("nautobot_dns_models.view_dnsview", "nautobot_dns_models.view_dnsforwardingrule")
+        dns_view = DNSView.objects.get(name="Default")
+
+        response = self.client.get(dns_view.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Forwarding Rules")
+        self.assertContains(response, DNSForwardingRule.objects.get(name="corp.example.com").get_absolute_url())

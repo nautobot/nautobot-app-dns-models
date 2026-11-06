@@ -1,4 +1,5 @@
 """Test DNSZone Filter."""
+# pylint: disable=too-many-lines
 
 from datetime import date
 
@@ -12,6 +13,9 @@ from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSDelegationFilterSet,
+    DNSForwarderFilterSet,
+    DNSForwardingRuleFilterSet,
     DNSRegistrarFilterSet,
     DNSRegistrationFilterSet,
     DNSViewFilterSet,
@@ -27,6 +31,9 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
+    DNSForwarder,
+    DNSForwardingRule,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -300,7 +307,7 @@ class DNSRegistrationFilterTestCase(FilterTestCases.FilterTestCase):
 class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.TenancyFilterTestCaseMixin):
     """DNSZone Filter Test Case."""
 
-    queryset = DNSZone.objects.all()
+    queryset = DNSZone.objects.order_by("name")
     filterset = DNSZoneFilterSet
     tenancy_related_name = "dns_zones"
 
@@ -366,6 +373,8 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
             soa_expire=1209200,
             soa_minimum=7200,
         )
+        cls.parent_zone = DNSZone.objects.create(name="example.com", filename="example.conf")
+        cls.child_zone = DNSZone.objects.create(name="apps.example.com", filename="apps.conf")
 
     def test_single_name(self):
         """Test using Q search with name of DNSZone."""
@@ -391,8 +400,48 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
 
     def test_enabled_filter(self):
         """enabled filter should match only zones with the given enabled value."""
-        self.assertEqual(self.filterset({"enabled": "true"}, self.queryset).qs.count(), 2)
+        self.assertEqual(self.filterset({"enabled": "true"}, self.queryset).qs.count(), 4)
         self.assertEqual(self.filterset({"enabled": "false"}, self.queryset).qs.count(), 1)
+
+    def test_hierarchy_filters(self):
+        """parent, has_parent and has_children should follow the derived zone hierarchy."""
+        for value in ("example.com", self.parent_zone.pk):
+            with self.subTest(parent=value):
+                self.assertQuerySetEqual(self.filterset({"parent": [value]}, self.queryset).qs, [self.child_zone])
+        self.assertQuerySetEqual(self.filterset({"has_parent": True}, self.queryset).qs, [self.child_zone])
+        self.assertQuerySetEqual(self.filterset({"has_children": True}, self.queryset).qs, [self.parent_zone])
+
+
+class DNSDelegationFilterTestCase(FilterTestCases.FilterTestCase):
+    """DNSDelegation Filter Test Case."""
+
+    queryset = DNSDelegation.objects.all()
+    filterset = DNSDelegationFilterSet
+
+    generic_filter_tests = (
+        ("id",),
+        ("created",),
+        ("last_updated",),
+        ("name",),
+        ("description",),
+        ("zone", "zone__id"),
+        ("zone", "zone__name"),
+    )
+
+    @classmethod
+    def setUpTestData(cls):
+        """Setup test data for DNSDelegation Model."""
+        example = DNSZone.objects.create(name="example.com")
+        DNSDelegation.objects.create(zone=example, name="apps", description="Applications")
+        DNSDelegation.objects.create(zone=example, name="mail", description="Mail")
+        DNSDelegation.objects.create(zone=DNSZone.objects.create(name="example.net"), name="lab", description="Lab")
+        DNSDelegation.objects.create(zone=DNSZone.objects.create(name="example.org"), name="dev", description="Dev")
+
+    def test_search(self):
+        self.assertQuerySetEqual(
+            self.filterset({"q": "example.net"}, self.queryset).qs, DNSDelegation.objects.filter(name="lab")
+        )
+        self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 2)
 
 
 class NSRecordFilterTestCase(TestCase):
@@ -943,3 +992,76 @@ class SRVRecordFilterTestCase(TestCase):
         self.assertEqual(self.filterset({"q": "_sip._tcp"}, self.queryset).qs.count(), 2)
         self.assertEqual(self.filterset({"q": "sip2"}, self.queryset).qs.count(), 1)
         self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 3)
+
+
+class DNSForwarderFilterTestCase(FilterTestCases.FilterTestCase):
+    """DNSForwarder Filter Test Case."""
+
+    queryset = DNSForwarder.objects.all()
+    filterset = DNSForwarderFilterSet
+
+    generic_filter_tests = (
+        ("id",),
+        ("name",),
+        ("description",),
+        ("port",),
+        ("ip_address", "ip_address__id"),
+        ("forwarding_rules", "forwarding_rules__id"),
+        ("forwarding_rules", "forwarding_rules__name"),
+    )
+
+    @classmethod
+    def setUpTestData(cls):
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, type="Pool", status=status)
+        forwarders = []
+        for index, port in ((1, 53), (2, 853), (3, 5353)):
+            ip_address = IPAddress.objects.create(address=f"192.0.2.{index}/32", namespace=namespace, status=status)
+            forwarders.append(
+                DNSForwarder.objects.create(
+                    name=f"Resolver {index}", ip_address=ip_address, port=port, description=f"Desc {index}"
+                )
+            )
+        DNSForwarder.objects.create(name="Quad9", address="9.9.9.9", description="Public")
+        for index, forwarder in enumerate(forwarders, start=1):
+            DNSForwardingRule.objects.create(name=f"zone{index}.example.com").forwarders.add(forwarder)
+
+    def test_search(self):
+        self.assertQuerySetEqual(
+            self.filterset({"q": "9.9.9"}, self.queryset).qs, [DNSForwarder.objects.get(name="Quad9")]
+        )
+        self.assertEqual(self.filterset({"q": "Resolver"}, self.queryset).qs.count(), 3)
+
+
+class DNSForwardingRuleFilterTestCase(FilterTestCases.FilterTestCase):
+    """DNSForwardingRule Filter Test Case."""
+
+    queryset = DNSForwardingRule.objects.all()
+    filterset = DNSForwardingRuleFilterSet
+
+    generic_filter_tests = (
+        ("id",),
+        ("name",),
+        ("description",),
+        ("dns_view", "dns_view__id"),
+        ("dns_view", "dns_view__name"),
+        ("forwarders", "forwarders__id"),
+        ("forwarders", "forwarders__name"),
+    )
+
+    @classmethod
+    def setUpTestData(cls):
+        views = [DNSView.objects.create(name=f"View {index}") for index in range(1, 4)]
+        forwarders = [
+            DNSForwarder.objects.create(name=f"Resolver {index}", address=f"192.0.2.{index}") for index in range(1, 4)
+        ]
+        for index, (dns_view, forwarder) in enumerate(zip(views, forwarders), start=1):
+            rule = DNSForwardingRule.objects.create(
+                name=f"zone{index}.example.com", dns_view=dns_view, description=f"Desc {index}"
+            )
+            rule.forwarders.add(forwarder)
+        DNSForwardingRule.objects.create(name=".", dns_view=views[0])
+
+    def test_search(self):
+        self.assertEqual(self.filterset({"q": "zone"}, self.queryset).qs.count(), 3)

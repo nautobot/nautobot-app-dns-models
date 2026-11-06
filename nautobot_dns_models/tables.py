@@ -154,6 +154,7 @@ class DNSZoneTable(BaseTable):
     name = tables.Column(linkify=True)
     tenant = TenantColumn()
     dns_view = tables.Column(linkify=True)
+    parent = tables.Column(linkify=True)
     enabled = BooleanColumn()
     auto_create_ptr = BooleanColumn()
     actions = ButtonsColumn(
@@ -169,6 +170,7 @@ class DNSZoneTable(BaseTable):
             "pk",
             "name",
             "dns_view",
+            "parent",
             "enabled",
             "ttl",
             "filename",
@@ -193,6 +195,40 @@ class DNSZoneTable(BaseTable):
             "filename",
             "soa_expire",
             "soa_rname",
+            "actions",
+        )
+
+
+class DNSDelegationTable(BaseTable):
+    """Table for DNS Delegation list view."""
+
+    pk = ToggleColumn()
+    name = tables.Column(linkify=True)
+    zone = tables.Column(linkify=True)
+    fqdn = tables.Column(accessor="get_fqdn", verbose_name="FQDN", orderable=False)
+    actions = ButtonsColumn(
+        models.DNSDelegation,
+        buttons=("changelog", "edit", "delete"),
+    )
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.DNSDelegation
+        fields = (
+            "pk",
+            "name",
+            "zone",
+            "fqdn",
+            "description",
+            "actions",
+        )
+        default_columns = (
+            "pk",
+            "name",
+            "zone",
+            "fqdn",
+            "description",
             "actions",
         )
 
@@ -495,5 +531,74 @@ class SRVRecordTable(DNSRecordTable):
             "target",
             "zone",
             "enabled",
+            "actions",
+        )
+
+
+class DNSForwarderTable(BaseTable):
+    """Table for DNS Forwarder list view."""
+
+    pk = ToggleColumn()
+    name = tables.Column(linkify=True)
+    ip_address = tables.Column(linkify=True, verbose_name="IP Address")
+    address = tables.Column(accessor="get_address", verbose_name="Effective Address", orderable=False)
+    actions = ButtonsColumn(
+        models.DNSForwarder,
+        buttons=("changelog", "edit", "delete"),
+    )
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.DNSForwarder
+        fields = (
+            "pk",
+            "name",
+            "ip_address",
+            "address",
+            "port",
+            "description",
+            "actions",
+        )
+        default_columns = (
+            "pk",
+            "name",
+            "address",
+            "port",
+            "description",
+            "actions",
+        )
+
+
+class DNSForwardingRuleTable(BaseTable):
+    """Table for DNS Forwarding Rule list view."""
+
+    pk = ToggleColumn()
+    name = tables.Column(linkify=True)
+    dns_view = tables.Column(linkify=True)
+    forwarders = tables.ManyToManyColumn(linkify_item=True)
+    actions = ButtonsColumn(
+        models.DNSForwardingRule,
+        buttons=("changelog", "edit", "delete"),
+    )
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.DNSForwardingRule
+        fields = (
+            "pk",
+            "name",
+            "dns_view",
+            "forwarders",
+            "description",
+            "actions",
+        )
+        default_columns = (
+            "pk",
+            "name",
+            "dns_view",
+            "forwarders",
+            "description",
             "actions",
         )

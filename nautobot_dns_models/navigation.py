@@ -24,10 +24,34 @@ menu_items = (
                         permissions=["nautobot_dns_models.view_dnszone"],
                     ),
                     NavMenuItem(
+                        link="plugins:nautobot_dns_models:dnsdelegation_list",
+                        name="DNS Delegations",
+                        weight=150,
+                        permissions=["nautobot_dns_models.view_dnsdelegation"],
+                    ),
+                    NavMenuItem(
                         link="plugins:nautobot_dns_models:dnsview_list",
                         name="DNS Views",
                         weight=200,
                         permissions=["nautobot_dns_models.view_dnsview"],
+                    ),
+                ),
+            ),
+            NavMenuGroup(
+                name="Forwarding",
+                weight=350,
+                items=(
+                    NavMenuItem(
+                        link="plugins:nautobot_dns_models:dnsforwardingrule_list",
+                        name="DNS Forwarding Rules",
+                        weight=100,
+                        permissions=["nautobot_dns_models.view_dnsforwardingrule"],
+                    ),
+                    NavMenuItem(
+                        link="plugins:nautobot_dns_models:dnsforwarder_list",
+                        name="DNS Forwarders",
+                        weight=200,
+                        permissions=["nautobot_dns_models.view_dnsforwarder"],
                     ),
                 ),
             ),
