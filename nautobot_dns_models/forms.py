@@ -361,6 +361,22 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
         widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
     )
     filename = forms.CharField(required=False, label="Filename")
+    parent = DynamicModelMultipleChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        required=False,
+        label="Parent zone",
+    )
+    has_parent = forms.NullBooleanField(
+        required=False,
+        label="Has parent zone",
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
+    has_children = forms.NullBooleanField(
+        required=False,
+        label="Has child zones",
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.DNSZone
     # Define the fields above for ordering and widget purposes
     fields = [
@@ -368,6 +384,58 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
         "name",
         "enabled",
         "filename",
+        "parent",
+        "has_parent",
+        "has_children",
+    ]
+
+
+class DNSDelegationForm(NautobotModelForm):
+    """DNSDelegation creation/edit form."""
+
+    zone = DynamicModelChoiceField(queryset=models.DNSZone.objects.all())
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSDelegation
+        fields = "__all__"
+
+
+class DNSDelegationBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
+    """DNSDelegation bulk edit form."""
+
+    pk = forms.ModelMultipleChoiceField(queryset=models.DNSDelegation.objects.all(), widget=forms.MultipleHiddenInput)
+    description = forms.CharField(required=False)
+
+    class Meta:
+        """Meta attributes."""
+
+        nullable_fields = [
+            "description",
+        ]
+
+
+class DNSDelegationFilterForm(NautobotFilterForm):
+    """Filter form for DNSDelegation searches."""
+
+    q = forms.CharField(
+        required=False,
+        label="Search",
+        help_text="Search within Name, Zone and Description.",
+    )
+    name = forms.CharField(required=False, label="Name")
+    zone = DynamicModelMultipleChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        required=False,
+        label="Zone",
+    )
+    model = models.DNSDelegation
+    fields = [
+        "q",
+        "name",
+        "zone",
     ]
 
 

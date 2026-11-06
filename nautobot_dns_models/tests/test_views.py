@@ -14,6 +14,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
     DNSRegistrar,
     DNSView,
     DNSZone,
@@ -196,6 +197,135 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             # DNSZone.soa_rname accepts a DNS-style mailbox, not only an email address
             "soa_rname": "admin.example.com",
         }
+
+    def test_detail_view_lists_child_zones(self):
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+        parent = DNSZone.objects.create(name="example.com")
+        DNSZone.objects.create(name="apps.example.com")
+
+        response = self.client.get(parent.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Child Zones")
+        self.assertContains(response, "apps.example.com")
+
+
+class DNSDelegationViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+    """Test the DNSDelegation views."""
+
+    model = DNSDelegation
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZone.objects.create(name="example.com")
+        for name in ("apps", "mail", "lab"):
+            DNSDelegation.objects.create(zone=cls.zone, name=name)
+
+        cls.form_data = {
+            "name": "corp",
+            "zone": cls.zone.pk,
+            "description": "Corporate subdomain",
+        }
+        cls.csv_data = (
+            "name,zone",
+            f"dev,{cls.zone.pk}",
+            f"test,{cls.zone.pk}",
+            f"prod,{cls.zone.pk}",
+        )
+        cls.bulk_edit_data = {"description": "Bulk edit views"}
+
+    def test_detail_view_summarizes_name_servers(self):
+        self.add_permissions("nautobot_dns_models.view_dnsdelegation", "nautobot_dns_models.view_nsrecord")
+        delegation = DNSDelegation.objects.get(name="apps")
+        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
+        NSRecord.objects.create(name="apps", server="ns2.other.net", zone=self.zone)
+
+        response = self.client.get(delegation.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        body = extract_page_body(response.content.decode(response.charset))
+        for text in ("apps.example.com", "ns1.apps.example.com", "In-domain", "ns2.other.net", "Out-of-bailiwick"):
+            self.assertIn(text, body)
+
+    def test_detail_view_lists_glue_records(self):
+        self.add_permissions(
+            "nautobot_dns_models.view_dnsdelegation",
+            "nautobot_dns_models.view_nsrecord",
+            "nautobot_dns_models.view_arecord",
+        )
+        delegation = DNSDelegation.objects.get(name="apps")
+        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, type="Pool", status=status)
+        address = IPAddress.objects.create(address="192.0.2.10/32", namespace=namespace, status=status)
+        glue = ARecord.objects.create(name="ns1.apps", ip_address=address, zone=self.zone)
+
+        response = self.client.get(delegation.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Glue A Records")
+        self.assertContains(response, glue.get_absolute_url())
+        self.assertNotContains(response, "Glue AAAA Records")
+
+    def test_detail_view_links_to_add_missing_glue(self):
+        self.add_permissions(
+            "nautobot_dns_models.view_dnsdelegation",
+            "nautobot_dns_models.view_nsrecord",
+            "nautobot_dns_models.add_arecord",
+            "nautobot_dns_models.add_aaaarecord",
+        )
+        delegation = DNSDelegation.objects.get(name="apps")
+        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
+
+        response = self.client.get(delegation.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "No glue")
+        for route in ("arecord_add", "aaaarecord_add"):
+            add_url = reverse(f"plugins:nautobot_dns_models:{route}")
+            self.assertContains(response, f"{add_url}?zone={self.zone.pk}&amp;name=ns1.apps&amp;return_url=")
+
+    def test_detail_view_hides_add_glue_links_without_add_permission(self):
+        self.add_permissions("nautobot_dns_models.view_dnsdelegation", "nautobot_dns_models.view_nsrecord")
+        delegation = DNSDelegation.objects.get(name="apps")
+        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
+
+        response = self.client.get(delegation.get_absolute_url())
+
+        self.assertContains(response, "No glue")
+        self.assertNotContains(response, reverse("plugins:nautobot_dns_models:arecord_add"))
+        self.assertNotContains(response, reverse("plugins:nautobot_dns_models:aaaarecord_add"))
+
+    def test_detail_view_shows_only_related_data_the_user_may_view(self):
+        """A user who may view the delegation but not its records or child zone sees none of them."""
+        self.add_permissions("nautobot_dns_models.view_dnsdelegation")
+        delegation = DNSDelegation.objects.get(name="apps")
+        child = DNSZone.objects.create(name="apps.example.com")
+        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, type="Pool", status=status)
+        address = IPAddress.objects.create(address="192.0.2.10/32", namespace=namespace, status=status)
+        ARecord.objects.create(name="ns1.apps", ip_address=address, zone=self.zone)
+
+        response = self.client.get(delegation.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        body = extract_page_body(response.content.decode(response.charset))
+        self.assertNotIn("ns1.apps.example.com", body)
+        self.assertNotIn("192.0.2.10", body)
+        self.assertNotIn("Glue A Records", body)
+        self.assertNotIn(child.get_absolute_url(), body)
+
+    def test_zone_detail_view_lists_delegations(self):
+        self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.view_dnsdelegation")
+
+        response = self.client.get(self.zone.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Delegations")
+        self.assertContains(response, DNSDelegation.objects.get(name="mail").get_absolute_url())
 
 
 class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):

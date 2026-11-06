@@ -61,6 +61,7 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
         "DNSRegistrar",
         "DNSRegistration",
         "DNSZone",
+        "DNSDelegation",
         "ARecord",
         "AAAARecord",
         "PTRRecord",
@@ -92,6 +93,13 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
             field_type=bool,
         ),
     }
+
+    def ready(self):
+        """Connect the app's signal handlers."""
+        super().ready()
+        # Deferred for app-registry timing: `signals` imports `models`, which cannot load while this module is
+        # imported during settings setup.
+        from nautobot_dns_models import signals  # noqa: F401  pylint: disable=import-outside-toplevel,unused-import
 
 
 config = NautobotDnsModelsConfig  # pylint:disable=invalid-name

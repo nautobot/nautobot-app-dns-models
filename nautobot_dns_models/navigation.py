@@ -24,6 +24,12 @@ menu_items = (
                         permissions=["nautobot_dns_models.view_dnszone"],
                     ),
                     NavMenuItem(
+                        link="plugins:nautobot_dns_models:dnsdelegation_list",
+                        name="DNS Delegations",
+                        weight=150,
+                        permissions=["nautobot_dns_models.view_dnsdelegation"],
+                    ),
+                    NavMenuItem(
                         link="plugins:nautobot_dns_models:dnsview_list",
                         name="DNS Views",
                         weight=200,

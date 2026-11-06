@@ -12,6 +12,7 @@ from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSDelegationFilterSet,
     DNSRegistrarFilterSet,
     DNSRegistrationFilterSet,
     DNSViewFilterSet,
@@ -27,6 +28,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -300,7 +302,7 @@ class DNSRegistrationFilterTestCase(FilterTestCases.FilterTestCase):
 class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.TenancyFilterTestCaseMixin):
     """DNSZone Filter Test Case."""
 
-    queryset = DNSZone.objects.all()
+    queryset = DNSZone.objects.order_by("name")
     filterset = DNSZoneFilterSet
     tenancy_related_name = "dns_zones"
 
@@ -366,6 +368,8 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
             soa_expire=1209200,
             soa_minimum=7200,
         )
+        cls.parent_zone = DNSZone.objects.create(name="example.com", filename="example.conf")
+        cls.child_zone = DNSZone.objects.create(name="apps.example.com", filename="apps.conf")
 
     def test_single_name(self):
         """Test using Q search with name of DNSZone."""
@@ -391,8 +395,48 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
 
     def test_enabled_filter(self):
         """enabled filter should match only zones with the given enabled value."""
-        self.assertEqual(self.filterset({"enabled": "true"}, self.queryset).qs.count(), 2)
+        self.assertEqual(self.filterset({"enabled": "true"}, self.queryset).qs.count(), 4)
         self.assertEqual(self.filterset({"enabled": "false"}, self.queryset).qs.count(), 1)
+
+    def test_hierarchy_filters(self):
+        """parent, has_parent and has_children should follow the derived zone hierarchy."""
+        for value in ("example.com", self.parent_zone.pk):
+            with self.subTest(parent=value):
+                self.assertQuerySetEqual(self.filterset({"parent": [value]}, self.queryset).qs, [self.child_zone])
+        self.assertQuerySetEqual(self.filterset({"has_parent": True}, self.queryset).qs, [self.child_zone])
+        self.assertQuerySetEqual(self.filterset({"has_children": True}, self.queryset).qs, [self.parent_zone])
+
+
+class DNSDelegationFilterTestCase(FilterTestCases.FilterTestCase):
+    """DNSDelegation Filter Test Case."""
+
+    queryset = DNSDelegation.objects.all()
+    filterset = DNSDelegationFilterSet
+
+    generic_filter_tests = (
+        ("id",),
+        ("created",),
+        ("last_updated",),
+        ("name",),
+        ("description",),
+        ("zone", "zone__id"),
+        ("zone", "zone__name"),
+    )
+
+    @classmethod
+    def setUpTestData(cls):
+        """Setup test data for DNSDelegation Model."""
+        example = DNSZone.objects.create(name="example.com")
+        DNSDelegation.objects.create(zone=example, name="apps", description="Applications")
+        DNSDelegation.objects.create(zone=example, name="mail", description="Mail")
+        DNSDelegation.objects.create(zone=DNSZone.objects.create(name="example.net"), name="lab", description="Lab")
+        DNSDelegation.objects.create(zone=DNSZone.objects.create(name="example.org"), name="dev", description="Dev")
+
+    def test_search(self):
+        self.assertQuerySetEqual(
+            self.filterset({"q": "example.net"}, self.queryset).qs, DNSDelegation.objects.filter(name="lab")
+        )
+        self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 2)
 
 
 class NSRecordFilterTestCase(TestCase):

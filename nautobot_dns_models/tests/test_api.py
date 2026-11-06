@@ -17,6 +17,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -506,6 +507,30 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
         zone.refresh_from_db()
         self.assertFalse(zone.enabled)
 
+    def test_parent_is_derived_and_read_only(self):
+        """The API reports the derived parent zone and ignores a parent supplied by the client."""
+        self.add_permissions(
+            "nautobot_dns_models.add_dnszone", "nautobot_dns_models.view_dnszone", "nautobot_dns_models.view_dnsview"
+        )
+        dns_view = DNSView.objects.get(name="Default")
+        example = _create_zone(name="example.com", dns_view=dns_view)
+        unrelated = _create_zone(name="unrelated.example", dns_view=dns_view)
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnszone-list")
+        data = {
+            "name": "apps.example.com",
+            "dns_view": dns_view.id,
+            "filename": "apps.example.com.zone",
+            "soa_mname": "ns1.example.com",
+            "soa_rname": "admin@example.com",
+            "parent": unrelated.id,
+        }
+        response = self.client.post(url, data=data, format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["parent"]["id"], example.id)
+        self.assertEqual(DNSZone.objects.get(pk=response.data["id"]).parent, example)
+
     def test_create_zone_helper_uses_supplied_dns_view(self):
         """_create_zone should use the DNSView explicitly provided by the caller."""
         custom_view = DNSView.objects.create(name="Helper Supplied View")
@@ -521,6 +546,46 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
         zone = _create_zone(name="helper-default.example")
 
         self.assertEqual(zone.dns_view, expected_default_view)
+
+
+class DNSDelegationAPITestCase(APIViewTestCases.APIViewTestCase):
+    """Test the Nautobot DNSDelegation API."""
+
+    model = DNSDelegation
+    view_namespace = "plugins-api:nautobot_dns_models"
+    bulk_update_data = {
+        "description": "Example bulk description",
+    }
+
+    @classmethod
+    def setUpTestData(cls):
+        zone = _create_zone(name="example.com")
+        for name in ("apps", "mail", "lab"):
+            DNSDelegation.objects.create(zone=zone, name=name)
+
+        cls.create_data = [
+            {"name": "dev", "zone": zone.pk},
+            {"name": "test", "zone": zone.pk, "description": "Test subdomain"},
+            {"name": "prod", "zone": zone.pk},
+        ]
+
+    def test_absolute_name_is_stored_relative_to_the_zone(self):
+        """Regression test: the API validates a copy of the object, so normalizing only in `clean()` was lost."""
+        self.add_permissions(
+            "nautobot_dns_models.add_dnsdelegation",
+            "nautobot_dns_models.view_dnsdelegation",
+            "nautobot_dns_models.view_dnszone",
+        )
+        zone = DNSZone.objects.get(name="example.com")
+        url = reverse("plugins-api:nautobot_dns_models-api:dnsdelegation-list")
+
+        response = self.client.post(
+            url, data={"name": "corp.Example.com.", "zone": zone.pk}, format="json", **self.header
+        )
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["name"], "corp")
+        self.assertEqual(DNSDelegation.objects.get(pk=response.data["id"]).get_fqdn(), "corp.example.com")
 
 
 class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):

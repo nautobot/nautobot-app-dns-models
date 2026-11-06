@@ -1,16 +1,28 @@
 """Models for Nautobot DNS Models."""
+# pylint: disable=too-many-lines
 
 import hashlib
 
 from constance import config as constance_config
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, validate_email
-from django.db import models
+from django.db import models, transaction
+from django.db.models import Q
 from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 from nautobot.extras.models import StatusField
 from nautobot.ipam.choices import IPAddressVersionChoices
 from netutils.ip import ipaddress_address
+
+from nautobot_dns_models.choices import NameServerBailiwickChoices
+from nautobot_dns_models.utils import (
+    ancestor_keys,
+    compute_zone_parents,
+    dns_name_key,
+    is_subdomain,
+    owner_fqdn,
+    relative_owner_name,
+)
 
 # Reverse-DNS roots per RFC 1035 §3.5 and RFC 3596 §2.5
 RESERVED_ROOTS = {"in-addr.arpa", "ip6.arpa", "arpa"}
@@ -375,6 +387,16 @@ class DNSZone(DNSModel):
         verbose_name="View",
         default=get_default_view_pk,
     )
+    parent = models.ForeignKey(
+        to="self",
+        on_delete=models.SET_NULL,
+        related_name="children",
+        blank=True,
+        null=True,
+        editable=False,
+        help_text="Most specific zone in the same DNS View that encloses this zone. Set automatically.",
+        verbose_name="Parent Zone",
+    )
     ttl = models.PositiveBigIntegerField(
         validators=[MaxValueValidator(UINT32_MAX)],
         default=3600,
@@ -445,9 +467,18 @@ class DNSZone(DNSModel):
         verbose_name = "DNS Zone"
         verbose_name_plural = "DNS Zones"
 
+    def __init__(self, *args, **kwargs):
+        """Remember the values that place this zone in the hierarchy, to detect changes on save."""
+        super().__init__(*args, **kwargs)
+        self._hierarchy_values = self._get_hierarchy_values()
+
     def __str__(self):
         """Stringify instance."""
         return f"{self.name} ({self.dns_view})"
+
+    def _get_hierarchy_values(self):
+        # Read through __dict__ so that a deferred field does not trigger a query.
+        return self.__dict__.get("name"), self.__dict__.get("dns_view_id")
 
     def clean(self):
         """Normalize plain DNS-style RNAME mailboxes to email form."""
@@ -473,9 +504,58 @@ class DNSZone(DNSModel):
         self.soa_rname = normalized_soa_rname
 
     def save(self, *args, **kwargs):
-        """Normalize the RNAME before saving through the ORM."""
+        """Normalize the RNAME, set the parent zone, and re-parent the zones this one now encloses or releases."""
         self.soa_rname = normalize_soa_rname(self.soa_rname)
-        return super().save(*args, **kwargs)
+        hierarchy_changed = self._state.adding or self._get_hierarchy_values() != self._hierarchy_values
+
+        with transaction.atomic():
+            # Exclude this zone: until it is saved, the database still holds its old name, which can enclose the new one.
+            self.parent = self.get_enclosing_zone(self.name, self.dns_view_id, exclude_pk=self.pk)
+            super().save(*args, **kwargs)
+            if hierarchy_changed:
+                self._release_former_children()
+                self._adopt_children()
+
+        self._hierarchy_values = self._get_hierarchy_values()
+
+    def _release_former_children(self):
+        """Re-parent children that are no longer below this zone after a rename or a change of DNS View."""
+        key = dns_name_key(self.name)
+        for child in self.children.all():
+            if child.dns_view_id != self.dns_view_id or not is_subdomain(dns_name_key(child.name), key):
+                DNSZone.objects.filter(pk=child.pk).update(
+                    parent=self.get_enclosing_zone(child.name, child.dns_view_id)
+                )
+
+    def _adopt_children(self):
+        """Become the parent of every zone below this one whose current parent is missing or less specific."""
+        key = dns_name_key(self.name)
+        candidates = DNSZone.objects.filter(dns_view_id=self.dns_view_id).exclude(pk=self.pk).select_related("parent")
+        if key:
+            candidates = candidates.filter(Q(name__iendswith=f".{key}") | Q(name__iendswith=f".{key}."))
+        adopted_pks = [
+            zone.pk
+            for zone in candidates
+            if is_subdomain(dns_name_key(zone.name), key)
+            and (zone.parent is None or len(dns_name_key(zone.parent.name)) < len(key))
+        ]
+        if adopted_pks:
+            DNSZone.objects.filter(pk__in=adopted_pks).update(parent=self)
+
+    @classmethod
+    def get_enclosing_zone(cls, name, dns_view_id, exclude_pk=None):
+        """Return the most specific zone in the DNS View whose name is above `name`, otherwise None.
+
+        Names compare case-insensitively and ignore a trailing root dot, so `Example.com.` encloses `www.example.com`.
+        `exclude_pk` leaves out one zone, such as a zone being renamed.
+        """
+        query = Q()
+        for key in ancestor_keys(dns_name_key(name)):
+            query |= (Q(name__iexact=key) | Q(name__iexact=f"{key}.")) if key else Q(name=".")
+        if not query:
+            return None
+        zones = cls.objects.filter(query, dns_view_id=dns_view_id).exclude(pk=exclude_pk)
+        return max(zones, key=lambda zone: len(dns_name_key(zone.name)), default=None)
 
     @classmethod
     def find_reverse_zone_for_ptrdname(cls, ptrdname, dns_view=None):
@@ -494,6 +574,27 @@ class DNSZone(DNSModel):
             if zone:
                 return zone
         return None
+
+
+def rebuild_zone_hierarchy(dns_view=None):
+    """Recompute the parent of every zone, or of every zone in `dns_view`, and return how many changed.
+
+    `DNSZone.save()` keeps parents current. This repairs them after writes that bypass it, such as
+    `QuerySet.update()` or `bulk_create()`.
+    """
+    zones = DNSZone.objects.all()
+    if dns_view is not None:
+        zones = zones.filter(dns_view=dns_view)
+    rows = list(zones.values_list("pk", "name", "dns_view_id", "parent_id"))
+    parents = compute_zone_parents((pk, name, dns_view_id) for pk, name, dns_view_id, _ in rows)
+
+    pks_by_new_parent = {}
+    for pk, _, _, parent_id in rows:
+        if parents[pk] != parent_id:
+            pks_by_new_parent.setdefault(parents[pk], []).append(pk)
+    for parent_id, pks in pks_by_new_parent.items():
+        DNSZone.objects.filter(pk__in=pks).update(parent_id=parent_id)
+    return sum(len(pks) for pks in pks_by_new_parent.values())
 
 
 @extras_features(
@@ -642,7 +743,16 @@ class DNSRecord(DNSModel):
             return
 
         if isinstance(self, CNAMERecord):
-            conflicting_models = (NSRecord, ARecord, AAAARecord, MXRecord, TXTRecord, PTRRecord, SRVRecord)
+            conflicting_models = (
+                NSRecord,
+                ARecord,
+                AAAARecord,
+                MXRecord,
+                TXTRecord,
+                PTRRecord,
+                SRVRecord,
+                DNSDelegation,
+            )
             for model in conflicting_models:
                 if model.objects.filter(name=self.name, zone_id=self.zone_id).exists():
                     raise ValidationError(
@@ -993,3 +1103,180 @@ class SRVRecord(DNSRecord):
         unique_together = [["name", "target", "port", "zone"]]
         verbose_name = "SRV Record"
         verbose_name_plural = "SRV Records"
+
+
+def get_address_records(zone, fqdn, user=None):
+    """Return the A and AAAA records in `zone` whose owner name is `fqdn`, or an empty list if it is outside the zone.
+
+    With `user`, only records that user may view are returned.
+    """
+    fqdn_key = dns_name_key(fqdn)
+    zone_key = dns_name_key(zone.name)
+    if fqdn_key != zone_key and not is_subdomain(fqdn_key, zone_key):
+        return []
+    owner = relative_owner_name(fqdn_key, zone_key)
+    owner_filter = Q(name__in=["@", ""]) if owner == "@" else Q(name__iexact=owner)
+    records = []
+    for model in (ARecord, AAAARecord):
+        queryset = model.objects.filter(owner_filter, zone=zone).select_related("ip_address")
+        records.extend(queryset.restrict(user, "view") if user is not None else queryset)
+    return records
+
+
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
+class DNSDelegation(PrimaryModel):
+    """A zone cut: the owner name in a parent zone where authority passes to other name servers (RFC 1034 §4.2.1).
+
+    The delegation holds no name server data. Its NS records and glue are the NS, A and AAAA records in the parent
+    zone, so NS records outside a delegation keep their meaning.
+    """
+
+    zone = ForeignKeyWithAutoRelatedName(
+        DNSZone,
+        on_delete=models.PROTECT,
+        help_text="Parent zone that contains the zone cut.",
+    )
+    name = models.CharField(
+        max_length=200,
+        help_text="Owner name of the zone cut, relative to the zone. e.g. apps",
+    )
+    description = models.TextField(help_text="Description of the delegation.", blank=True)
+
+    natural_key_field_names = ["zone", "name"]
+
+    class Meta:
+        """Meta attributes for DNSDelegation."""
+
+        ordering = ["zone__name", "name"]
+        unique_together = [["zone", "name"]]
+        verbose_name = "DNS Delegation"
+        verbose_name_plural = "DNS Delegations"
+
+    def __str__(self):
+        """Stringify instance."""
+        return self.get_fqdn()
+
+    def _normalize_name(self):
+        """Store an absolute name entered as `apps.example.com.` relative to the zone, as `apps`."""
+        zone = getattr(self, "zone", None)
+        if zone is not None and self.name.lower().endswith(f".{zone.name.lower().rstrip('.')}."):
+            self.name = self.name[: -(len(zone.name.rstrip(".")) + 2)]
+
+    def clean(self):
+        """Validate the owner name: below the zone apex, well formed, unique per zone, and not shared with a CNAME."""
+        super().clean()
+
+        self._normalize_name()
+        zone = getattr(self, "zone", None)
+
+        if self.name in ("", "@"):
+            raise ValidationError({"name": "A delegation must be below the zone apex, e.g. `apps`."})
+
+        if (
+            zone is not None
+            and DNSDelegation.objects.filter(zone=zone, name__iexact=self.name).exclude(pk=self.pk).exists()
+        ):
+            # DNS names compare case-insensitively (RFC 4343), so `Apps` would be the same zone cut as `apps`.
+            raise ValidationError({"name": "A delegation with this name, ignoring case, already exists in this zone."})
+
+        if getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL") == "wire-format":
+            for label in self.name.split("."):
+                DNSModel._validate_dns_label(label, field="name")  # pylint: disable=protected-access
+
+        if (
+            zone is not None
+            and getattr(constance_config, "nautobot_dns_models__CNAME_RESTRICTION_ENABLED", True)
+            and CNAMERecord.objects.filter(name=self.name, zone=zone).exists()
+        ):
+            raise ValidationError({"name": "A delegation cannot co-exist with a CNAME of the same name in this zone."})
+
+    def save(self, *args, **kwargs):
+        """Normalize the owner name, also for writes that validate a copy of the object, such as the REST API."""
+        self._normalize_name()
+        super().save(*args, **kwargs)
+
+    def get_fqdn(self):
+        """Return the fully qualified name of the delegated domain, e.g. `apps.example.com`."""
+        return owner_fqdn(self.name, self.zone.name)
+
+    @property
+    def ns_records(self):
+        """Return a lazy queryset of the NS records in the parent zone at this delegation's owner name."""
+        return NSRecord.objects.filter(zone_id=self.zone_id, name__iexact=self.name)
+
+    def get_child_zone(self, user=None):
+        """Return the zone in the same DNS View whose name is the delegated domain, otherwise None.
+
+        With `user`, a child zone that user may not view is treated as absent.
+        """
+        fqdn = self.get_fqdn()
+        zones = DNSZone.objects.filter(
+            Q(name__iexact=fqdn) | Q(name__iexact=f"{fqdn}."), dns_view_id=self.zone.dns_view_id
+        )
+        if user is not None:
+            zones = zones.restrict(user, "view")
+        return zones.first()
+
+    def classify_name_server(self, server):
+        """Return where `server` sits relative to this zone cut, as a `NameServerBailiwickChoices` value."""
+        server_key = dns_name_key(server)
+        cut_key = dns_name_key(self.get_fqdn())
+        zone_key = dns_name_key(self.zone.name)
+        if server_key == cut_key or is_subdomain(server_key, cut_key):
+            return NameServerBailiwickChoices.IN_DOMAIN
+        if server_key == zone_key or is_subdomain(server_key, zone_key):
+            return NameServerBailiwickChoices.SIBLING
+        return NameServerBailiwickChoices.OUT_OF_BAILIWICK
+
+    def get_glue_records(self, server, user=None):
+        """Return the A and AAAA records in the parent zone at the name `server`, limited to `user`'s if given."""
+        return get_address_records(self.zone, server, user=user)
+
+    def _glue_owner_filter(self):
+        """Return a filter matching the parent-zone owner names of this delegation's in-domain and sibling servers."""
+        zone_key = dns_name_key(self.zone.name)
+        query = Q(pk=None)
+        for server in self.ns_records.values_list("server", flat=True):
+            if self.classify_name_server(server) == NameServerBailiwickChoices.OUT_OF_BAILIWICK:
+                continue
+            owner = relative_owner_name(dns_name_key(server), zone_key)
+            query |= Q(name__in=["@", ""]) if owner == "@" else Q(name__iexact=owner)
+        return query
+
+    @property
+    def glue_a_records(self):
+        """Return the parent zone's A records at this delegation's name server names.
+
+        Building the queryset reads the delegation's NS records once.
+        """
+        return ARecord.objects.filter(self._glue_owner_filter(), zone_id=self.zone_id)
+
+    @property
+    def glue_aaaa_records(self):
+        """Return the parent zone's AAAA records at this delegation's name server names.
+
+        Building the queryset reads the delegation's NS records once.
+        """
+        return AAAARecord.objects.filter(self._glue_owner_filter(), zone_id=self.zone_id)
+
+    def get_name_server_addresses(self, server, user=None):
+        """Return the address records known for `server`, limited to those `user` may view if given.
+
+        In-domain and sibling name servers resolve through the parent zone's own records. An out-of-bailiwick name
+        server resolves through whichever zone in the same DNS View contains it, if any.
+        """
+        if self.classify_name_server(server) != NameServerBailiwickChoices.OUT_OF_BAILIWICK:
+            return self.get_glue_records(server, user=user)
+        server_key = dns_name_key(server)
+        zone = DNSZone.objects.filter(
+            Q(name__iexact=server_key) | Q(name__iexact=f"{server_key}."), dns_view_id=self.zone.dns_view_id
+        ).first() or DNSZone.get_enclosing_zone(server_key, self.zone.dns_view_id)
+        return get_address_records(zone, server, user=user) if zone else []

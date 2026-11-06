@@ -1,8 +1,14 @@
 """DNS Plugin Views."""
 
+from urllib.parse import urlencode
+
+from django.urls import reverse
+from django.utils.html import format_html
 from nautobot.apps import views
 from nautobot.apps.ui import (
     ButtonColorChoices,
+    DataTablePanel,
+    KeyValueTablePanel,
     ObjectDetailContent,
     ObjectFieldsPanel,
     ObjectsTablePanel,
@@ -10,12 +16,14 @@ from nautobot.apps.ui import (
     StatsPanel,
 )
 from nautobot.core.ui import object_detail
+from nautobot.core.views.utils import get_obj_from_context
 from nautobot.ipam.tables import PrefixTable
 
 from nautobot_dns_models.api.serializers import (
     AAAARecordSerializer,
     ARecordSerializer,
     CNAMERecordSerializer,
+    DNSDelegationSerializer,
     DNSRegistrarSerializer,
     DNSRegistrationSerializer,
     DNSViewSerializer,
@@ -26,10 +34,12 @@ from nautobot_dns_models.api.serializers import (
     SRVRecordSerializer,
     TXTRecordSerializer,
 )
+from nautobot_dns_models.choices import NameServerBailiwickChoices
 from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSDelegationFilterSet,
     DNSRegistrarFilterSet,
     DNSRegistrationFilterSet,
     DNSViewFilterSet,
@@ -50,6 +60,9 @@ from nautobot_dns_models.forms import (
     CNAMERecordBulkEditForm,
     CNAMERecordFilterForm,
     CNAMERecordForm,
+    DNSDelegationBulkEditForm,
+    DNSDelegationFilterForm,
+    DNSDelegationForm,
     DNSRegistrarBulkEditForm,
     DNSRegistrarFilterForm,
     DNSRegistrarForm,
@@ -82,6 +95,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -96,6 +110,7 @@ from nautobot_dns_models.tables import (
     AAAARecordTable,
     ARecordTable,
     CNAMERecordTable,
+    DNSDelegationTable,
     DNSRegistrarTable,
     DNSRegistrationTable,
     DNSViewTable,
@@ -106,6 +121,7 @@ from nautobot_dns_models.tables import (
     SRVRecordTable,
     TXTRecordTable,
 )
+from nautobot_dns_models.utils import dns_name_key, relative_owner_name
 
 
 class DNSViewUIViewSet(views.NautobotUIViewSet):
@@ -211,7 +227,7 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
     filterset_form_class = DNSZoneFilterForm
     serializer_class = DNSZoneSerializer
     lookup_field = "pk"
-    queryset = DNSZone.objects.all()
+    queryset = DNSZone.objects.select_related("dns_view", "parent")
     table_class = DNSZoneTable
 
     object_detail_content = ObjectDetailContent(
@@ -238,6 +254,25 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                 table_class=NSRecordTable,
                 table_title="NS Records",
                 exclude_columns=["zone"],
+                max_display_count=5,
+            ),
+            ObjectsTablePanel(
+                weight=350,
+                section=SectionChoices.LEFT_HALF,
+                table_filter="zone",
+                table_class=DNSDelegationTable,
+                table_title="Delegations",
+                exclude_columns=["zone"],
+                select_related_fields=["zone"],
+                max_display_count=5,
+            ),
+            ObjectsTablePanel(
+                weight=400,
+                section=SectionChoices.LEFT_HALF,
+                table_filter="parent",
+                table_class=DNSZoneTable,
+                table_title="Child Zones",
+                include_columns=["name", "enabled", "description", "actions"],
                 max_display_count=5,
             ),
             # Right pane
@@ -347,6 +382,12 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                         required_permissions=["nautobot_dns_models.add_cnamerecord"],
                     ),
                     object_detail.Button(
+                        weight=350,
+                        link_name="plugins:nautobot_dns_models:zone_dns_delegations_add",
+                        label="Delegation",
+                        required_permissions=["nautobot_dns_models.add_dnsdelegation"],
+                    ),
+                    object_detail.Button(
                         weight=400,
                         link_name="plugins:nautobot_dns_models:zone_mx_records_add",
                         label="MX Record",
@@ -380,6 +421,128 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
             ),
         ],
     )
+
+
+class GlueRecordsTablePanel(ObjectsTablePanel):
+    """A table of a delegation's glue records, shown only when there are some."""
+
+    def should_render(self, context):
+        """Render only when the delegation has glue records of this panel's type that the user may view."""
+        if not super().should_render(context):
+            return False
+        glue_records = getattr(get_obj_from_context(context), self.table_attribute)
+        return glue_records.restrict(context["request"].user, "view").exists()
+
+
+class DNSDelegationUIViewSet(views.NautobotUIViewSet):
+    """DNSDelegation UI ViewSet."""
+
+    form_class = DNSDelegationForm
+    bulk_update_form_class = DNSDelegationBulkEditForm
+    filterset_class = DNSDelegationFilterSet
+    filterset_form_class = DNSDelegationFilterForm
+    serializer_class = DNSDelegationSerializer
+    lookup_field = "pk"
+    queryset = DNSDelegation.objects.select_related("zone")
+    table_class = DNSDelegationTable
+
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            ),
+            KeyValueTablePanel(
+                weight=200,
+                section=SectionChoices.LEFT_HALF,
+                label="Delegated Domain",
+                context_data_key="delegated_domain",
+            ),
+            DataTablePanel(
+                weight=100,
+                section=SectionChoices.RIGHT_HALF,
+                label="Name Servers",
+                context_data_key="name_servers",
+                columns=["server", "bailiwick", "addresses"],
+                column_headers=["Name Server", "Bailiwick", "Addresses"],
+            ),
+            ObjectsTablePanel(
+                weight=200,
+                section=SectionChoices.RIGHT_HALF,
+                table_attribute="ns_records",
+                related_field_name="zone",
+                table_class=NSRecordTable,
+                table_title="NS Records",
+                exclude_columns=["zone"],
+                add_button_route=None,
+                enable_related_link=False,
+            ),
+            GlueRecordsTablePanel(
+                weight=300,
+                section=SectionChoices.RIGHT_HALF,
+                table_attribute="glue_a_records",
+                related_field_name="zone",
+                table_class=ARecordTable,
+                table_title="Glue A Records",
+                exclude_columns=["zone"],
+                add_button_route=None,
+                enable_related_link=False,
+            ),
+            GlueRecordsTablePanel(
+                weight=400,
+                section=SectionChoices.RIGHT_HALF,
+                table_attribute="glue_aaaa_records",
+                related_field_name="zone",
+                table_class=AAAARecordTable,
+                table_title="Glue AAAA Records",
+                exclude_columns=["zone"],
+                add_button_route=None,
+                enable_related_link=False,
+            ),
+        ],
+    )
+
+    def get_extra_context(self, request, instance=None):
+        """Add the delegated domain and a per-name-server summary for the detail view."""
+        context = super().get_extra_context(request, instance)
+        if self.action == "retrieve" and instance is not None:
+            user = request.user
+            context["delegated_domain"] = {
+                "FQDN": instance.get_fqdn(),
+                "Child zone": instance.get_child_zone(user=user),
+            }
+            context["name_servers"] = [
+                self._name_server_row(instance, ns_record.server, user)
+                for ns_record in instance.ns_records.restrict(user, "view").order_by("server")
+            ]
+        return context
+
+    @staticmethod
+    def _name_server_row(delegation, server, user):
+        """Summarize one name server; an in-domain server without glue gets links to add it, if the user may."""
+        bailiwick = delegation.classify_name_server(server)
+        addresses = ", ".join(
+            str(record.ip_address.host) for record in delegation.get_name_server_addresses(server, user=user)
+        )
+        if not addresses and bailiwick == NameServerBailiwickChoices.IN_DOMAIN:
+            query = urlencode(
+                {
+                    "zone": delegation.zone_id,
+                    "name": relative_owner_name(dns_name_key(server), dns_name_key(delegation.zone.name)),
+                    "return_url": delegation.get_absolute_url(),
+                }
+            )
+            addresses = "No glue"
+            for label, model_name in (("Add A", "arecord"), ("Add AAAA", "aaaarecord")):
+                if user.has_perm(f"nautobot_dns_models.add_{model_name}"):
+                    url = reverse(f"plugins:nautobot_dns_models:{model_name}_add")
+                    addresses = format_html('{} · <a href="{}?{}">{}</a>', addresses, url, query, label)
+        return {
+            "server": server,
+            "bailiwick": NameServerBailiwickChoices.as_dict()[bailiwick],
+            "addresses": addresses or "—",
+        }
 
 
 class NSRecordUIViewSet(views.NautobotUIViewSet):
