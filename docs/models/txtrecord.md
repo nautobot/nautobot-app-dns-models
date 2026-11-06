@@ -46,17 +46,12 @@ Mixing quoted and unquoted text in one value is not supported.
 
 The `character_strings` property returns the list of `<character-string>` values a record represents, whichever style was used to enter it. Each value is `bytes`: the exact octets sent on the wire, with escapes decoded, so `\200` is the single octet 200. Integrations that publish these records should use it rather than splitting `text` themselves.
 
-### Enforcement and Data Compliance
+### Enforcement
 
-These length checks are implemented as the `TXT Record RFC 1035 Length` rule in Nautobot's [Data Validation Engine](https://docs.nautobot.com/projects/core/en/stable/user-guide/platform-functionality/data-validation/), and their effect depends on the `DNS_VALIDATION_LEVEL` configuration (see the [installation guide](../admin/install.md#app-configuration)):
+Like the DNS name checks, these rules follow the `DNS_VALIDATION_LEVEL` setting (see the [installation guide](../admin/install.md#app-configuration)):
 
-- **Wire format** — a TXT record that breaks the rules is rejected when it is created or edited.
-- **Disabled** — the record is saved, and the failure is recorded under **Extensibility > Data Validation > Data Compliance** so you can find and fix it later.
-
-To check every existing TXT record against the rules, run the core **Run Registered Data Compliance Rules** job and select the `TXT Record RFC 1035 Length` rule.
-
-!!! note
-    The Data Compliance result stores at most the first 255 characters of the offending `text` value. Open the record itself to see the full content.
+- **Wire format** (default) — a TXT record that breaks the rules, or whose quoted value cannot be parsed, is rejected when it is created or edited.
+- **Disabled** — no TXT content checks run, and the value is saved as entered. If a saved value begins with a double quote but is not valid presentation format, reading `character_strings` raises a `ValidationError`.
 
 ## Uniqueness
 

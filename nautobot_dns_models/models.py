@@ -21,10 +21,9 @@ RESERVED_ROOTS = {"in-addr.arpa", "ip6.arpa", "arpa"}
 # RFC 1982 §7 specifies SERIAL's uint32 range and arithmetic.
 UINT32_MAX = 2**32 - 1
 
-# RFC 1035 §3.3 defines <character-string> as a single length octet followed by up to 255 octets.
+# RFC 1035 §3.3 defines a <character-string> as a length octet followed by up to 255 octets.
 TXT_CHARACTER_STRING_MAX_OCTETS = 255
-# RFC 1035 §3.3.14 defines TXT RDATA as one or more <character-string>; RFC 1035 §4.1.3 bounds the
-# whole RDATA by the 16-bit RDLENGTH field, counting the length octet that prefixes each string.
+# RFC 1035 §3.3.14, §4.1.3: TXT RDATA, including each length octet, has a limit of 16-bit RDLENGTH.
 TXT_RDATA_MAX_OCTETS = 2**16 - 1
 
 
@@ -37,12 +36,7 @@ def dns_wire_label_length(label):
 
 
 def _decode_txt_escapes(value, field="text"):
-    r"""Decode a quoted <character-string> into the octets it represents on the wire.
-
-    `\DDD` becomes the single octet DDD and `\X` becomes X (RFC 1035 §5.1). Other characters become their UTF-8
-    bytes. Building bytes rather than a string keeps an escaped octet above 127 at one octet: as a string it would
-    be a Unicode character that encodes to two.
-    """
+    r"""Decode a quoted <character-string> into wire octets: `\DDD` is one octet, `\X` is X (RFC 1035 §5.1)."""
     decoded = bytearray()
     index = 0
     while index < len(value):
@@ -126,14 +120,10 @@ def _chunk_utf8_octets(value, max_octets):
 
 
 def split_txt_character_strings(value, field="text"):
-    r"""Return the TXT RDATA of `value` as a list of <character-string> values per RFC 1035 §3.3.14.
+    """Return `value` as TXT <character-string> values, each as wire-format `bytes` (RFC 1035 §3.3.14).
 
-    Each value is `bytes`: the octets of that character-string on the wire, so `len()` is its wire length.
-
-    A value that begins with a double quote is parsed as presentation-format: a whitespace-separated
-    sequence of quoted character-strings, with `\DDD` and `\X` escapes decoded (RFC 1035 §5.1).
-    This lets the author control where the wire-format boundaries fall, which matters for long DKIM
-    keys. Any other value is treated as a single logical string and split into 255-octet chunks.
+    A value starting with a double quote is parsed as presentation format (RFC 1035 §5.1);
+    any other value is split into 255-octet chunks.
     """
     if value is None:
         return []
@@ -858,15 +848,13 @@ class TXTRecord(DNSRecord):
     """TXT Record model."""
 
     text = models.TextField(help_text="Text for the TXT Record.")
-    # `text` cannot participate in a unique index directly: MySQL cannot index a TEXT column without a
-    # prefix length (error 1170). The digest gives an equivalent, backend-portable uniqueness guarantee.
-    # Named with a leading underscore so Nautobot's serializers omit it from the REST API, as with `_ttl`.
+    # SHA-256 hash of `text` for the unique constraint: MySQL cannot index a TEXT column without a prefix (error 1170).
+    # The leading underscore keeps it out of the REST API, as with `_ttl`.
     _text_hash = models.CharField(
         max_length=64, editable=False, help_text="SHA-256 digest of `text`, used to enforce uniqueness."
     )
 
-    # Reproduces the key Nautobot would otherwise derive from `unique_together[0]`, so that CSV
-    # import/export and API natural-key lookups are unaffected by the digest column.
+    # Declared explicitly, or Nautobot would derive the natural key from `unique_together` and use `_text_hash`.
     natural_key_field_names = ["name", "text", "zone"]
 
     class Meta:
@@ -887,24 +875,44 @@ class TXTRecord(DNSRecord):
         return split_txt_character_strings(self.text)
 
     def clean(self):
-        """Refresh the uniqueness digest.
+        """Refresh the uniqueness digest and validate `text` per RFC 1035 §3.3.14 if wire-format validation is enabled.
 
-        RFC 1035 §3.3.14 length rules are enforced by `TXTRecordRFC1035LengthRule` in `custom_validators.py`,
-        which Nautobot's Data Validation Engine runs after this method.
-
-        The digest must be set here rather than only in `save()`: `Model.full_clean()` runs `clean()`
-        before `validate_unique()`, so a stale digest would make uniqueness checks compare empty
-        values -- reporting duplicates that don't exist and missing the ones that do.
+        The digest is set here, not only in `save()`, because `full_clean()` runs `clean()` before `validate_unique()`.
         """
         super().clean()
 
         self._text_hash = self.hash_text(self.text)
 
-    def unique_error_message(self, model_class, unique_check):
-        """Report the digest-based uniqueness violation in terms of `text` rather than `_text_hash`.
+        validation_level = getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL")
+        if validation_level != "wire-format":
+            return
 
-        Without this the default message names the internal field `_text_hash`.
-        """
+        # Raises a ValidationError on `text` for malformed presentation format, e.g. an unterminated quote.
+        character_string_list = split_txt_character_strings(self.text)
+        for position, character_string in enumerate(character_string_list, start=1):
+            octets = len(character_string)
+            if octets > TXT_CHARACTER_STRING_MAX_OCTETS:
+                raise ValidationError(
+                    {
+                        "text": (
+                            f"Character-string {position} is {octets} bytes (octets) but the maximum is {TXT_CHARACTER_STRING_MAX_OCTETS}. "
+                            'Split the value into multiple double-quoted character-strings, e.g. "part one" "part two".'
+                        )
+                    }
+                )
+
+        wire_length = txt_wire_rdata_length(character_string_list)
+        if wire_length > TXT_RDATA_MAX_OCTETS:
+            raise ValidationError(
+                {
+                    "text": (
+                        f"Total TXT record data is {wire_length} bytes (octets) in wire format; the maximum is {TXT_RDATA_MAX_OCTETS}."
+                    )
+                }
+            )
+
+    def unique_error_message(self, model_class, unique_check):
+        """Report a uniqueness violation in terms of `text` rather than the internal `_text_hash`."""
         if set(unique_check) == {"name", "zone", "_text_hash"}:
             return ValidationError(
                 message="TXT Record with this Name, Zone and Text already exists.",
