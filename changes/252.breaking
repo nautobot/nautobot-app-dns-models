@@ -1,0 +1,2 @@
+Changed DNS Zone name uniqueness within a DNS View to ignore letter case.
+Changed the upgrade migration to abort while DNS Zones in the same DNS View have names that differ only by letter case; see the upgrade guide.

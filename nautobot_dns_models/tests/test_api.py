@@ -487,6 +487,59 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
         self.assertEqual(DNSZone.objects.get(name="no-view.example").dns_view.name, "Default")
 
+    def test_post_dnszone_fails_case_insensitive_duplicate_name(self):
+        """Creating a zone whose name differs from an existing zone in the same view only by case should fail."""
+        self.add_permissions("nautobot_dns_models.add_dnszone")
+        self.add_permissions("nautobot_dns_models.view_dnsview")
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnszone-list")
+        data = {
+            "name": "TEST.com",
+            "dns_view": DNSView.objects.get(name="Default").id,
+            "filename": "TEST.com.zone",
+            "soa_mname": "ns1.test.com",
+            "soa_rname": "admin@test.com",
+        }
+
+        response = self.client.post(url, data=data, format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("name", response.data)
+        self.assertEqual(DNSZone.objects.filter(name__iexact="test.com").count(), 1)
+
+    def test_patch_dnszone_fails_rename_to_case_variant_of_other_zone(self):
+        """Renaming a zone to a case variant of another zone's name in the same view should fail."""
+        self.add_permissions("nautobot_dns_models.change_dnszone")
+        zone = DNSZone.objects.get(name="test.org")
+
+        response = self.client.patch(
+            self._get_detail_url(zone),
+            data={"name": "TEST.com"},
+            format="json",
+            **self.header,
+        )
+
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("name", response.data)
+        zone.refresh_from_db()
+        self.assertEqual(zone.name, "test.org")
+
+    def test_patch_dnszone_changes_case_of_own_name(self):
+        """Changing only the letter case of a zone's own name should succeed."""
+        self.add_permissions("nautobot_dns_models.change_dnszone")
+        zone = DNSZone.objects.get(name="test.com")
+
+        response = self.client.patch(
+            self._get_detail_url(zone),
+            data={"name": "TEST.com"},
+            format="json",
+            **self.header,
+        )
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        zone.refresh_from_db()
+        self.assertEqual(zone.name, "TEST.com")
+
     def test_update_enabled(self):
         """Partial update should allow toggling enabled on a DNSZone."""
         self.add_permissions("nautobot_dns_models.change_dnszone")

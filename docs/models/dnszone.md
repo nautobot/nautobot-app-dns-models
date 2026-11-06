@@ -4,7 +4,7 @@ The DNS zone model is used to represent a distinct DNS zone. It contains the zon
 
 Domain registration attributes are modeled separately in `DNSRegistration`.
 
-- `name` (string): Unique FQDN of the Zone, w/ TLD. e.g `example.com`.
+- `name` (string): FQDN of the Zone, w/ TLD. e.g `example.com`. Must be unique within its DNS view, ignoring letter case. See [Zone Name Uniqueness](#zone-name-uniqueness).
 - `enabled` (boolean, default `True`): Indicates whether the zone is eligible for publication by external integrations. This app does not publish zones or enforce this setting. The same field exists on every [DNS record](dnsrecord.md) type; disabling a zone does not change the records it contains.
 - `ttl` (integer): Time to live for the DNS zone.
 - `filename` (string): Filename of the DNS zone file.
@@ -18,6 +18,12 @@ Domain registration attributes are modeled separately in `DNSRegistration`.
 - `soa_minimum`: (integer): Minimum TTL for records in this zone.
 - `tenant` (Tenant, optional): Reference to the Tenant model for multi-tenancy support.
 - `auto_create_ptr` (boolean, default `False`): When enabled, creating an A or AAAA record in this zone automatically creates a matching PTR record in the most-specific reverse zone within the same DNS view. If no matching reverse zone exists, the A/AAAA creation fails with a validation error.
+
+## Zone Name Uniqueness
+
+DNS names that differ only by letter case are the same name ([RFC 1035 §2.3.3](https://www.rfc-editor.org/rfc/rfc1035.html#section-2.3.3), [RFC 4343 §2](https://www.rfc-editor.org/rfc/rfc4343.html#section-2)). A DNS view therefore cannot contain two zones whose names differ only by case, such as `Example.com` and `example.com`. The same name may exist in different DNS views.
+
+The name is stored with the letter case as entered. Creating or renaming a zone so that it collides with another zone in the same view is rejected with a validation error on `name` in the UI and the REST API, and by the database for any other write path. A zone may change the letter case of its own name.
 
 ## SOA RNAME Formats
 
