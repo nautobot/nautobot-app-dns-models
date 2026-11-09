@@ -75,14 +75,6 @@ def set_text_hash(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    # Merges three migrations that were never released. `replaces` lets databases that applied all of them,
-    # and migrations that depend on them, carry on without a reset.
-    replaces = [
-        ("nautobot_dns_models", "0011_rename_url_dnsregistrar_portal_url_and_more"),
-        ("nautobot_dns_models", "0012_txtrecord_rfc1035_text_length"),
-        ("nautobot_dns_models", "0013_dnszone_name_case_insensitive_unique"),
-    ]
-
     dependencies = [
         ("nautobot_dns_models", "0010_aaaarecord_enabled_arecord_enabled_and_more"),
     ]
