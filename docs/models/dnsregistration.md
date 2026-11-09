@@ -1,9 +1,9 @@
 # DNS Registration Model
 
-The DNS registration model tracks registrar-zone assignments and registration lifecycle attributes.
+The DNS registration model tracks registrar-zone assignments and registration lifecycle attributes. A catalog zone is not a registered name, so it cannot be used as `dns_zone`.
 
 - `dns_registrar` (DNS Registrar, mandatory): Registrar used.
-- `dns_zone` (DNS Zone, mandatory): Zone that is registered.
+- `dns_zone` (DNS Zone, mandatory): Zone that is registered. Must not have a `type` of `Catalog`.
 - `status` (Status, mandatory): Registration status.
 - `expiration_date` (date, optional): Domain expiration date.
 - `auto_renewal` (boolean): Whether auto renewal is enabled.
