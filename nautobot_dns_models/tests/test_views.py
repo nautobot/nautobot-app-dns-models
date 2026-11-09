@@ -247,9 +247,14 @@ class DNSZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         return instance
 
     def _column_headers(self, zone):
-        """Return the table column headers on `zone`'s detail page, upper-cased and stripped of markup."""
+        """Return the table column headers on `zone`'s detail page, upper-cased and stripped of markup.
+
+        Nautobot 3.2.9 adds screen-reader text such as "activate to sort ascending" to sortable headers,
+        so visually hidden spans are dropped along with the rest of the markup.
+        """
         cells = re.findall(r"<th\b[^>]*>(.*?)</th>", self._detail(zone), flags=re.DOTALL)
-        return {re.sub(r"<[^>]+>", "", cell).strip().upper() for cell in cells}
+        hidden = r"<span\b[^>]*\bvisually-hidden\b[^>]*>.*?</span>"
+        return {re.sub(r"<[^>]+>", "", re.sub(hidden, "", cell, flags=re.DOTALL)).strip().upper() for cell in cells}
 
     def _detail(self, zone):
         """Return the rendered body of `zone`'s detail page."""
@@ -301,8 +306,9 @@ class DNSZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
         self.assertHttpStatus(response, 200)
         body = extract_page_body(response.content.decode(response.charset))
-        # The catalog's own row names it once; every member row names it again in the catalog column.
-        self.assertEqual(body.count(catalog.name), 13)
+        # The catalog's own row links it once; every member row links it again in the catalog column. Links rather
+        # than the name, since newer Nautobot repeats each row's name in its overview button.
+        self.assertEqual(body.count(f'href="{catalog.get_absolute_url()}"'), 13)
 
     @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
     def test_primary_zone_offers_every_record_panel(self):
