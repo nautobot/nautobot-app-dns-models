@@ -1,7 +1,7 @@
 ---
 nautobot_dns_models:
   project_name: "nautobot-dns-models"
-  nautobot_ver: "3.1.0"
+  nautobot_ver: "3.2.0"
   local: false
   python_ver: "3.12"
   compose_dir: "development"

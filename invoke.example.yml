@@ -1,6 +1,6 @@
 ---
 nautobot_dns_models:
-  nautobot_ver: "3.1.0"
+  nautobot_ver: "3.2.0"
   python_ver: "3.12"
   # local: false
   # ephemeral_ports: false

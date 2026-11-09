@@ -61,7 +61,7 @@ namespace = Collection("nautobot_dns_models")
 namespace.configure(
     {
         "nautobot_dns_models": {
-            "nautobot_ver": "3.1.0",
+            "nautobot_ver": "3.2.0",
             "project_name": "nautobot-dns-models",
             "python_ver": "3.12",
             "local": False,
