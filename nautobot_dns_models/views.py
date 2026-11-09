@@ -33,7 +33,6 @@ from nautobot_dns_models.api.serializers import (
     SRVRecordSerializer,
     TXTRecordSerializer,
 )
-from nautobot_dns_models.choices import DNSZoneTypeChoices
 from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
@@ -153,7 +152,7 @@ class ZoneRecordsTablePanel(ObjectsTablePanel):
         if self.system_managed:
             return zone.is_catalog_zone
 
-        return zone.type in DNSZoneTypeChoices.USER_RECORD_ZONE_TYPES
+        return not zone.is_catalog_zone
 
 
 class ZoneRegistrationPanel(ObjectsTablePanel):
@@ -174,7 +173,7 @@ class RecordStatsPanel(StatsPanel):
     def should_render(self, context):
         """Render only where the zone permits users to manage records."""
         zone = get_obj_from_context(context)
-        return zone is not None and zone.type in DNSZoneTypeChoices.USER_RECORD_ZONE_TYPES
+        return zone is not None and not zone.is_catalog_zone
 
 
 class AddRecordButton(object_detail.Button):
@@ -192,7 +191,7 @@ class AddRecordButton(object_detail.Button):
             return False
 
         zone = get_obj_from_context(context)
-        return zone is not None and zone.type in DNSZoneTypeChoices.USER_RECORD_ZONE_TYPES
+        return zone is not None and not zone.is_catalog_zone
 
 
 class AddRecordsDropdownButton(object_detail.DropdownButton):
