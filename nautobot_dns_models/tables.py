@@ -1,12 +1,60 @@
 """Tables for nautobot_dns_models."""
 
 import django_tables2 as tables
+from django.db.models import BooleanField, Exists, ExpressionWrapper, OuterRef, Q, QuerySet
 from django.template.defaultfilters import truncatechars
 from django.utils.html import format_html
 from nautobot.apps.tables import BaseTable, BooleanColumn, ButtonsColumn, ToggleColumn
 from nautobot.tenancy.tables import TenantColumn
 
 from nautobot_dns_models import models
+from nautobot_dns_models.choices import DNSZoneTypeChoices
+
+DNSZONE_CATALOG_BUTTONS = """
+{% if record.user_can_change and not record.is_catalog_zone %}
+    {% if record.catalog_zone_id %}
+        {% if record.user_can_change_catalog %}
+            <li>
+                <a href="{% url 'plugins:nautobot_dns_models:dnszone_remove_from_catalog' pk=record.pk %}?return_url={{ request.path }}" class="dropdown-item text-danger">
+                    <span class="mdi mdi-folder-minus-outline me-4" aria-hidden="true"></span>Remove from Catalog
+                </a>
+            </li>
+        {% endif %}
+    {% elif record.user_has_catalog_in_view %}
+        <li>
+            <a href="{% url 'plugins:nautobot_dns_models:dnszone_add_to_catalog' pk=record.pk %}?return_url={{ request.path }}" class="dropdown-item text-success">
+                <span class="mdi mdi-folder-plus-outline me-4" aria-hidden="true"></span>Add to Catalog
+            </a>
+        </li>
+    {% endif %}
+{% endif %}
+"""
+
+
+def annotate_catalog_actions(queryset, user):
+    """Annotate each zone with what `user` may do with its catalog membership.
+
+    `user_can_change` covers the zone itself, `user_can_change_catalog` the catalog zone holding it,
+    and `user_has_catalog_in_view` whether any catalog zone in its view could take it.
+    """
+    changeable = models.DNSZone.objects.restrict(user, "change")
+    # Uncorrelated, so the database finds the views once per query rather than once per row.
+    catalog_view_ids = changeable.filter(type=DNSZoneTypeChoices.TYPE_CATALOG).values("dns_view_id")
+    return queryset.annotate(
+        user_can_change=Exists(changeable.filter(pk=OuterRef("pk"))),
+        user_can_change_catalog=Exists(changeable.filter(pk=OuterRef("catalog_zone_id"))),
+        user_has_catalog_in_view=ExpressionWrapper(Q(dns_view_id__in=catalog_view_ids), output_field=BooleanField()),
+    )
+
+
+class CatalogActionsTableMixin:
+    """Offer catalog actions only on rows where the table's user may carry them out."""
+
+    def __init__(self, data, *args, user=None, **kwargs):
+        """Annotate `data` for the catalog action menu items; without a user they stay hidden."""
+        if user is not None and isinstance(data, QuerySet):
+            data = annotate_catalog_actions(data, user)
+        super().__init__(data, *args, user=user, **kwargs)
 
 
 class TruncatedTextColumn(tables.Column):
@@ -147,18 +195,20 @@ class DNSRegistrationTable(BaseTable):
         )
 
 
-class DNSZoneTable(BaseTable):
+class DNSZoneTable(CatalogActionsTableMixin, BaseTable):
     """Table for DNS Zone list view."""
 
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
     tenant = TenantColumn()
     dns_view = tables.Column(linkify=True)
+    catalog_zone = tables.Column(linkify=True, verbose_name="Catalog Zone")
     enabled = BooleanColumn()
     auto_create_ptr = BooleanColumn()
     actions = ButtonsColumn(
         models.DNSZone,
         buttons=("changelog", "edit", "delete"),
+        prepend_template=DNSZONE_CATALOG_BUTTONS,
     )
 
     class Meta(BaseTable.Meta):
@@ -170,6 +220,8 @@ class DNSZoneTable(BaseTable):
             "name",
             "type",
             "dns_view",
+            "catalog_zone",
+            "member_label",
             "enabled",
             "ttl",
             "filename",
@@ -190,6 +242,7 @@ class DNSZoneTable(BaseTable):
             "name",
             "type",
             "dns_view",
+            "catalog_zone",
             "enabled",
             "ttl",
             "filename",
@@ -197,6 +250,23 @@ class DNSZoneTable(BaseTable):
             "soa_rname",
             "actions",
         )
+
+
+class CatalogMemberZoneTable(CatalogActionsTableMixin, BaseTable):  # pylint: disable=nb-sub-class-name
+    """Table of the member zones on a catalog zone's detail page."""
+
+    name = tables.Column(linkify=True, verbose_name="Member Zone")
+    ptr_record_name = tables.Column(
+        accessor="ptr_record_name", order_by=("member_label",), verbose_name="PTR Record Name"
+    )
+    actions = ButtonsColumn(models.DNSZone, buttons=("edit",), prepend_template=DNSZONE_CATALOG_BUTTONS)
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.DNSZone
+        fields = ("name", "ptr_record_name", "actions")
+        default_columns = ("name", "ptr_record_name", "actions")
 
 
 class NSRecordTable(DNSRecordTable):
