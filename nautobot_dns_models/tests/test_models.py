@@ -211,8 +211,8 @@ class TestDNSRegistration(ModelTestCases.BaseModelTestCase):
         self.assertEqual(context.exception.message_dict["dns_zone"], ["Catalog zones cannot be registered."])
 
 
-class TestDnsZone(ModelTestCases.BaseModelTestCase):
-    """Test DnsZone model."""
+class TestDNSZone(ModelTestCases.BaseModelTestCase):
+    """Test DNSZone model."""
 
     model = DNSZone
 
@@ -246,7 +246,7 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
         self.assertEqual(str(dnszone), "Development (Default)")
 
     def test_create_dnszone_all_fields_success(self):
-        """Create DnsZoneModel with all fields."""
+        """Create DNSZone with all fields."""
         dnszone = DNSZone.objects.create(
             name="Development",
             description="Development Test",

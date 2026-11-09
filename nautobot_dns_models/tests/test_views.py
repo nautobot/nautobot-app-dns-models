@@ -153,7 +153,7 @@ class DNSRegistrarViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.bulk_edit_data = {"account_number": "UPDATED-ACCOUNT"}
 
 
-class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+class DNSZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the DNSZone views."""
 
     model = DNSZone
