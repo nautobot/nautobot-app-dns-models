@@ -12,7 +12,9 @@ from nautobot.apps.testing import TestCase
 from nautobot_dns_models.models import DNSView, DNSZone, NSRecord
 from nautobot_dns_models.utils import format_dns_zone_name_collisions, get_dns_zone_name_collisions
 
-migration_0013 = importlib.import_module("nautobot_dns_models.migrations.0013_dnszone_name_case_insensitive_unique")
+migration_0011 = importlib.import_module(
+    "nautobot_dns_models.migrations.0011_portal_url_txt_text_hash_zone_name_ci_unique"
+)
 
 COMMAND_NAME = "check_dns_zone_name_collisions"
 
@@ -22,11 +24,11 @@ def _fake_zone(name, pk, view_name="Default"):
 
 
 class GetDNSZoneNameCollisionsTestCase(TestCase):
-    """Test get_dns_zone_name_collisions() and the copy of it in migration 0013."""
+    """Test get_dns_zone_name_collisions() and the copy of it in migration 0011."""
 
     detectors = {
         "utils": get_dns_zone_name_collisions,
-        "migration_0013": migration_0013.get_dns_zone_name_collisions,
+        "migration_0011": migration_0011.get_dns_zone_name_collisions,
     }
 
     def test_no_collisions(self):
@@ -121,29 +123,29 @@ class CheckZoneCollisionsCommandTestCase(TestCase):
 
 
 class MigrationCollisionCheckTestCase(TestCase):
-    """Test the collision check run by migration 0013 before the constraint is added."""
+    """Test the collision check run by migration 0011 before the constraint is added."""
 
     def setUp(self):
         self.apps = mock.Mock()
         self.apps.get_model.return_value = DNSZone
 
     def test_passes_without_collisions(self):
-        with mock.patch.object(migration_0013, "get_dns_zone_name_collisions", return_value=[]):
-            migration_0013.check_for_dns_zone_name_collisions(self.apps, None)
+        with mock.patch.object(migration_0011, "get_dns_zone_name_collisions", return_value=[]):
+            migration_0011.check_for_dns_zone_name_collisions(self.apps, None)
 
     def test_aborts_and_lists_capped_collisions(self):
         collisions = [
             [_fake_zone(f"Zone{index}.example", index * 2), _fake_zone(f"zone{index}.example", index * 2 + 1)]
-            for index in range(migration_0013.COLLISION_REPORT_LIMIT + 5)
+            for index in range(migration_0011.COLLISION_REPORT_LIMIT + 5)
         ]
 
-        with mock.patch.object(migration_0013, "get_dns_zone_name_collisions", return_value=collisions):
-            with self.assertRaises(migration_0013.DNSZoneNameCollisionError) as context:
-                migration_0013.check_for_dns_zone_name_collisions(self.apps, None)
+        with mock.patch.object(migration_0011, "get_dns_zone_name_collisions", return_value=collisions):
+            with self.assertRaises(migration_0011.DNSZoneNameCollisionError) as context:
+                migration_0011.check_for_dns_zone_name_collisions(self.apps, None)
 
         message = str(context.exception)
         self.assertTrue(message.startswith("Migration aborted:"))
         self.assertIn('"Zone0.example" (ID 0), "zone0.example" (ID 1)', message)
-        self.assertNotIn(f'"Zone{migration_0013.COLLISION_REPORT_LIMIT}.example"', message)
+        self.assertNotIn(f'"Zone{migration_0011.COLLISION_REPORT_LIMIT}.example"', message)
         self.assertIn("...and 5 more.", message)
         self.assertIn(f"nautobot-server {COMMAND_NAME}", message)
