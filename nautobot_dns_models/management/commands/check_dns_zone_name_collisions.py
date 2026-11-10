@@ -6,6 +6,9 @@ from django.db.models import Count
 from nautobot_dns_models.models import DNSRecord, DNSZone
 from nautobot_dns_models.utils import format_dns_zone_name_collisions, get_dns_zone_name_collisions
 
+# TODO: This file is useful for upgrading from 2.3.0 (or earlier) to next version.
+# It needs to be removed in the future when nobody uses it.
+
 
 class Command(BaseCommand):
     """Report DNS zones that must be resolved before DNS zone names can be unique regardless of letter case."""

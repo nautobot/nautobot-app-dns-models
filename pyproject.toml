@@ -35,7 +35,6 @@ nautobot = ">=3.1.0,<4.0.0"
 coverage = "*"
 # Currently pinned to <6.0.0 due to https://github.com/django-commons/django-debug-toolbar/issues/2168
 django-debug-toolbar = "<6.0.0"
-django-test-migrations = "~1.6.0"
 invoke = "*"
 ipython = "*"
 pylint = "*"
