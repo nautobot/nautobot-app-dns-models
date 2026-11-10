@@ -1,10 +1,34 @@
 """Tables for nautobot_dns_models."""
 
 import django_tables2 as tables
+from django.template.defaultfilters import truncatechars
+from django.utils.html import format_html
 from nautobot.apps.tables import BaseTable, BooleanColumn, ButtonsColumn, ToggleColumn
 from nautobot.tenancy.tables import TenantColumn
 
 from nautobot_dns_models import models
+
+
+class TruncatedTextColumn(tables.Column):
+    """Render a long text value truncated, with the full value available as a tooltip.
+
+    TXT record content can be up to 65535 octets (RFC 1035 §3.3.14), which would otherwise break the
+    list view layout.
+    """
+
+    def __init__(self, *args, truncate_chars=64, **kwargs):
+        """Store the truncation length."""
+        super().__init__(*args, **kwargs)
+        self.truncate_chars = truncate_chars
+
+    def render(self, value):
+        """Truncate the rendered value, keeping the full text in the cell's title attribute."""
+        if not value:
+            return self.default
+        truncated = truncatechars(value, self.truncate_chars)
+        if truncated == value:
+            return value
+        return format_html('<span title="{}">{}</span>', value, truncated)
 
 
 class DNSRecordTable(BaseTable):  # pylint: disable=nb-no-model-found
@@ -66,7 +90,7 @@ class DNSRegistrarTable(BaseTable):
         fields = (
             "pk",
             "name",
-            "url",
+            "portal_url",
             "account_number",
             "actions",
         )
@@ -74,7 +98,7 @@ class DNSRegistrarTable(BaseTable):
         default_columns = (
             "pk",
             "name",
-            "url",
+            "portal_url",
             "account_number",
             "actions",
         )
@@ -131,6 +155,7 @@ class DNSZoneTable(BaseTable):
     tenant = TenantColumn()
     dns_view = tables.Column(linkify=True)
     enabled = BooleanColumn()
+    auto_create_ptr = BooleanColumn()
     actions = ButtonsColumn(
         models.DNSZone,
         buttons=("changelog", "edit", "delete"),
@@ -362,6 +387,7 @@ class MXRecordTable(DNSRecordTable):
 class TXTRecordTable(DNSRecordTable):
     """Table for list view."""
 
+    text = TruncatedTextColumn()
     actions = ButtonsColumn(
         models.TXTRecord,
         buttons=("changelog", "edit", "delete"),

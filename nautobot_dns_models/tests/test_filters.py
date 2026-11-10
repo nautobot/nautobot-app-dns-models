@@ -145,16 +145,20 @@ class DNSRegistrarFilterTestCase(FilterTestCases.FilterTestCase):
 
     generic_filter_tests = [
         ["name"],
-        ["url"],
+        ["portal_url"],
         ["account_number"],
     ]
 
     @classmethod
     def setUpTestData(cls):
-        DNSRegistrar.objects.create(name="Registrar One", url="https://registrar-one.example", account_number="ACC-1")
-        DNSRegistrar.objects.create(name="Registrar Two", url="https://registrar-two.example", account_number="ACC-2")
         DNSRegistrar.objects.create(
-            name="Registrar Three", url="https://registrar-three.example", account_number="ACC-3"
+            name="Registrar One", portal_url="https://registrar-one.example", account_number="ACC-1"
+        )
+        DNSRegistrar.objects.create(
+            name="Registrar Two", portal_url="https://registrar-two.example", account_number="ACC-2"
+        )
+        DNSRegistrar.objects.create(
+            name="Registrar Three", portal_url="https://registrar-three.example", account_number="ACC-3"
         )
 
     def test_search(self):
@@ -163,10 +167,10 @@ class DNSRegistrarFilterTestCase(FilterTestCases.FilterTestCase):
         self.assertEqual(self.filterset({"q": "registrar"}, self.queryset).qs.count(), 3)
         self.assertEqual(self.filterset({"q": "ACC-2"}, self.queryset).qs.count(), 1)
 
-    def test_url_icontains(self):
-        """URL filter should match partial values case-insensitively."""
-        self.assertEqual(self.filterset({"url": "REGISTRAR-TWO"}, self.queryset).qs.count(), 1)
-        self.assertEqual(self.filterset({"url": "registrar"}, self.queryset).qs.count(), 3)
+    def test_portal_url_icontains(self):
+        """Portal URL filter should match partial values case-insensitively."""
+        self.assertEqual(self.filterset({"portal_url": "REGISTRAR-TWO"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"portal_url": "registrar"}, self.queryset).qs.count(), 3)
 
     def test_account_number_icontains(self):
         """Account number filter should support partial case-insensitive matching."""
@@ -200,13 +204,13 @@ class DNSRegistrationFilterTestCase(FilterTestCases.FilterTestCase):
         cls.view = DNSView.objects.create(name="Registration Filter View")
         cls.registrars = (
             DNSRegistrar.objects.create(
-                name="Filter Registrar One", url="https://filter-1.example", account_number="F-001"
+                name="Filter Registrar One", portal_url="https://filter-1.example", account_number="F-001"
             ),
             DNSRegistrar.objects.create(
-                name="Filter Registrar Two", url="https://filter-2.example", account_number="F-002"
+                name="Filter Registrar Two", portal_url="https://filter-2.example", account_number="F-002"
             ),
             DNSRegistrar.objects.create(
-                name="Filter Registrar Three", url="https://filter-3.example", account_number="F-003"
+                name="Filter Registrar Three", portal_url="https://filter-3.example", account_number="F-003"
             ),
         )
         cls.zones = (
@@ -369,9 +373,9 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
     def test_name(self):
-        """Test using Q search with name of DNSZone."""
-        params = {"name__in": "Test"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+        """Test case-insensitive substring filter on name of DNSZone."""
+        self.assertEqual(self.filterset({"name__ic": "TEST T"}, self.queryset).qs.count(), 2)
+        self.assertEqual(self.filterset({"name__ic": "Test"}, self.queryset).qs.count(), 3)
 
     def test_name_invalid(self):
         """Test using invalid Q search for DNSZone."""
@@ -425,10 +429,11 @@ class NSRecordFilterTestCase(TestCase):
         params = {"server": "ns1.example.com"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
-    def test_server_in(self):
-        """Test using Q search with server of NSRecord."""
-        params = {"server__in": "example.com"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+    def test_server_ic(self):
+        """Test case-insensitive substring filter on server of NSRecord."""
+        self.assertEqual(self.filterset({"server__ic": "NS2.EXAMPLE"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"server__ic": "example.com"}, self.queryset).qs.count(), 3)
+        self.assertEqual(self.filterset({"server__ic": "ns4"}, self.queryset).qs.count(), 0)
 
     def test_server_invalid(self):
         """Test using invalid Q search for server of NSRecord."""
@@ -532,10 +537,10 @@ class ARecordFilterTestCase(TestCase):
         params = {"ip_address": [self.ip_addresses[0]]}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
-    def test_ipaddress_in(self):
-        """Test ip_address in ARecord."""
-        params = {"ip_address__in": "10.0.0."}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+    def test_ipaddress_multiple(self):
+        """Test search with multiple IP addresses of ARecord."""
+        params = {"ip_address": [self.ip_addresses[0], self.ip_addresses[1]]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
 
     def test_zone(self):
         params = {"zone": [self.zone]}
@@ -585,9 +590,9 @@ class AAAARecordFilterTestCase(TestCase):
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
     def test_name(self):
-        """Test filter with name of AAAARecord."""
-        params = {"name__in": "aaaa-record"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+        """Test case-insensitive substring filter on name of AAAARecord."""
+        self.assertEqual(self.filterset({"name__ic": "AAAA-RECORD-02"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"name__ic": "aaaa-record"}, self.queryset).qs.count(), 3)
 
     def test_name_invalid(self):
         """Test using invalid search for AAAARecord."""
@@ -599,10 +604,10 @@ class AAAARecordFilterTestCase(TestCase):
         params = {"ip_address": [self.ip_addresses[0]]}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
-    def test_ip_address_in(self):
-        """Test ip_address in AAAARecord."""
-        params = {"ip_address__in": "2001:db8:abcd:12::"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+    def test_ip_address_multiple(self):
+        """Test search with multiple IP addresses of AAAARecord."""
+        params = {"ip_address": [self.ip_addresses[0], self.ip_addresses[1]]}
+        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
 
     def test_zone(self):
         params = {"zone": [self.zone]}
@@ -637,9 +642,9 @@ class CNAMERecordFilterTestCase(TestCase):
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
     def test_name(self):
-        """Test filter with name of CNAMERecord."""
-        params = {"name__in": "cname-record"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+        """Test case-insensitive substring filter on name of CNAMERecord."""
+        self.assertEqual(self.filterset({"name__ic": "CNAME-RECORD-01"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"name__ic": "cname-record"}, self.queryset).qs.count(), 2)
 
     def test_name_invalid(self):
         """Test using invalid search for CNAMERecord."""
@@ -651,10 +656,10 @@ class CNAMERecordFilterTestCase(TestCase):
         params = {"alias": "site.example.com"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
-    def test_alias_in(self):
-        """Test alias in CNAMERecord."""
-        params = {"alias__in": "example.com"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+    def test_alias_ic(self):
+        """Test case-insensitive substring filter on alias of CNAMERecord."""
+        self.assertEqual(self.filterset({"alias__ic": "BLOG."}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"alias__ic": "example.com"}, self.queryset).qs.count(), 2)
 
     def test_alias_invalid(self):
         params = {"alias": "wrong-alias"}
@@ -690,9 +695,9 @@ class MXRecordFilterTestCase(TestCase):
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
     def test_name(self):
-        """Test filter with name of MXRecord."""
-        params = {"name__in": "mx-record"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+        """Test case-insensitive substring filter on name of MXRecord."""
+        self.assertEqual(self.filterset({"name__ic": "MX-RECORD-01"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"name__ic": "mx-record"}, self.queryset).qs.count(), 2)
 
     def test_name_invalid(self):
         """Test using invalid search for MXRecord."""
@@ -704,10 +709,10 @@ class MXRecordFilterTestCase(TestCase):
         params = {"mail_server": "mail.example.com"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
-    def test_mail_server_in(self):
-        """Test mail server in MXRecord."""
-        params = {"mail_server__in": "example.com"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+    def test_mail_server_ic(self):
+        """Test case-insensitive substring filter on mail server of MXRecord."""
+        self.assertEqual(self.filterset({"mail_server__ic": "MAIL-02"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"mail_server__ic": "example.com"}, self.queryset).qs.count(), 2)
 
     def test_mail_server_invalid(self):
         params = {"mail_server": "wrong-mail-server"}
@@ -743,9 +748,9 @@ class TXTRecordFilterTestCase(TestCase):
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
     def test_name(self):
-        """Test filter with name of TXTRecord."""
-        params = {"name__in": "txt-record"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+        """Test case-insensitive substring filter on name of TXTRecord."""
+        self.assertEqual(self.filterset({"name__ic": "TXT-RECORD-02"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"name__ic": "txt-record"}, self.queryset).qs.count(), 2)
 
     def test_name_invalid(self):
         """Test using invalid search for TXTRecord."""
@@ -757,14 +762,23 @@ class TXTRecordFilterTestCase(TestCase):
         params = {"text": "spf-record"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
-    def test_text_in(self):
-        """Test text in TXTRecord."""
-        params = {"text__in": "record"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+    def test_text_ic(self):
+        """Test case-insensitive substring filter on text of TXTRecord."""
+        self.assertEqual(self.filterset({"text__ic": "SPF"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"text__ic": "record"}, self.queryset).qs.count(), 2)
 
     def test_text_invalid(self):
         params = {"text": "wrong-text"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
+
+    def test_text_search_matches_long_value(self):
+        """`text` is a TextField now; substring search must still work past the former 256-char limit."""
+        TXTRecord.objects.create(name="txt-record-03", text="v=DKIM1; k=rsa; p=" + "A" * 582, zone=self.zone)
+        self.assertEqual(self.filterset({"q": "v=DKIM1"}, self.queryset).qs.count(), 1)
+
+    def test_uniqueness_digest_is_not_a_filter(self):
+        """The internal `_text_hash` column must not be exposed as a filter."""
+        self.assertNotIn("_text_hash", self.filterset().filters)
 
     def test_zone(self):
         params = {"zone": [self.zone]}
@@ -796,9 +810,9 @@ class PTRRecordFilterTestCase(TestCase):
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
     def test_name(self):
-        """Test filter with name of PTRRecord."""
-        params = {"name__in": "ptr-record"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+        """Test case-insensitive substring filter on name of PTRRecord."""
+        self.assertEqual(self.filterset({"name__ic": "PTR-RECORD-01"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"name__ic": "ptr-record"}, self.queryset).qs.count(), 2)
 
     def test_name_invalid(self):
         """Test using invalid search for PTRRecord."""
@@ -810,10 +824,10 @@ class PTRRecordFilterTestCase(TestCase):
         params = {"ptrdname": "ptr-record-01"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 1)
 
-    def test_ptrdname_in(self):
-        """Test ptrdname in PTRRecord."""
-        params = {"ptrdname__in": "ptr-record"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
+    def test_ptrdname_ic(self):
+        """Test case-insensitive substring filter on ptrdname of PTRRecord."""
+        self.assertEqual(self.filterset({"ptrdname__ic": "PTR-RECORD-02"}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"ptrdname__ic": "ptr-record"}, self.queryset).qs.count(), 2)
 
     def test_ptrdname_invalid(self):
         params = {"ptrdname": "wrong-ptrdname"}
@@ -870,10 +884,10 @@ class SRVRecordFilterTestCase(TestCase):
         params = {"name": "_sip._tcp"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 2)
 
-    def test_name(self):
-        """Test filter with name of SRVRecord."""
-        params = {"name__in": "_sip._tcp,_xmpp._tcp"}
-        self.assertEqual(self.filterset(params, self.queryset).qs.count(), 3)
+    def test_name_multiple(self):
+        """Test filter with multiple name values of SRVRecord."""
+        self.assertEqual(self.filterset({"name": ["_xmpp._tcp"]}, self.queryset).qs.count(), 1)
+        self.assertEqual(self.filterset({"name": ["_sip._tcp", "_xmpp._tcp"]}, self.queryset).qs.count(), 3)
 
     def test_name_invalid(self):
         """Test using invalid search for SRVRecord."""

@@ -1,16 +1,11 @@
 """App Config Schema Generator and Validator."""
 
 import json
-import sys
+import tomllib
 from importlib import import_module
 from os import getenv
 from pathlib import Path
 from urllib.parse import urlparse
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
 
 import jsonschema
 from django.conf import settings

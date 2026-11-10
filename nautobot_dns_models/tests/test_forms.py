@@ -1,5 +1,6 @@
 """Tests for nautobot_dns_models Form Classes."""
 
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
@@ -43,7 +44,7 @@ class DNSZoneTest(TestCase):
     def test_specifying_all_fields_success(self):
         registrar = DNSRegistrar.objects.create(
             name="Registrar One",
-            url="https://registrar.example",
+            portal_url="https://registrar.example",
             account_number="ACC-100",
         )
         form = forms.DNSZoneForm(
@@ -119,6 +120,33 @@ class DNSZoneTest(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("This field is required.", form.errors["name"])
 
+    def test_name_case_variant_in_same_view_fails(self):
+        DNSZone.objects.create(
+            name="development",
+            filename="development.zone",
+            soa_mname="ns1.example.com",
+            soa_rname="admin@example.com",
+        )
+        form = forms.DNSZoneForm(
+            data={
+                "name": "Development",
+                "dns_view": DNSView.objects.get(name="Default").id,
+                "ttl": 3600,
+                "filename": "development.zone",
+                "soa_mname": "ns1.example.com",
+                "soa_rname": "admin@example.com",
+                "soa_refresh": 10800,
+                "soa_retry": 3600,
+                "soa_expire": 604800,
+                "soa_serial": 202,
+                "soa_minimum": 3600,
+            }
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn(
+            "A DNS zone with this name (ignoring letter case) already exists in this view.", form.errors["name"]
+        )
+
     def test_expiration_date_accepts_date_picker_value(self):
         form = forms.DNSZoneForm(
             data={
@@ -139,6 +167,62 @@ class DNSZoneTest(TestCase):
         self.assertTrue(form.is_valid())
 
 
+class DNSZoneBulkEditFormTest(TestCase):
+    """Test DNSZone bulk edit form SOA RNAME handling."""
+
+    form_class = forms.DNSZoneBulkEditForm
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZone.objects.create(
+            name="bulk-rname.example",
+            filename="bulk-rname.example.zone",
+            soa_mname="ns1.bulk-rname.example.",
+            soa_rname="admin@example.com",
+        )
+
+    def test_soa_rname_accepts_dns_style_mailbox(self):
+        form = self.form_class(
+            DNSZone,
+            data={"pk": [self.zone.pk], "soa_rname": "admin.example.com"},
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.zone.soa_rname = form.cleaned_data["soa_rname"]
+        self.zone.validated_save()
+        self.zone.refresh_from_db()
+        self.assertEqual(self.zone.soa_rname, "admin@example.com")
+
+    def test_soa_rname_accepts_single_label_placeholder(self):
+        form = self.form_class(
+            DNSZone,
+            data={"pk": [self.zone.pk], "soa_rname": "invalid."},
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.zone.soa_rname = form.cleaned_data["soa_rname"]
+        self.zone.validated_save()
+        self.zone.refresh_from_db()
+        self.assertEqual(self.zone.soa_rname, "invalid")
+
+    def test_soa_rname_rejects_invalid_value(self):
+        form = self.form_class(
+            DNSZone,
+            data={"pk": [self.zone.pk], "soa_rname": "john.example"},
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.zone.soa_rname = form.cleaned_data["soa_rname"]
+        with self.assertRaises(ValidationError) as context:
+            self.zone.validated_save()
+        self.assertIn("soa_rname", context.exception.message_dict)
+        self.assertIn(
+            "SOA RNAME must be a valid email address, a basic DNS-style mailbox with a fully qualified domain, "
+            "or a single-label placeholder.",
+            context.exception.message_dict["soa_rname"],
+        )
+
+
 class DNSRegistrarFormTestCase(TestCase):
     """Test DNSRegistrar forms."""
 
@@ -148,7 +232,7 @@ class DNSRegistrarFormTestCase(TestCase):
         form = self.form_class(
             data={
                 "name": "Registrar Test",
-                "url": "https://registrar.test",
+                "portal_url": "https://registrar.test",
                 "account_number": "REG-100",
             }
         )
@@ -161,7 +245,7 @@ class DNSRegistrarFormTestCase(TestCase):
         self.assertTrue(form.save())
 
     def test_validate_name_is_required(self):
-        form = self.form_class(data={"url": "https://registrar.test"})
+        form = self.form_class(data={"portal_url": "https://registrar.test"})
         self.assertFalse(form.is_valid())
         self.assertIn("This field is required.", form.errors["name"])
 
@@ -288,6 +372,10 @@ class ARecordFormTestCase(TestCase):
         self.assertTrue(form.errors)
         self.assertIn("not a valid UUID.", form.errors["ip_address"][0])
 
+    def test_ip_address_label(self):
+        form = self.form_class()
+        self.assertEqual(form.fields["ip_address"].label, "IP Address")
+
 
 class AAAARecordFormTestCase(TestCase):
     """Test AAAARecord forms."""
@@ -336,6 +424,10 @@ class AAAARecordFormTestCase(TestCase):
         form = self.form_class(data)
         self.assertFalse(form.is_valid())
         self.assertTrue(form.errors)
+
+    def test_ip_address_label(self):
+        form = self.form_class()
+        self.assertEqual(form.fields["ip_address"].label, "IP Address")
 
 
 class CNAMERecordFormTestCase(TestCase):
@@ -437,6 +529,28 @@ class TXTRecordFormTestCase(TestCase):
         form = self.form_class(data)
         self.assertTrue(form.is_valid())
         self.assertTrue(form.save())
+
+    def test_accepts_dkim_key_longer_than_256_characters(self):
+        data = {
+            "name": "dkim",
+            "text": "v=DKIM1; k=rsa; p=" + "A" * 582,
+            "ttl": 3600,
+            "zone": self.dns_zone,
+        }
+        form = self.form_class(data)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.save())
+
+    def test_rejects_quoted_character_string_over_255_octets(self):
+        data = {
+            "name": "txt-record",
+            "text": '"' + "a" * 300 + '"',
+            "ttl": 3600,
+            "zone": self.dns_zone,
+        }
+        form = self.form_class(data)
+        self.assertFalse(form.is_valid())
+        self.assertIn("text", form.errors)
 
 
 class PTRRecordFormTestCase(TestCase):

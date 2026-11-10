@@ -65,6 +65,7 @@ class DNSZoneSerializer(NautobotModelSerializer):
 
         model = models.DNSZone
         fields = "__all__"
+        extra_kwargs = {"dns_view": {"default": models.get_default_view}}
 
 
 class DNSRecordSerializer(NautobotModelSerializer):

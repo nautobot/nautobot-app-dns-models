@@ -49,13 +49,13 @@ class DNSViewPrefixAssignmentFilterSet(NautobotFilterSet):
 class DNSRegistrarFilterSet(NautobotFilterSet):
     """Filter for DNSRegistrar."""
 
-    url = MultiValueCharFilter(lookup_expr="icontains")
+    portal_url = MultiValueCharFilter(lookup_expr="icontains")
     account_number = MultiValueCharFilter(lookup_expr="icontains")
 
     q = SearchFilter(
         filter_predicates={
             "name": "icontains",
-            "url": "icontains",
+            "portal_url": "icontains",
             "account_number": "icontains",
         }
     )

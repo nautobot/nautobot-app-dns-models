@@ -1,9 +1,13 @@
 """Models for Nautobot DNS Models."""
+# pylint: disable=too-many-lines
+
+import hashlib
 
 from constance import config as constance_config
-from django.core.exceptions import ValidationError
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, validate_email
 from django.db import models
+from django.db.models.functions import Lower
 from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 from nautobot.extras.models import StatusField
@@ -19,6 +23,14 @@ RESERVED_ROOTS = {"in-addr.arpa", "ip6.arpa", "arpa"}
 # RFC 1982 §7 specifies SERIAL's uint32 range and arithmetic.
 UINT32_MAX = 2**32 - 1
 
+# RFC 1035 §3.3 defines a <character-string> as a length octet followed by up to 255 octets.
+TXT_CHARACTER_STRING_MAX_OCTETS = 255
+# RFC 1035 §3.3.14, §4.1.3: TXT RDATA, including each length octet, has a limit of 16-bit RDLENGTH.
+TXT_RDATA_MAX_OCTETS = 2**16 - 1
+
+# RFC 1035 §2.3.3 and RFC 4343 §2: domain name comparisons are case-insensitive.
+DNS_ZONE_NAME_UNIQUE_ERROR_CODE = "dns_zone_name_not_unique"
+
 
 def dns_wire_label_length(label):
     """Return the wire-format (IDNA/Punycode) length of a DNS label."""
@@ -26,6 +38,113 @@ def dns_wire_label_length(label):
         return len(label)
 
     return len("xn--" + label.encode("punycode").decode("ascii"))
+
+
+def _decode_txt_escapes(value, field="text"):
+    r"""Decode a quoted <character-string> into wire octets: `\DDD` is one octet, `\X` is X (RFC 1035 §5.1)."""
+    decoded = bytearray()
+    index = 0
+    while index < len(value):
+        character = value[index]
+        if character != "\\":
+            decoded.extend(character.encode("utf-8"))
+            index += 1
+            continue
+
+        escape = value[index + 1 : index + 4]
+        if len(escape) == 3 and escape.isdigit():
+            octet = int(escape)
+            if octet > 255:
+                raise ValidationError({field: rf"Invalid escape '\{escape}': decimal escapes must be 0-255."})
+            decoded.append(octet)
+            index += 4
+            continue
+
+        if index + 1 >= len(value):
+            raise ValidationError({field: "Invalid trailing backslash in quoted character-string."})
+        decoded.extend(value[index + 1].encode("utf-8"))
+        index += 2
+
+    return bytes(decoded)
+
+
+def _parse_quoted_txt_character_strings(value, field="text"):
+    """Parse whitespace-separated, double-quoted <character-string> values per RFC 1035 §5.1."""
+    character_string_list = []
+    index = 0
+    length = len(value)
+    while index < length:
+        if value[index].isspace():
+            index += 1
+            continue
+        if value[index] != '"':
+            raise ValidationError(
+                {field: "Expected a double-quoted character-string; mixing quoted and unquoted text is not supported."}
+            )
+
+        index += 1
+        start = index
+        while index < length:
+            if value[index] == "\\":
+                index += 2
+                continue
+            if value[index] == '"':
+                break
+            index += 1
+
+        if index >= length:
+            raise ValidationError({field: "Unterminated quoted character-string."})
+
+        character_string_list.append(_decode_txt_escapes(value[start:index], field=field))
+        index += 1
+
+    if not character_string_list:
+        raise ValidationError({field: "No character-strings found."})
+
+    return character_string_list
+
+
+def _chunk_utf8_octets(value, max_octets):
+    """Split a string into UTF-8 encoded chunks of at most `max_octets` bytes, never splitting a character."""
+    chunk_list = []
+    current = []
+    current_octets = 0
+    for character in value:
+        character_octets = len(character.encode("utf-8"))
+        if current_octets + character_octets > max_octets:
+            chunk_list.append("".join(current))
+            current = []
+            current_octets = 0
+        current.append(character)
+        current_octets += character_octets
+
+    if current:
+        chunk_list.append("".join(current))
+
+    return [chunk.encode("utf-8") for chunk in chunk_list]
+
+
+def split_txt_character_strings(value, field="text"):
+    """Return `value` as TXT <character-string> values, each as wire-format `bytes` (RFC 1035 §3.3.14).
+
+    A value starting with a double quote is parsed as presentation format (RFC 1035 §5.1);
+    any other value is split into 255-octet chunks.
+    """
+    if value is None:
+        return []
+
+    if value.lstrip().startswith('"'):
+        return _parse_quoted_txt_character_strings(value.strip(), field=field)
+
+    if value == "":
+        return [b""]
+
+    return _chunk_utf8_octets(value, TXT_CHARACTER_STRING_MAX_OCTETS)
+
+
+def txt_wire_rdata_length(character_string_list):
+    """Return the wire-format TXT RDATA length: each <character-string> plus its length octet."""
+    return sum(1 + len(character_string) for character_string in character_string_list)
 
 
 def _find_unescaped_dot(value):
@@ -212,7 +331,9 @@ class DNSRegistrar(PrimaryModel):
     """Model for DNS Registrars."""
 
     name = models.CharField(max_length=200, help_text="Name of the Registrar.", unique=True)
-    url = models.URLField(max_length=500, blank=True, help_text="Registrar URL.")
+    portal_url = models.URLField(
+        max_length=500, blank=True, help_text="Registrar portal URL.", verbose_name="Portal URL"
+    )
     account_number = models.CharField(max_length=100, blank=True, help_text="Registrar account number.")
 
     class Meta:
@@ -226,12 +347,17 @@ class DNSRegistrar(PrimaryModel):
         return self.name
 
 
-def get_default_view_pk():
-    """Return the default DNSView ID, creating it if necessary."""
+def get_default_view():
+    """Return the default DNSView instance, creating it if necessary."""
     default_view, _ = DNSView.objects.get_or_create(
         name="Default", defaults={"description": "Default DNS view. Created by Nautobot DNS Models app."}
     )
-    return default_view.pk
+    return default_view
+
+
+def get_default_view_pk():
+    """Return the default DNSView ID, creating it if necessary."""
+    return get_default_view().pk
 
 
 @extras_features(
@@ -317,16 +443,38 @@ class DNSZone(DNSModel):
         verbose_name="Auto-create PTR Records",
     )
 
+    # The case-insensitive UniqueConstraint has no `fields`, so Nautobot cannot derive the natural key from it.
+    natural_key_field_names = ["name", "dns_view"]
+
     class Meta:
         """Meta attributes for DNSZone."""
 
-        unique_together = [["name", "dns_view"]]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                "dns_view",
+                name="nautobot_dns_models_dnszone_name_ci_unique",
+                violation_error_code=DNS_ZONE_NAME_UNIQUE_ERROR_CODE,
+                violation_error_message="A DNS zone with this name (ignoring letter case) already exists in this view.",
+            ),
+        ]
         verbose_name = "DNS Zone"
         verbose_name_plural = "DNS Zones"
 
     def __str__(self):
         """Stringify instance."""
         return f"{self.name} ({self.dns_view})"
+
+    def validate_constraints(self, exclude=None):
+        """Report a zone name that collides with another zone in the same view as an error on `name`."""
+        try:
+            super().validate_constraints(exclude=exclude)
+        except ValidationError as error:
+            errors = error.update_error_dict({})
+            for non_field_error in errors.pop(NON_FIELD_ERRORS, []):
+                field = "name" if non_field_error.code == DNS_ZONE_NAME_UNIQUE_ERROR_CODE else NON_FIELD_ERRORS
+                errors.setdefault(field, []).append(non_field_error)
+            raise ValidationError(errors) from error
 
     def clean(self):
         """Normalize plain DNS-style RNAME mailboxes to email form."""
@@ -705,7 +853,7 @@ class MXRecord(DNSRecord):
         default=10,
         help_text="Preference for the MX Record.",
     )
-    mail_server = models.CharField(max_length=200, help_text="FQDN of the Mail Server.")
+    mail_server = models.CharField(max_length=200, help_text="FQDN of the Mail server.")
 
     class Meta:
         """Meta attributes for MXRecord."""
@@ -726,14 +874,87 @@ class MXRecord(DNSRecord):
 class TXTRecord(DNSRecord):
     """TXT Record model."""
 
-    text = models.CharField(max_length=256, help_text="Text for the TXT Record.")
+    text = models.TextField(help_text="Text for the TXT Record.")
+    # SHA-256 hash of `text` for the unique constraint: MySQL cannot index a TEXT column without a prefix (error 1170).
+    # The leading underscore keeps it out of the REST API, as with `_ttl`.
+    _text_hash = models.CharField(
+        max_length=64, editable=False, help_text="SHA-256 digest of `text`, used to enforce uniqueness."
+    )
+
+    # Declared explicitly, or Nautobot would derive the natural key from `unique_together` and use `_text_hash`.
+    natural_key_field_names = ["name", "text", "zone"]
 
     class Meta:
         """Meta attributes for TXTRecord."""
 
-        unique_together = [["name", "text", "zone"]]
+        unique_together = [["name", "zone", "_text_hash"]]
         verbose_name = "TXT Record"
         verbose_name_plural = "TXT Records"
+
+    @staticmethod
+    def hash_text(value):
+        """Return the SHA-256 digest used to enforce `text` uniqueness."""
+        return hashlib.sha256((value or "").encode("utf-8")).hexdigest()
+
+    @property
+    def character_strings(self):
+        """Return `text` as the list of <character-string> values it represents on the wire, each as `bytes`."""
+        return split_txt_character_strings(self.text)
+
+    def clean(self):
+        """Refresh the uniqueness digest and validate `text` per RFC 1035 §3.3.14 if wire-format validation is enabled.
+
+        The digest is set here, not only in `save()`, because `full_clean()` runs `clean()` before `validate_unique()`.
+        """
+        super().clean()
+
+        self._text_hash = self.hash_text(self.text)
+
+        validation_level = getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL")
+        if validation_level != "wire-format":
+            return
+
+        # Raises a ValidationError on `text` for malformed presentation format, e.g. an unterminated quote.
+        character_string_list = split_txt_character_strings(self.text)
+        for position, character_string in enumerate(character_string_list, start=1):
+            octets = len(character_string)
+            if octets > TXT_CHARACTER_STRING_MAX_OCTETS:
+                raise ValidationError(
+                    {
+                        "text": (
+                            f"Character-string {position} is {octets} bytes (octets) but the maximum is {TXT_CHARACTER_STRING_MAX_OCTETS}. "
+                            'Split the value into multiple double-quoted character-strings, e.g. "part one" "part two".'
+                        )
+                    }
+                )
+
+        wire_length = txt_wire_rdata_length(character_string_list)
+        if wire_length > TXT_RDATA_MAX_OCTETS:
+            raise ValidationError(
+                {
+                    "text": (
+                        f"Total TXT record data is {wire_length} bytes (octets) in wire format; the maximum is {TXT_RDATA_MAX_OCTETS}."
+                    )
+                }
+            )
+
+    def unique_error_message(self, model_class, unique_check):
+        """Report a uniqueness violation in terms of `text` rather than the internal `_text_hash`."""
+        if set(unique_check) == {"name", "zone", "_text_hash"}:
+            return ValidationError(
+                message="TXT Record with this Name, Zone and Text already exists.",
+                code="unique_together",
+            )
+        return super().unique_error_message(model_class, unique_check)
+
+    def save(self, *args, **kwargs):
+        """Refresh the uniqueness digest before saving, for callers that bypass `clean()`."""
+        self._text_hash = self.hash_text(self.text)
+        # A caller updating only `text` would otherwise leave the digest behind in the database.
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None and "text" in update_fields:
+            kwargs["update_fields"] = list(update_fields) + ["_text_hash"]
+        super().save(*args, **kwargs)
 
 
 @extras_features(

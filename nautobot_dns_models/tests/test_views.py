@@ -103,18 +103,24 @@ class DNSRegistrarViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        DNSRegistrar.objects.create(name="Registrar 1", url="https://registrar1.example", account_number="ACC-001")
-        DNSRegistrar.objects.create(name="Registrar 2", url="https://registrar2.example", account_number="ACC-002")
-        DNSRegistrar.objects.create(name="Registrar 3", url="https://registrar3.example", account_number="ACC-003")
+        DNSRegistrar.objects.create(
+            name="Registrar 1", portal_url="https://registrar1.example", account_number="ACC-001"
+        )
+        DNSRegistrar.objects.create(
+            name="Registrar 2", portal_url="https://registrar2.example", account_number="ACC-002"
+        )
+        DNSRegistrar.objects.create(
+            name="Registrar 3", portal_url="https://registrar3.example", account_number="ACC-003"
+        )
 
         cls.form_data = {
             "name": "Registrar Test",
-            "url": "https://registrar-test.example",
+            "portal_url": "https://registrar-test.example",
             "account_number": "ACC-TEST",
         }
 
         cls.csv_data = (
-            "name,url,account_number",
+            "name,portal_url,account_number",
             "Registrar CSV,https://registrar-csv.example,ACC-CSV",
         )
 
@@ -184,7 +190,12 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             f"Test 3, {dns_view.id}, 3600, Description 3, filename 3, auth-server, admin@example_three.com, 86400, 7200, 3600000, 0, 172800",
         )
 
-        cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}
+        cls.bulk_edit_data = {
+            "description": "Bulk edit views",
+            "enabled": False,
+            # DNSZone.soa_rname accepts a DNS-style mailbox, not only an email address
+            "soa_rname": "admin.example.com",
+        }
 
 
 class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
@@ -562,6 +573,9 @@ class TXTRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         cls.csv_data = (
             "name,text,zone",
             f"Test 3,test-text,{zone.name}",
+            # A 2048-bit DKIM key: CSV import still resolves the natural key with `text` far past the
+            # former 256-character limit.
+            f"Test 4,v=DKIM1; k=rsa; p={'A' * 582},{zone.name}",
         )
 
         cls.bulk_edit_data = {"description": "Bulk edit views", "enabled": False}

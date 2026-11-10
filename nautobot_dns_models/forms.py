@@ -108,14 +108,14 @@ class DNSRegistrarBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
     """DNSRegistrar bulk edit form."""
 
     pk = forms.ModelMultipleChoiceField(queryset=models.DNSRegistrar.objects.all(), widget=forms.MultipleHiddenInput)
-    url = forms.URLField(required=False)
+    portal_url = forms.URLField(required=False, label="Portal URL")
     account_number = forms.CharField(required=False)
 
     class Meta:
         """Meta attributes."""
 
         nullable_fields = [
-            "url",
+            "portal_url",
             "account_number",
         ]
 
@@ -126,16 +126,16 @@ class DNSRegistrarFilterForm(NautobotFilterForm):
     q = forms.CharField(
         required=False,
         label="Search",
-        help_text="Search within Name, URL, and Account Number.",
+        help_text="Search within Name, Portal URL, and Account Number.",
     )
     name = forms.CharField(required=False, label="Name")
-    url = forms.CharField(required=False, label="URL")
+    portal_url = forms.CharField(required=False, label="Portal URL")
     account_number = forms.CharField(required=False, label="Account Number")
     model = models.DNSRegistrar
     fields = [
         "q",
         "name",
-        "url",
+        "portal_url",
         "account_number",
     ]
 
@@ -291,9 +291,10 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
         help_text="FQDN of the Authoritative Name Server for Zone.",
         label="SOA MNAME",
     )
-    soa_rname = forms.EmailField(
+    soa_rname = forms.CharField(
         required=False,
-        help_text="Admin Email for the Zone in the form",
+        max_length=254,
+        help_text="Mailbox of the person responsible for the zone or a single-label placeholder.",
         label="SOA RNAME",
     )
     soa_refresh = forms.IntegerField(
@@ -306,7 +307,7 @@ class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
         required=False,
         max_value=models.UINT32_MAX,
         help_text="Number of seconds after which secondary name servers should retry to request the serial number from the master if the master does not respond.",
-        label="SOA Refresh",
+        label="SOA Retry",
     )
     soa_expire = forms.IntegerField(
         required=False,
@@ -432,6 +433,7 @@ class ARecordForm(EnabledBeforeDescriptionMixin, NautobotModelForm):
         queryset=IPAddress.objects.all(),
         required=True,
         query_params={"ip_version": IPAddressVersionChoices.VERSION_4},
+        label="IP Address",
     )
 
     class Meta:
@@ -492,6 +494,7 @@ class AAAARecordForm(EnabledBeforeDescriptionMixin, NautobotModelForm):
         queryset=IPAddress.objects.all(),
         required=True,
         query_params={"ip_version": IPAddressVersionChoices.VERSION_6},
+        label="IP Address",
     )
 
     class Meta:

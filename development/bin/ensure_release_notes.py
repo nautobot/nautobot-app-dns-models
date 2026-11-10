@@ -12,12 +12,7 @@ Example:
 """
 
 import argparse
-
-try:
-    import tomllib
-except ImportError:
-    import tomli as tomllib
-
+import tomllib
 from pathlib import Path
 
 
