@@ -4,8 +4,8 @@ This document describes all new features and changes in the release. The format 
 
 ## Release Overview
 
-- Major features or milestones
-- Changes to compatibility with Nautobot and/or other apps, libraries etc.
+- Changed DNS Zone names to ignore letter case for uniqueness. 
+- Updated TXT records text field to align with RFC 1035 and support up to 65535 bytes in total.
 
 <!-- towncrier release notes start -->
 
