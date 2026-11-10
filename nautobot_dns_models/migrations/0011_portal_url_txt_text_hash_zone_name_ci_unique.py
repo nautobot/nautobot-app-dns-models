@@ -80,8 +80,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Runs first so that colliding zone names abort the migration before any schema change, including on
-        # MySQL, where schema changes are not transactional.
         migrations.RunPython(check_for_dns_zone_name_collisions, migrations.RunPython.noop),
         migrations.RenameField(
             model_name="dnsregistrar",
@@ -95,8 +93,6 @@ class Migration(migrations.Migration):
                 blank=True, help_text="Registrar portal URL.", max_length=500, verbose_name="Portal URL"
             ),
         ),
-        # The old constraint must be dropped before `text` is altered: MySQL holds the unique index on
-        # that column and cannot index a TEXT column without a prefix length (error 1170).
         migrations.AlterUniqueTogether(
             name="txtrecord",
             unique_together=set(),
