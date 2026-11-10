@@ -1,1 +1,0 @@
-Added the `check_dns_zone_name_collisions` management command to report DNS Zones whose names differ only by letter case.
