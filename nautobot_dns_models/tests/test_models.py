@@ -6,6 +6,7 @@ from io import StringIO
 from constance.test import override_config
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
+from django.db import IntegrityError, transaction
 from nautobot.apps.testing import ModelTestCases, TestCase
 from nautobot.extras.models import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
@@ -192,6 +193,66 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
     def test_get_absolute_url(self):
         dns_zone_model = DNSZone.objects.create(name="example.com")
         self.assertEqual(dns_zone_model.get_absolute_url(), f"/plugins/dns/dns-zones/{dns_zone_model.id}/")
+
+    def test_name_preserves_entered_case(self):
+        """The zone name is stored as entered."""
+        dnszone = DNSZone.objects.create(name="Example.COM")
+        dnszone.refresh_from_db()
+        self.assertEqual(dnszone.name, "Example.COM")
+
+    def test_name_case_variant_in_same_view_fails_validation(self):
+        """A zone whose name differs from another zone in the same view only by case is rejected on `name`."""
+        DNSZone.objects.create(name="example.com")
+        dnszone = DNSZone(
+            name="Example.COM",
+            filename="example.com.zone",
+            soa_mname="ns1.example.com",
+            soa_rname="admin@example.com",
+        )
+        with self.assertRaises(ValidationError) as context:
+            dnszone.full_clean()
+        self.assertEqual(
+            context.exception.message_dict,
+            {"name": ["A DNS zone with this name (ignoring letter case) already exists in this view."]},
+        )
+
+    def test_name_case_variant_in_same_view_fails_in_database(self):
+        """The database rejects a case variant even when model validation is bypassed."""
+        DNSZone.objects.create(name="example.com")
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            DNSZone.objects.create(name="EXAMPLE.com")
+
+    def test_name_case_variant_in_other_view_succeeds(self):
+        """The same name in a different case is allowed in a different view."""
+        DNSZone.objects.create(name="example.com")
+        other_view = DNSView.objects.create(name="Other View")
+        dnszone = DNSZone(
+            name="Example.com",
+            dns_view=other_view,
+            filename="example.com.zone",
+            soa_mname="ns1.example.com",
+            soa_rname="admin@example.com",
+        )
+        dnszone.full_clean()
+        dnszone.save()
+        self.assertEqual(DNSZone.objects.filter(name__iexact="example.com").count(), 2)
+
+    def test_changing_case_of_own_name_succeeds(self):
+        """A zone can change the case of its own name."""
+        dnszone = DNSZone.objects.create(
+            name="example.com",
+            filename="example.com.zone",
+            soa_mname="ns1.example.com",
+            soa_rname="admin@example.com",
+        )
+        dnszone.name = "Example.com"
+        dnszone.validated_save()
+        dnszone.refresh_from_db()
+        self.assertEqual(dnszone.name, "Example.com")
+
+    def test_natural_key_field_lookups(self):
+        """The natural key is unchanged by the switch to a case-insensitive constraint."""
+        self.assertEqual(DNSZone.natural_key_field_lookups, ["name", "dns_view__name"])
 
 
 class NSRecordTestCase(TestCase):
