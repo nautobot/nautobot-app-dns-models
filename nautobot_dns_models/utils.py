@@ -1,6 +1,7 @@
 """Utility functions for Nautobot DNS Models."""
 
 from collections.abc import Iterable, Iterator
+
 from django.db.models import Count
 from django.db.models.functions import Lower
 
