@@ -23,7 +23,7 @@ In the New Zone form, enter:
 
 - Zone Name: The Zone name including the TLD (.com, .net, etc.)
 - A filename for the zone
-- Authoratative nameserver
+- Authoritative nameserver
 - Admin email for the zone
 
 The rest of the Zone inputs may be left at their defaults.
