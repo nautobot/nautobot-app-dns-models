@@ -6,13 +6,15 @@ import hashlib
 from constance import config as constance_config
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, validate_email
-from django.db import models
+from django.db import models, transaction
 from django.db.models.functions import Lower
 from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 from nautobot.extras.models import StatusField
 from nautobot.ipam.choices import IPAddressVersionChoices
 from netutils.ip import ipaddress_address
+
+from nautobot_dns_models.utils import ancestor_keys, compute_zone_parents
 
 # Reverse-DNS roots per RFC 1035 §3.5 and RFC 3596 §2.5
 RESERVED_ROOTS = {"in-addr.arpa", "ip6.arpa", "arpa"}
@@ -380,6 +382,19 @@ class DNSZone(DNSModel):
         verbose_name="View",
         default=get_default_view_pk,
     )
+    parent = models.ForeignKey(
+        to="self",
+        on_delete=models.SET_NULL,
+        related_name="children",
+        blank=True,
+        null=True,
+        editable=False,
+        help_text=(
+            "Closest encloser: the longest existing ancestor of this zone's name among zones in the same DNS View "
+            "(RFC 9499). Not necessarily the zone that delegates this one. Set automatically."
+        ),
+        verbose_name="Parent Zone",
+    )
     ttl = models.PositiveBigIntegerField(
         validators=[MaxValueValidator(UINT32_MAX)],
         default=3600,
@@ -500,9 +515,38 @@ class DNSZone(DNSModel):
         self.soa_rname = normalized_soa_rname
 
     def save(self, *args, **kwargs):
-        """Normalize the RNAME before saving through the ORM."""
+        """Normalize the RNAME, save, and recompute the parent of every zone in this zone's DNS View.
+
+        A new, renamed or moved zone can change the parent of other zones, so the whole view is recomputed. If the
+        zone moved to another view, its former view is recomputed too.
+        """
         self.soa_rname = normalize_soa_rname(self.soa_rname)
-        return super().save(*args, **kwargs)
+        former_view_id = DNSZone.objects.filter(pk=self.pk).values_list("dns_view_id", flat=True).first()
+
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            rebuild_zone_hierarchy(dns_view=self.dns_view_id)
+            if former_view_id is not None and former_view_id != self.dns_view_id:
+                rebuild_zone_hierarchy(dns_view=former_view_id)
+
+        self.refresh_from_db(fields=["parent"])
+
+    @classmethod
+    def get_enclosing_zone(cls, name, dns_view_id, exclude_pk=None):
+        """Return the most specific zone in the DNS View whose name is above `name`, otherwise None.
+
+        Names compare case-insensitively, as zone name uniqueness does. `exclude_pk` leaves out one zone, such as a
+        zone being renamed.
+        """
+        keys = list(ancestor_keys(name.lower()))
+        if not keys:
+            return None
+        zones = (
+            cls.objects.annotate(name_lower=Lower("name"))
+            .filter(name_lower__in=keys, dns_view_id=dns_view_id)
+            .exclude(pk=exclude_pk)
+        )
+        return max(zones, key=lambda zone: len(zone.name), default=None)
 
     @classmethod
     def find_reverse_zone_for_ptrdname(cls, ptrdname, dns_view=None):
@@ -521,6 +565,27 @@ class DNSZone(DNSModel):
             if zone:
                 return zone
         return None
+
+
+def rebuild_zone_hierarchy(dns_view=None):
+    """Recompute the parent of every zone, or of every zone in `dns_view`, and return how many changed.
+
+    `DNSZone.save()` and zone deletion call this for the affected view. Run it directly to repair parents after
+    writes that bypass them, such as `QuerySet.update()` or `bulk_create()`.
+    """
+    zones = DNSZone.objects.all()
+    if dns_view is not None:
+        zones = zones.filter(dns_view=dns_view)
+    rows = list(zones.values_list("pk", "name", "dns_view_id", "parent_id"))
+    parents = compute_zone_parents((pk, name, dns_view_id) for pk, name, dns_view_id, _ in rows)
+
+    pks_by_new_parent = {}
+    for pk, _, _, parent_id in rows:
+        if parents[pk] != parent_id:
+            pks_by_new_parent.setdefault(parents[pk], []).append(pk)
+    for parent_id, pks in pks_by_new_parent.items():
+        DNSZone.objects.filter(pk__in=pks).update(parent_id=parent_id)
+    return sum(len(pks) for pks in pks_by_new_parent.values())
 
 
 @extras_features(

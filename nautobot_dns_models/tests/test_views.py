@@ -197,6 +197,17 @@ class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
             "soa_rname": "admin.example.com",
         }
 
+    def test_detail_view_lists_child_zones(self):
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+        parent = DNSZone.objects.create(name="example.com")
+        DNSZone.objects.create(name="apps.example.com")
+
+        response = self.client.get(parent.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Child Zones")
+        self.assertContains(response, "apps.example.com")
+
 
 class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the NSRecord views."""

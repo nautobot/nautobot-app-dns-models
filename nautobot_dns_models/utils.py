@@ -1,7 +1,39 @@
 """Utility functions for Nautobot DNS Models."""
 
+from collections.abc import Iterable, Iterator
+
 from django.db.models import Count
 from django.db.models.functions import Lower
+
+
+def ancestor_keys(name: str) -> Iterator[str]:
+    """Yield every name above the lowercase name `name`, most specific first.
+
+    `a.example.com` yields `example.com`, then `com`.
+    """
+    labels = name.split(".")
+    for index in range(1, len(labels)):
+        yield ".".join(labels[index:])
+
+
+def compute_zone_parents(zones: Iterable[tuple]) -> dict:
+    """Map each zone's primary key to the primary key of its most specific enclosing zone, or `None`.
+
+    Names compare case-insensitively (RFC 4343 §2), as zone name uniqueness does.
+
+    Args:
+        zones: `(pk, name, dns_view_id)` tuples. Zones only enclose zones in the same DNS view.
+    """
+    zone_list = list(zones)
+    pks_by_view = {}
+    for pk, name, dns_view_id in zone_list:
+        pks_by_view.setdefault(dns_view_id, {}).setdefault(name.lower(), pk)
+
+    parents = {}
+    for pk, name, dns_view_id in zone_list:
+        view_pks = pks_by_view[dns_view_id]
+        parents[pk] = next((view_pks[key] for key in ancestor_keys(name.lower()) if key in view_pks), None)
+    return parents
 
 
 def get_dns_zone_name_collisions(dns_zone_model):

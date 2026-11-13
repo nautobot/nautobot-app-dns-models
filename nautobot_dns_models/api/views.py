@@ -88,7 +88,7 @@ class DNSRegistrationViewSet(NautobotModelViewSet):
 class DNSZoneViewSet(NautobotModelViewSet):
     """DNSZone API ViewSet."""
 
-    queryset = DNSZone.objects.all()
+    queryset = DNSZone.objects.select_related("dns_view", "parent__dns_view")
     serializer_class = DNSZoneSerializer
     filterset_class = DNSZoneFilterSet
 

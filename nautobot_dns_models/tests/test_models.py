@@ -1,8 +1,11 @@
 """Test DNSZone."""
 # pylint: disable=too-many-lines
 
+from io import StringIO
+
 from constance.test import override_config
 from django.core.exceptions import ValidationError
+from django.core.management import call_command
 from django.db import IntegrityError, transaction
 from nautobot.apps.testing import ModelTestCases, TestCase
 from nautobot.extras.models import Status
@@ -26,6 +29,7 @@ from nautobot_dns_models.models import (
     SRVRecord,
     TXTRecord,
     dns_wire_label_length,
+    rebuild_zone_hierarchy,
     split_txt_character_strings,
     txt_wire_rdata_length,
 )
@@ -1093,6 +1097,178 @@ class TestDNSZoneFindForPtrdname(TestCase):
             DNSZone.find_reverse_zone_for_ptrdname("1.0.0.10.in-addr.arpa", dns_view=self.view_a),
             specific,
         )
+
+
+class DNSZoneHierarchyTestCase(TestCase):
+    """Test that DNSZone.parent is derived from the zone names and kept current."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.default_view = DNSView.objects.get(name="Default")
+        cls.other_view = DNSView.objects.create(name="Other")
+
+    def _create_zone(self, name, dns_view=None):
+        zone = DNSZone(
+            name=name,
+            dns_view=dns_view or self.default_view,
+            filename=f"{name}.zone",
+            soa_mname="ns1.example.net",
+            soa_rname="hostmaster@example.net",
+        )
+        zone.validated_save()
+        return zone
+
+    def _assert_parent(self, zone, expected_parent):
+        zone.refresh_from_db()
+        self.assertEqual(zone.parent, expected_parent)
+
+    def test_zone_without_an_enclosing_zone_has_no_parent(self):
+        zone = self._create_zone("apps.example.com")
+        self.assertIsNone(zone.parent)
+
+    def test_new_zone_takes_the_most_specific_enclosing_zone_as_parent(self):
+        self._create_zone("com")
+        example = self._create_zone("example.com")
+        zone = self._create_zone("a.b.example.com")
+        self._assert_parent(zone, example)
+
+    def test_new_zone_adopts_existing_zones_below_it(self):
+        apps = self._create_zone("apps.example.com")
+        mail = self._create_zone("mail.example.com")
+        example = self._create_zone("example.com")
+        self._assert_parent(apps, example)
+        self._assert_parent(mail, example)
+        self.assertQuerySetEqual(example.children.order_by("name"), [apps, mail])
+
+    def test_intermediate_zone_takes_over_deeper_children(self):
+        example = self._create_zone("example.com")
+        deep = self._create_zone("x.corp.example.com")
+        sibling = self._create_zone("apps.example.com")
+        corp = self._create_zone("corp.example.com")
+        self._assert_parent(deep, corp)
+        self._assert_parent(corp, example)
+        self._assert_parent(sibling, example)
+
+    def test_deleting_a_zone_moves_its_children_to_its_parent(self):
+        example = self._create_zone("example.com")
+        corp = self._create_zone("corp.example.com")
+        deep = self._create_zone("x.corp.example.com")
+        corp.delete()
+        self._assert_parent(deep, example)
+
+    def test_deleting_a_root_zone_leaves_its_children_without_parent(self):
+        example = self._create_zone("example.com")
+        apps = self._create_zone("apps.example.com")
+        example.delete()
+        self._assert_parent(apps, None)
+
+    def test_queryset_delete_moves_children_to_their_new_enclosing_zone(self):
+        example = self._create_zone("example.com")
+        self._create_zone("corp.example.com")
+        deep = self._create_zone("x.corp.example.com")
+        DNSZone.objects.filter(name="corp.example.com").delete()
+        self._assert_parent(deep, example)
+
+    def test_rename_releases_former_children_and_adopts_new_ones(self):
+        example = self._create_zone("example.com")
+        corp = self._create_zone("corp.example.com")
+        corp_host = self._create_zone("x.corp.example.com")
+        lab_host = self._create_zone("x.lab.example.com")
+
+        corp.name = "lab.example.com"
+        corp.validated_save()
+
+        self._assert_parent(corp_host, example)
+        self._assert_parent(lab_host, corp)
+
+    def test_rename_below_the_old_name_takes_the_next_enclosing_zone(self):
+        com = self._create_zone("com")
+        zone = self._create_zone("example.com")
+
+        zone.name = "x.example.com"
+        zone.validated_save()
+
+        self._assert_parent(zone, com)
+
+    def test_get_enclosing_zone_can_exclude_a_zone(self):
+        com = self._create_zone("com")
+        example = self._create_zone("example.com")
+
+        self.assertEqual(DNSZone.get_enclosing_zone("x.example.com", example.dns_view_id), example)
+        self.assertEqual(DNSZone.get_enclosing_zone("x.example.com", example.dns_view_id, exclude_pk=example.pk), com)
+
+    def test_moving_to_another_view_updates_both_views(self):
+        default_parent = self._create_zone("example.com")
+        other_parent = self._create_zone("example.com", dns_view=self.other_view)
+        corp = self._create_zone("corp.example.com")
+        default_child = self._create_zone("x.corp.example.com")
+        other_child = self._create_zone("x.corp.example.com", dns_view=self.other_view)
+
+        corp.dns_view = self.other_view
+        corp.validated_save()
+
+        self._assert_parent(corp, other_parent)
+        self._assert_parent(default_child, default_parent)
+        self._assert_parent(other_child, corp)
+
+    def test_zones_in_different_views_are_unrelated(self):
+        self._create_zone("example.com", dns_view=self.other_view)
+        zone = self._create_zone("apps.example.com")
+        self.assertIsNone(zone.parent)
+
+    def test_reverse_zones_form_a_hierarchy(self):
+        broad = self._create_zone("168.192.in-addr.arpa")
+        specific = self._create_zone("1.168.192.in-addr.arpa")
+        self._assert_parent(specific, broad)
+
+    def test_matching_ignores_case(self):
+        example = self._create_zone("Example.COM")
+        zone = self._create_zone("apps.example.com")
+        self._assert_parent(zone, example)
+
+    def test_wire_format_validation_rejects_a_trailing_dot(self):
+        """Zone names carry no trailing root dot, so the hierarchy compares names without one."""
+        with self.assertRaises(ValidationError):
+            self._create_zone("example.com.")
+
+    def test_save_repairs_parents_left_stale_in_the_same_view(self):
+        """Every zone save recomputes its whole DNS View, including parents changed by writes that bypass save."""
+        example = self._create_zone("example.com")
+        apps = self._create_zone("apps.example.com")
+        DNSZone.objects.filter(pk=apps.pk).update(parent=None)
+
+        self._create_zone("unrelated.net")
+
+        self._assert_parent(apps, example)
+
+    def test_parent_is_not_writable(self):
+        example = self._create_zone("example.com")
+        zone = self._create_zone("other.net")
+        zone.parent = example
+        zone.validated_save()
+        self._assert_parent(zone, None)
+
+    def test_rebuild_zone_hierarchy_repairs_parents_set_by_bulk_writes(self):
+        example = self._create_zone("example.com")
+        apps = self._create_zone("apps.example.com")
+        DNSZone.objects.filter(pk=apps.pk).update(parent=None)
+        DNSZone.objects.filter(pk=example.pk).update(parent=apps)
+
+        self.assertEqual(rebuild_zone_hierarchy(), 2)
+        self._assert_parent(apps, example)
+        self._assert_parent(example, None)
+        self.assertEqual(rebuild_zone_hierarchy(), 0)
+
+    def test_rebuild_command_reports_how_many_zones_changed(self):
+        example = self._create_zone("example.com")
+        apps = self._create_zone("apps.example.com")
+        DNSZone.objects.filter(pk=apps.pk).update(parent=None)
+
+        output = StringIO()
+        call_command("rebuild_dns_zone_hierarchy", stdout=output)
+
+        self.assertIn("Updated the parent of 1 DNS zone(s).", output.getvalue())
+        self._assert_parent(apps, example)
 
 
 class DNSZoneIntegerFieldBoundaryTest(TestCase):
