@@ -211,7 +211,7 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
     filterset_form_class = DNSZoneFilterForm
     serializer_class = DNSZoneSerializer
     lookup_field = "pk"
-    queryset = DNSZone.objects.select_related("dns_view", "parent")
+    queryset = DNSZone.objects.select_related("dns_view", "parent__dns_view")
     table_class = DNSZoneTable
 
     object_detail_content = ObjectDetailContent(

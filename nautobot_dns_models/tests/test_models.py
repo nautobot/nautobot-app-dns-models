@@ -1221,11 +1221,25 @@ class DNSZoneHierarchyTestCase(TestCase):
         specific = self._create_zone("1.168.192.in-addr.arpa")
         self._assert_parent(specific, broad)
 
-    @override_config(nautobot_dns_models__DNS_VALIDATION_LEVEL="none")
-    def test_matching_ignores_case_and_a_trailing_root_dot(self):
-        example = self._create_zone("Example.COM.")
+    def test_matching_ignores_case(self):
+        example = self._create_zone("Example.COM")
         zone = self._create_zone("apps.example.com")
         self._assert_parent(zone, example)
+
+    def test_wire_format_validation_rejects_a_trailing_dot(self):
+        """Zone names carry no trailing root dot, so the hierarchy compares names without one."""
+        with self.assertRaises(ValidationError):
+            self._create_zone("example.com.")
+
+    def test_save_repairs_parents_left_stale_in_the_same_view(self):
+        """Every zone save recomputes its whole DNS View, including parents changed by writes that bypass save."""
+        example = self._create_zone("example.com")
+        apps = self._create_zone("apps.example.com")
+        DNSZone.objects.filter(pk=apps.pk).update(parent=None)
+
+        self._create_zone("unrelated.net")
+
+        self._assert_parent(apps, example)
 
     def test_parent_is_not_writable(self):
         example = self._create_zone("example.com")

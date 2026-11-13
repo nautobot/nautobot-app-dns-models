@@ -30,7 +30,10 @@ The name is stored with the letter case as entered. Creating or renaming a zone 
 
 Each zone's `parent` is the most specific other zone in the same [DNS view](dnsview.md) whose name is above it in the DNS tree ([RFC 1034 §4.2](https://www.rfc-editor.org/rfc/rfc1034.html#section-4.2)). For example, with zones `com`, `example.com` and `apps.example.com`, the parent of `apps.example.com` is `example.com`, and the parent of `example.com` is `com`. Reverse zones follow the same rule: `1.168.192.in-addr.arpa` is a child of `168.192.in-addr.arpa`.
 
-The parent is derived from zone names and cannot be edited. Names are compared ignoring letter case ([RFC 4343](https://www.rfc-editor.org/rfc/rfc4343.html)) and a trailing root dot. Zones in different DNS views are never related.
+The parent is derived from zone names and cannot be edited: it is the *closest encloser* ([RFC 9499](https://www.rfc-editor.org/rfc/rfc9499.html)), the longest existing ancestor of the zone's name, among the zones in Nautobot. Names are compared ignoring letter case ([RFC 4343](https://www.rfc-editor.org/rfc/rfc4343.html)), as zone name uniqueness does. Zones in different DNS views are never related.
+
+!!! note
+    In RFC terms, a *parent zone* is the zone that delegates a *child zone*. This field does not imply delegation: when a zone in between exists only outside Nautobot, the closest encloser in Nautobot is not the zone that delegates this one.
 
 Zones can be created in any order, and the hierarchy is kept current as zones change:
 
@@ -44,10 +47,7 @@ Zones can be created in any order, and the hierarchy is kept current as zones ch
 
 The zone detail page lists child zones, and the zone list can be filtered by `parent`, `has_parent` and `has_children`.
 
-Writes that bypass model saves, such as `QuerySet.update()`, `bulk_create()` or direct SQL, do not update parents. Run `nautobot-server rebuild_dns_zone_hierarchy` afterwards to recompute them.
-
-!!! note
-    A parent/child relationship only reflects zone names. It does not show whether the parent zone delegates the child zone with NS records.
+Each time a zone is saved or deleted, the parents of all zones in its DNS view are recomputed, so the cost of saving a zone grows with the number of zones in the view. Writes that bypass model saves, such as `QuerySet.update()`, `bulk_create()` or direct SQL, do not update parents; the next zone save in the same view repairs them, or run `nautobot-server rebuild_dns_zone_hierarchy` to recompute every view at once.
 
 ## SOA RNAME Formats
 

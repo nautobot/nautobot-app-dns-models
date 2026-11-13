@@ -7,7 +7,6 @@ from constance import config as constance_config
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, validate_email
 from django.db import models, transaction
-from django.db.models import Q
 from django.db.models.functions import Lower
 from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
@@ -15,7 +14,7 @@ from nautobot.extras.models import StatusField
 from nautobot.ipam.choices import IPAddressVersionChoices
 from netutils.ip import ipaddress_address
 
-from nautobot_dns_models.utils import ancestor_keys, compute_zone_parents, dns_name_key, is_subdomain
+from nautobot_dns_models.utils import ancestor_keys, compute_zone_parents
 
 # Reverse-DNS roots per RFC 1035 §3.5 and RFC 3596 §2.5
 RESERVED_ROOTS = {"in-addr.arpa", "ip6.arpa", "arpa"}
@@ -390,7 +389,10 @@ class DNSZone(DNSModel):
         blank=True,
         null=True,
         editable=False,
-        help_text="Most specific zone in the same DNS View that encloses this zone. Set automatically.",
+        help_text=(
+            "Closest encloser: the longest existing ancestor of this zone's name among zones in the same DNS View "
+            "(RFC 9499). Not necessarily the zone that delegates this one. Set automatically."
+        ),
         verbose_name="Parent Zone",
     )
     ttl = models.PositiveBigIntegerField(
@@ -474,18 +476,9 @@ class DNSZone(DNSModel):
         verbose_name = "DNS Zone"
         verbose_name_plural = "DNS Zones"
 
-    def __init__(self, *args, **kwargs):
-        """Remember the values that place this zone in the hierarchy, to detect changes on save."""
-        super().__init__(*args, **kwargs)
-        self._hierarchy_values = self._get_hierarchy_values()
-
     def __str__(self):
         """Stringify instance."""
         return f"{self.name} ({self.dns_view})"
-
-    def _get_hierarchy_values(self):
-        # Read through __dict__ so that a deferred field does not trigger a query.
-        return self.__dict__.get("name"), self.__dict__.get("dns_view_id")
 
     def validate_constraints(self, exclude=None):
         """Report a zone name that collides with another zone in the same view as an error on `name`."""
@@ -522,58 +515,38 @@ class DNSZone(DNSModel):
         self.soa_rname = normalized_soa_rname
 
     def save(self, *args, **kwargs):
-        """Normalize the RNAME, set the parent zone, and re-parent the zones this one now encloses or releases."""
+        """Normalize the RNAME, save, and recompute the parent of every zone in this zone's DNS View.
+
+        A new, renamed or moved zone can change the parent of other zones, so the whole view is recomputed. If the
+        zone moved to another view, its former view is recomputed too.
+        """
         self.soa_rname = normalize_soa_rname(self.soa_rname)
-        hierarchy_changed = self._state.adding or self._get_hierarchy_values() != self._hierarchy_values
+        former_view_id = DNSZone.objects.filter(pk=self.pk).values_list("dns_view_id", flat=True).first()
 
         with transaction.atomic():
-            # Exclude this zone: until it is saved, the database still holds its old name, which can enclose the new one.
-            self.parent = self.get_enclosing_zone(self.name, self.dns_view_id, exclude_pk=self.pk)
             super().save(*args, **kwargs)
-            if hierarchy_changed:
-                self._release_former_children()
-                self._adopt_children()
+            rebuild_zone_hierarchy(dns_view=self.dns_view_id)
+            if former_view_id is not None and former_view_id != self.dns_view_id:
+                rebuild_zone_hierarchy(dns_view=former_view_id)
 
-        self._hierarchy_values = self._get_hierarchy_values()
-
-    def _release_former_children(self):
-        """Re-parent children that are no longer below this zone after a rename or a change of DNS View."""
-        key = dns_name_key(self.name)
-        for child in self.children.all():
-            if child.dns_view_id != self.dns_view_id or not is_subdomain(dns_name_key(child.name), key):
-                DNSZone.objects.filter(pk=child.pk).update(
-                    parent=self.get_enclosing_zone(child.name, child.dns_view_id)
-                )
-
-    def _adopt_children(self):
-        """Become the parent of every zone below this one whose current parent is missing or less specific."""
-        key = dns_name_key(self.name)
-        candidates = DNSZone.objects.filter(dns_view_id=self.dns_view_id).exclude(pk=self.pk).select_related("parent")
-        if key:
-            candidates = candidates.filter(Q(name__iendswith=f".{key}") | Q(name__iendswith=f".{key}."))
-        adopted_pks = [
-            zone.pk
-            for zone in candidates
-            if is_subdomain(dns_name_key(zone.name), key)
-            and (zone.parent is None or len(dns_name_key(zone.parent.name)) < len(key))
-        ]
-        if adopted_pks:
-            DNSZone.objects.filter(pk__in=adopted_pks).update(parent=self)
+        self.refresh_from_db(fields=["parent"])
 
     @classmethod
     def get_enclosing_zone(cls, name, dns_view_id, exclude_pk=None):
         """Return the most specific zone in the DNS View whose name is above `name`, otherwise None.
 
-        Names compare case-insensitively and ignore a trailing root dot, so `Example.com.` encloses `www.example.com`.
-        `exclude_pk` leaves out one zone, such as a zone being renamed.
+        Names compare case-insensitively, as zone name uniqueness does. `exclude_pk` leaves out one zone, such as a
+        zone being renamed.
         """
-        query = Q()
-        for key in ancestor_keys(dns_name_key(name)):
-            query |= (Q(name__iexact=key) | Q(name__iexact=f"{key}.")) if key else Q(name=".")
-        if not query:
+        keys = list(ancestor_keys(name.lower()))
+        if not keys:
             return None
-        zones = cls.objects.filter(query, dns_view_id=dns_view_id).exclude(pk=exclude_pk)
-        return max(zones, key=lambda zone: len(dns_name_key(zone.name)), default=None)
+        zones = (
+            cls.objects.annotate(name_lower=Lower("name"))
+            .filter(name_lower__in=keys, dns_view_id=dns_view_id)
+            .exclude(pk=exclude_pk)
+        )
+        return max(zones, key=lambda zone: len(zone.name), default=None)
 
     @classmethod
     def find_reverse_zone_for_ptrdname(cls, ptrdname, dns_view=None):
@@ -597,8 +570,8 @@ class DNSZone(DNSModel):
 def rebuild_zone_hierarchy(dns_view=None):
     """Recompute the parent of every zone, or of every zone in `dns_view`, and return how many changed.
 
-    `DNSZone.save()` keeps parents current. This repairs them after writes that bypass it, such as
-    `QuerySet.update()` or `bulk_create()`.
+    `DNSZone.save()` and zone deletion call this for the affected view. Run it directly to repair parents after
+    writes that bypass them, such as `QuerySet.update()` or `bulk_create()`.
     """
     zones = DNSZone.objects.all()
     if dns_view is not None:
