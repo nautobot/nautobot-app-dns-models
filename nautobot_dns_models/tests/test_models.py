@@ -1190,13 +1190,6 @@ class DNSZoneHierarchyTestCase(TestCase):
 
         self._assert_parent(zone, com)
 
-    def test_get_enclosing_zone_can_exclude_a_zone(self):
-        com = self._create_zone("com")
-        example = self._create_zone("example.com")
-
-        self.assertEqual(DNSZone.get_enclosing_zone("x.example.com", example.dns_view_id), example)
-        self.assertEqual(DNSZone.get_enclosing_zone("x.example.com", example.dns_view_id, exclude_pk=example.pk), com)
-
     def test_moving_to_another_view_updates_both_views(self):
         default_parent = self._create_zone("example.com")
         other_parent = self._create_zone("example.com", dns_view=self.other_view)

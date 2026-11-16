@@ -14,7 +14,7 @@ from nautobot.extras.models import StatusField
 from nautobot.ipam.choices import IPAddressVersionChoices
 from netutils.ip import ipaddress_address
 
-from nautobot_dns_models.utils import ancestor_keys, compute_zone_parents
+from nautobot_dns_models.utils import compute_zone_parents
 
 # Reverse-DNS roots per RFC 1035 §3.5 and RFC 3596 §2.5
 RESERVED_ROOTS = {"in-addr.arpa", "ip6.arpa", "arpa"}
@@ -389,9 +389,7 @@ class DNSZone(DNSModel):
         blank=True,
         null=True,
         editable=False,
-        help_text=(
-            "Closest enclosing zone (ancestor) in the same DNS View. Set automatically (RFC 9499)."
-        ),
+        help_text=("Closest enclosing zone (ancestor) in the same DNS View. Set automatically (RFC 9499)."),
         verbose_name="Parent Zone",
     )
     ttl = models.PositiveBigIntegerField(
@@ -531,23 +529,6 @@ class DNSZone(DNSModel):
         self.refresh_from_db(fields=["parent"])
 
     @classmethod
-    def get_enclosing_zone(cls, name, dns_view_id, exclude_pk=None):
-        """Return the most specific zone in the DNS View whose name is above `name`, otherwise None.
-
-        Names compare case-insensitively, as zone name uniqueness does. `exclude_pk` leaves out one zone, such as a
-        zone being renamed.
-        """
-        keys = list(ancestor_keys(name.lower()))
-        if not keys:
-            return None
-        zones = (
-            cls.objects.annotate(name_lower=Lower("name"))
-            .filter(name_lower__in=keys, dns_view_id=dns_view_id)
-            .exclude(pk=exclude_pk)
-        )
-        return max(zones, key=lambda zone: len(zone.name), default=None)
-
-    @classmethod
     def find_reverse_zone_for_ptrdname(cls, ptrdname, dns_view=None):
         """Return the most-specific reverse DNSZone whose name matches a tail of `ptrdname`, otherwise None."""
         labels = ptrdname.split(".")
@@ -572,19 +553,17 @@ def rebuild_zone_hierarchy(dns_view=None):
     `DNSZone.save()` and zone deletion call this for the affected view. Run it directly to repair parents after
     writes that bypass them, such as `QuerySet.update()` or `bulk_create()`.
     """
-    zones = DNSZone.objects.all()
+    zones = DNSZone.objects.only("pk", "name", "dns_view_id", "parent_id")
     if dns_view is not None:
         zones = zones.filter(dns_view=dns_view)
-    rows = list(zones.values_list("pk", "name", "dns_view_id", "parent_id"))
-    parents = compute_zone_parents((pk, name, dns_view_id) for pk, name, dns_view_id, _ in rows)
+    zone_list = list(zones)
+    parents = compute_zone_parents((zone.pk, zone.name, zone.dns_view_id) for zone in zone_list)
 
-    pks_by_new_parent = {}
-    for pk, _, _, parent_id in rows:
-        if parents[pk] != parent_id:
-            pks_by_new_parent.setdefault(parents[pk], []).append(pk)
-    for parent_id, pks in pks_by_new_parent.items():
-        DNSZone.objects.filter(pk__in=pks).update(parent_id=parent_id)
-    return sum(len(pks) for pks in pks_by_new_parent.values())
+    changed = [zone for zone in zone_list if zone.parent_id != parents[zone.pk]]
+    for zone in changed:
+        zone.parent_id = parents[zone.pk]
+    DNSZone.objects.bulk_update(changed, ["parent"], batch_size=1000)
+    return len(changed)
 
 
 @extras_features(

@@ -3,6 +3,20 @@
 import django.db.models.deletion
 from django.db import migrations, models
 
+from nautobot_dns_models.utils import compute_zone_parents
+
+
+def populate_zone_parents(apps, schema_editor):
+    """Set the parent of every existing zone to its most specific enclosing zone in the same DNS view."""
+    DNSZone = apps.get_model("nautobot_dns_models", "DNSZone")
+    zones = list(DNSZone.objects.only("pk", "name", "dns_view_id", "parent_id"))
+    parents = compute_zone_parents((zone.pk, zone.name, zone.dns_view_id) for zone in zones)
+
+    changed = [zone for zone in zones if zone.parent_id != parents[zone.pk]]
+    for zone in changed:
+        zone.parent_id = parents[zone.pk]
+    DNSZone.objects.bulk_update(changed, ["parent"], batch_size=1000)
+
 
 class Migration(migrations.Migration):
     dependencies = [
@@ -22,4 +36,6 @@ class Migration(migrations.Migration):
                 to="nautobot_dns_models.dnszone",
             ),
         ),
+        # Reversing needs no data change: reversing the AddField above drops the column.
+        migrations.RunPython(populate_zone_parents, migrations.RunPython.noop),
     ]
