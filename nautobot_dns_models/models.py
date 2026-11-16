@@ -390,8 +390,7 @@ class DNSZone(DNSModel):
         null=True,
         editable=False,
         help_text=(
-            "Closest encloser: the longest existing ancestor of this zone's name among zones in the same DNS View "
-            "(RFC 9499). Not necessarily the zone that delegates this one. Set automatically."
+            "Closest enclosing zone (ancestor) in the same DNS View. Set automatically (RFC 9499)."
         ),
         verbose_name="Parent Zone",
     )
