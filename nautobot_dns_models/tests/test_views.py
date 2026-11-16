@@ -94,6 +94,14 @@ class DNSViewViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
         cls.bulk_edit_data = {"description": "Bulk edit views"}
 
+    def _get_queryset(self):
+        """Order by name so the migration-created "Default" view always sorts first.
+
+        DNSView has no default ordering, so MySQL returns rows in UUID order. When "Default" is the second
+        row, test_list_objects_filtered finds that name in the filter form's "Default" tab and fails.
+        """
+        return super()._get_queryset().order_by("name")
+
 
 class DnsZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
     """Test the DNSZone views."""
