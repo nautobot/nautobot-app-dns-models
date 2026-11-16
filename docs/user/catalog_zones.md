@@ -8,7 +8,7 @@ This app builds the contents of a catalog zone. It does not serve or consume one
 
 ## Records
 
-Every record in a catalog zone is system-managed: none can be created, edited, or deleted by hand. Each carries a TTL of 0, because [RFC 9432 §4.1](https://datatracker.ietf.org/doc/html/rfc9432#section-4.1) gives the TTL field no meaning here. A catalog zone holds:
+Every record in a catalog zone is system-managed: none can be created, edited, or deleted by hand. Each takes the catalog zone's TTL, a value [RFC 9432 §4.1](https://datatracker.ietf.org/doc/html/rfc9432#section-4.1) gives no meaning; the RFC's own example uses 0. A catalog zone holds:
 
 - one NS record at the zone apex, with `invalid` as its `server`, as [RFC 9432 §4](https://datatracker.ietf.org/doc/html/rfc9432#section-4) recommends
 - a `version` TXT record holding `2`, the only schema version RFC 9432 defines

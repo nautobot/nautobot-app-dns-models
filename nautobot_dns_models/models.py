@@ -42,9 +42,6 @@ APEX_RECORD_NAME = "@"
 # server is an absolute domain name here, and the dot is presentation syntax rather than data.
 CATALOG_APEX_NS_SERVER = "invalid"
 
-# RFC 9432 §4.1: TTLs in a catalog zone carry no meaning, and the RFC sets them to zero.
-CATALOG_RECORD_TTL = 0
-
 # RFC 1035 §3.3 defines a <character-string> as a length octet followed by up to 255 octets.
 TXT_CHARACTER_STRING_MAX_OCTETS = 255
 # RFC 1035 §3.3.14, §4.1.3: TXT RDATA, including each length octet, has a limit of 16-bit RDLENGTH.
@@ -876,18 +873,14 @@ class DNSZone(DNSModel):
         with system_write():
             delete_member_ptr_records(member_ptr_records.exclude(ptrdname=self.name))
             if not member_ptr_records.filter(ptrdname=self.name).exists():
-                PTRRecord(
-                    name=owner_name, ptrdname=self.name, zone_id=self.catalog_zone_id, _ttl=CATALOG_RECORD_TTL
-                ).validated_save()
+                PTRRecord(name=owner_name, ptrdname=self.name, zone_id=self.catalog_zone_id).validated_save()
 
     def _reconcile_apex_ns_record(self):
         """Hold the apex NS RRset RFC 9432 §4 requires at the single `invalid.` RR it recommends."""
         ns_records = NSRecord.objects.filter(zone=self)
         ns_records.exclude(name=APEX_RECORD_NAME, server=CATALOG_APEX_NS_SERVER).delete()
         if not ns_records.exists():
-            NSRecord(
-                name=APEX_RECORD_NAME, server=CATALOG_APEX_NS_SERVER, zone=self, _ttl=CATALOG_RECORD_TTL
-            ).validated_save()
+            NSRecord(name=APEX_RECORD_NAME, server=CATALOG_APEX_NS_SERVER, zone=self).validated_save()
 
     def _reconcile_required_catalog_records(self):
         """Hold this catalog zone's apex NS and `version` TXT records at what RFC 9432 requires.
@@ -909,7 +902,7 @@ class DNSZone(DNSModel):
         # catalog broken.
         version_records.exclude(text="2").delete()
         if not version_records.filter(text="2").exists():
-            TXTRecord(name="version", text="2", zone=self, _ttl=CATALOG_RECORD_TTL).validated_save()
+            TXTRecord(name="version", text="2", zone=self).validated_save()
 
     def _stored_zone(self, *, lock=False):
         """Return this zone as stored, or None for a new zone.

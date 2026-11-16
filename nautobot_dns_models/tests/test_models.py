@@ -1478,14 +1478,18 @@ class DNSZoneCatalogZoneTest(TestCase):
         ]
 
     def test_creating_catalog_zone_writes_the_apex_ns_record(self):
-        """A new catalog zone gets the apex NS record `$CATZ 0 IN NS invalid.`.
+        """A new catalog zone gets the apex NS record `$CATZ IN NS invalid.`, whose TTL follows the zone's.
 
         It is the RRset that makes the catalog a valid zone (RFC 9432 §4).
         """
         record = NSRecord.objects.get(zone=self.catalog_zone)
         self.assertEqual(record.name, APEX_RECORD_NAME)
         self.assertEqual(record.server, CATALOG_APEX_NS_SERVER)
-        self.assertEqual(record.ttl, 0)
+        # A TTL copied onto the record would also match the zone's at first; changing the zone's
+        # TTL shows the record follows it.
+        self.catalog_zone.ttl = 0
+        self.catalog_zone.save()
+        self.assertEqual(NSRecord.objects.get(zone=self.catalog_zone).ttl, 0)
 
     def test_resaving_catalog_zone_does_not_duplicate_the_apex_ns_record(self):
         """Saving a catalog zone again adds no second apex NS record.
@@ -1514,7 +1518,7 @@ class DNSZoneCatalogZoneTest(TestCase):
         The app owns this RRset outright.
         """
         with system_write():
-            NSRecord(name="sub", server="ns1.example.", zone=self.catalog_zone, _ttl=0).validated_save()
+            NSRecord(name="sub", server="ns1.example.", zone=self.catalog_zone).validated_save()
 
         self.catalog_zone.save()
 
@@ -1524,11 +1528,15 @@ class DNSZoneCatalogZoneTest(TestCase):
         )
 
     def test_creating_catalog_zone_writes_the_version_record(self):
-        """A new catalog zone gets the version record `version.$CATZ 0 IN TXT "2"`."""
+        """A new catalog zone gets the version record `version.$CATZ IN TXT "2"`, whose TTL follows the zone's."""
         record = TXTRecord.objects.get(zone=self.catalog_zone)
         self.assertEqual(record.name, "version")
         self.assertEqual(record.text, "2")
-        self.assertEqual(record.ttl, 0)
+        # A TTL copied onto the record would also match the zone's at first; changing the zone's
+        # TTL shows the record follows it.
+        self.catalog_zone.ttl = 0
+        self.catalog_zone.save()
+        self.assertEqual(TXTRecord.objects.get(zone=self.catalog_zone).ttl, 0)
 
     def test_creating_primary_zone_writes_no_records(self):
         """A new primary zone gets no records."""
@@ -1560,7 +1568,7 @@ class DNSZoneCatalogZoneTest(TestCase):
     def test_saving_catalog_zone_drops_a_foreign_schema_version_record(self):
         """Saving a catalog zone removes a version record for another schema version."""
         with system_write():
-            TXTRecord(name="version", text="1", zone=self.catalog_zone, _ttl=0).validated_save()
+            TXTRecord(name="version", text="1", zone=self.catalog_zone).validated_save()
 
         self.catalog_zone.save()
 
@@ -1587,7 +1595,7 @@ class DNSZoneCatalogZoneTest(TestCase):
     def test_system_write_allows_record_in_catalog_zone(self):
         """The app's own sync code can write the records a user is forbidden to create."""
         with system_write():
-            record = TXTRecord(name="group.nj2xg5b.zones", text="operators", zone=self.catalog_zone, _ttl=0)
+            record = TXTRecord(name="group.nj2xg5b.zones", text="operators", zone=self.catalog_zone)
             record.validated_save()
         self.assertTrue(TXTRecord.objects.filter(pk=record.pk).exists())
 
@@ -1694,14 +1702,20 @@ class CatalogMembershipTest(TestCase):
     def test_adding_a_zone_generates_a_label_and_publishes_the_member(self):
         """Adding a zone to a catalog gives it a label and publishes its PTR record.
 
-        RFC 9432 §4.1 publishes each member as a PTR at `<label>.zones`, with TTL 0.
+        RFC 9432 §4.1 publishes each member as a PTR at `<label>.zones`. Its TTL follows the
+        catalog zone's.
         """
         zone = create_zone("member.example", catalog_zone=self.catalog_zone)
 
         self.assertEqual(len(zone.member_label), 26)
         self.assertEqual(zone.ptr_record_name, f"{zone.member_label}.zones")
         record = PTRRecord.objects.get(zone=self.catalog_zone)
-        self.assertEqual((record.name, record.ptrdname, record.ttl), (zone.ptr_record_name, "member.example", 0))
+        self.assertEqual((record.name, record.ptrdname), (zone.ptr_record_name, "member.example"))
+        # A TTL copied onto the record would also match the zone's at first; changing the zone's
+        # TTL shows the record follows it.
+        self.catalog_zone.ttl = 0
+        self.catalog_zone.save()
+        self.assertEqual(PTRRecord.objects.get(zone=self.catalog_zone).ttl, 0)
 
     def test_adding_through_validation_keeps_the_label_clean_assigned(self):
         """`save()` stores the label that `clean()` assigned and validated."""
@@ -1789,7 +1803,7 @@ class CatalogMembershipTest(TestCase):
         zone = create_zone("member.example", catalog_zone=self.catalog_zone)
         with system_write():
             PTRRecord.objects.filter(zone=self.catalog_zone).delete()
-            PTRRecord(name=zone.ptr_record_name, ptrdname="stale.example", zone=self.catalog_zone, _ttl=0).save()
+            PTRRecord(name=zone.ptr_record_name, ptrdname="stale.example", zone=self.catalog_zone).save()
 
         zone.validated_save()
 
