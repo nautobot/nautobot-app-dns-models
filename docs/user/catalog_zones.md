@@ -17,7 +17,6 @@ Every record in a catalog zone is system-managed: none can be created, edited, o
 Saving a catalog zone writes the NS and TXT records. If code that bypasses validation, or a direct database change, has altered or removed them, the next save of the catalog zone restores them. Each PTR record is written when a zone is added to the catalog and deleted when it is removed.
 
 !!! note
-
     The apex NS record is named `@`, which denotes the zone origin per [RFC 1035 §5.1](https://datatracker.ietf.org/doc/html/rfc1035#section-5.1), and its `server` omits the trailing dot the RFC writes, since that dot is zone file syntax rather than part of the name.
 
 ## Rules
