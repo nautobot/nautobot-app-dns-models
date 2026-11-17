@@ -43,7 +43,6 @@ In the web UI:
 - Bulk edit refuses the whole selection if any zone cannot take the change.
 
 !!! note
-
     A change of catalog is recorded in the member zone's change log. The PTR records it writes and deletes are recorded under their own entries, in the same request. The catalog zone's own change log records neither.
 
 ## Member Labels
