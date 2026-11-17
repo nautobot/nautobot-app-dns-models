@@ -47,7 +47,9 @@ Zones can be created in any order, and the hierarchy is kept current as zones ch
 
 The zone detail page lists child zones, and the zone list can be filtered by `parent`, `has_parent` and `has_children`.
 
-Each time a zone is saved or deleted, the parents of all zones in its DNS view are recomputed, so the cost of saving a zone grows with the number of zones in the view. Writes that bypass model saves, such as `QuerySet.update()`, `bulk_create()` or direct SQL, do not update parents; the next zone save in the same view repairs them, or run `nautobot-server rebuild_dns_zone_hierarchy` to recompute every view at once.
+Each time a zone is created, renamed, moved to another DNS view or deleted, the parents of all zones in its DNS view are recomputed, so the cost of these changes grows with the number of zones in the view. Saving a zone without changing its name or DNS view recomputes nothing. Writes that bypass model saves, such as `QuerySet.update()`, `bulk_create()` or direct SQL, do not update parents; run `nautobot-server rebuild_dns_zone_hierarchy` to recompute every view.
+
+Parents are written in bulk, so parent changes are not recorded in the change log, as with IPAM prefixes that Nautobot re-parents.
 
 ## SOA RNAME Formats
 

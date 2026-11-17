@@ -515,16 +515,22 @@ class DNSZone(DNSModel):
         """Normalize the RNAME, save, and recompute the parent of every zone in this zone's DNS View.
 
         A new, renamed or moved zone can change the parent of other zones, so the whole view is recomputed. If the
-        zone moved to another view, its former view is recomputed too.
+        zone moved to another view, its former view is recomputed too. A save that keeps the name and DNS View
+        changes no parent, so it skips the recompute and keeps the stored parent.
         """
         self.soa_rname = normalize_soa_rname(self.soa_rname)
-        former_view_id = DNSZone.objects.filter(pk=self.pk).values_list("dns_view_id", flat=True).first()
+        former = DNSZone.objects.filter(pk=self.pk).values_list("name", "dns_view_id").first()
+
+        if former == (self.name, self.dns_view_id):
+            self.refresh_from_db(fields=["parent"])
+            super().save(*args, **kwargs)
+            return
 
         with transaction.atomic():
             super().save(*args, **kwargs)
             rebuild_zone_hierarchy(dns_view=self.dns_view_id)
-            if former_view_id is not None and former_view_id != self.dns_view_id:
-                rebuild_zone_hierarchy(dns_view=former_view_id)
+            if former is not None and former[1] != self.dns_view_id:
+                rebuild_zone_hierarchy(dns_view=former[1])
 
         self.refresh_from_db(fields=["parent"])
 

@@ -1241,6 +1241,16 @@ class DNSZoneHierarchyTestCase(TestCase):
         zone.validated_save()
         self._assert_parent(zone, None)
 
+    def test_saving_without_renaming_or_moving_does_not_recompute_the_view(self):
+        self._create_zone("example.com")
+        apps = self._create_zone("apps.example.com")
+        DNSZone.objects.filter(pk=apps.pk).update(parent=None)
+
+        apps.description = "Updated"
+        apps.validated_save()
+
+        self._assert_parent(apps, None)
+
     def test_rebuild_zone_hierarchy_repairs_parents_set_by_bulk_writes(self):
         example = self._create_zone("example.com")
         apps = self._create_zone("apps.example.com")
