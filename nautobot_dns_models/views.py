@@ -11,7 +11,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.html import format_html
 from nautobot.apps import views
-from nautobot.apps.forms import ConfirmationForm
+from nautobot.apps.forms import ConfirmationForm, restrict_form_fields
 from nautobot.apps.ui import (
     ButtonColorChoices,
     ObjectDetailContent,
@@ -635,12 +635,17 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
     def _catalog_membership_form_response(self, request, *, title, add_another, catalog_zone=None, zone=None):
         """Render or process the form pairing a zone with a catalog zone, given one of the two, and return to the given one."""
         if catalog_zone is not None:
-            given_zone, form_field_name = catalog_zone, "zone"
+            given_zone, form_field_name, pick_action = catalog_zone, "zone", "change"
         else:
-            given_zone, form_field_name = zone, "catalog_zone"
+            given_zone, form_field_name, pick_action = zone, "catalog_zone", "view"
+
         return_url = self.get_return_url(request, given_zone)
+        form = CatalogMembershipForm(
+            request.POST if request.method == "POST" else None, catalog_zone=catalog_zone, zone=zone
+        )
+        restrict_form_fields(form, request.user, pick_action)
+
         if request.method == "POST":
-            form = CatalogMembershipForm(request.POST, user=request.user, catalog_zone=catalog_zone, zone=zone)
             if form.is_valid():
                 if catalog_zone is None:
                     catalog_zone = form.cleaned_data["catalog_zone"]
@@ -667,8 +672,6 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                     form.add_error(form_field_name, error.messages)
                 except ObjectDoesNotExist:
                     form.add_error(None, OBJECT_PERMISSION_SAVE_ERROR)
-        else:
-            form = CatalogMembershipForm(user=request.user, catalog_zone=catalog_zone, zone=zone)
 
         return render(
             request,

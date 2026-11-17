@@ -510,11 +510,8 @@ class CatalogMembershipForm(BootstrapMixin, forms.Form):
         label="Member Zone",
     )
 
-    def __init__(self, *args, user, catalog_zone=None, zone=None, **kwargs):
-        """Keep only the field for the zone to pick, offering the zones that could pair with the other.
-
-        A member must be a zone `user` may change; a catalog zone need only be one they may view.
-        """
+    def __init__(self, *args, catalog_zone=None, zone=None, **kwargs):
+        """Keep only the field for the zone to pick, offering the zones that could pair with the other."""
         if (catalog_zone is None) == (zone is None):
             raise TypeError("Pass exactly one of catalog_zone and zone.")
 
@@ -522,18 +519,14 @@ class CatalogMembershipForm(BootstrapMixin, forms.Form):
 
         if catalog_zone is not None:
             del self.fields["catalog_zone"]
-            self.fields["zone"].queryset = models.DNSZone.objects.restrict(user, "change").exclude(
-                type=DNSZoneTypeChoices.TYPE_CATALOG
-            )
+            self.fields["zone"].queryset = models.DNSZone.objects.exclude(type=DNSZoneTypeChoices.TYPE_CATALOG)
             self.fields["zone"].widget.add_query_param("dns_view", catalog_zone.dns_view_id)
             self.fields["zone"].widget.add_query_param("is_catalog_member", "False")
             self.fields["zone"].widget.add_query_param("type__n", DNSZoneTypeChoices.TYPE_CATALOG)
             self.fields["zone"].widget.add_query_param("can_change", "True")
         else:
             del self.fields["zone"]
-            self.fields["catalog_zone"].queryset = models.DNSZone.objects.restrict(user, "view").filter(
-                type=DNSZoneTypeChoices.TYPE_CATALOG
-            )
+            self.fields["catalog_zone"].queryset = models.DNSZone.objects.filter(type=DNSZoneTypeChoices.TYPE_CATALOG)
             self.fields["catalog_zone"].widget.add_query_param("dns_view", zone.dns_view_id)
             self.fields["catalog_zone"].widget.add_query_param("type", DNSZoneTypeChoices.TYPE_CATALOG)
 
