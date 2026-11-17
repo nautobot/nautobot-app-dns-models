@@ -4,8 +4,8 @@ from functools import partial
 from urllib.parse import urlencode
 
 from django.contrib import messages
-from django.core.exceptions import ValidationError
-from django.db.models import Exists
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import transaction
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -127,6 +127,8 @@ from nautobot_dns_models.tables import (
     TXTRecordTable,
 )
 
+OBJECT_PERMISSION_SAVE_ERROR = "Object save failed due to object-level permissions violation"
+
 
 class ZoneFieldsPanel(ObjectFieldsPanel):
     """The zone's own fields, minus a catalog zone's Catalog Zone field, which cannot apply to it."""
@@ -199,12 +201,13 @@ class CatalogMemberZonesPanel(ObjectsTablePanel):
     def _get_table_add_url(self, context):
         """Point Add at the catalog's add-member action, which adds an existing zone rather than creating one."""
         catalog_zone = get_obj_from_context(context)
-        # Offer Add only when the user may change this catalog and some zone the field would list.
-        changeable = DNSZone.objects.restrict(context["request"].user, "change")
-        candidates = changeable.filter(dns_view_id=catalog_zone.dns_view_id, catalog_zone__isnull=True).exclude(
-            type=DNSZoneTypeChoices.TYPE_CATALOG
+        # Offer Add only when the field would list some zone the user may change.
+        candidates = (
+            DNSZone.objects.restrict(context["request"].user, "change")
+            .filter(dns_view_id=catalog_zone.dns_view_id, catalog_zone__isnull=True)
+            .exclude(type=DNSZoneTypeChoices.TYPE_CATALOG)
         )
-        if not changeable.filter(Exists(candidates), pk=catalog_zone.pk).exists():
+        if not candidates.exists():
             return None
 
         return_url = context.get("return_url", catalog_zone.get_absolute_url())
@@ -533,7 +536,7 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
         methods=["get", "post"],
         url_path="add-member",
         url_name="add_member",
-        custom_view_base_action="change",
+        custom_view_base_action="view",
     )
     def add_member(self, request, *args, **kwargs):
         """Add an existing zone to this catalog zone."""
@@ -588,7 +591,7 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
             if form.is_valid():
                 zone.catalog_zone = None
                 try:
-                    zone.validated_save()
+                    self._save_membership(request, zone)
                     messages.success(
                         request,
                         format_html(
@@ -601,6 +604,8 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                     )
                 except ValidationError as error:
                     messages.error(request, " ".join(error.messages))
+                except ObjectDoesNotExist:
+                    messages.error(request, OBJECT_PERMISSION_SAVE_ERROR)
 
                 return redirect(return_url)
         else:
@@ -618,28 +623,14 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
         )
 
     def get_form_class(self, **kwargs):
-        """Bind the edit form to the user, and the bulk edit form to the zones it will reach."""
+        """Bind the bulk edit form to the zones it will reach."""
         if self.action == "bulk_update":
             # Core builds the form from the posted zones, which under "select all" are only those on
             # the page that submitted, while the job it queues edits everything the filter matched.
             selection = get_bulk_queryset_from_view(user=self.request.user, action="change", **self.key_params)
-            return partial(super().get_form_class(**kwargs), selection=selection, user=self.request.user)
+            return partial(super().get_form_class(**kwargs), selection=selection)
 
-        form_class = super().get_form_class(**kwargs)
-        if self.action in ("create", "update"):
-            # A subclass rather than a partial, since core reads the class's `base_fields`.
-            user = self.request.user
-
-            class UserBoundForm(form_class):
-                """The edit form, bound to the requesting user."""
-
-                def __init__(self, *args, **kwargs):
-                    """Pass the requesting user to the form."""
-                    super().__init__(*args, user=user, **kwargs)
-
-            return UserBoundForm
-
-        return form_class
+        return super().get_form_class(**kwargs)
 
     def _catalog_membership_form_response(self, request, *, title, add_another, catalog_zone=None, zone=None):
         """Render or process the form pairing a zone with a catalog zone, given one of the two, and return to the given one."""
@@ -657,7 +648,7 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                     zone = form.cleaned_data["zone"]
                 zone.catalog_zone = catalog_zone
                 try:
-                    zone.validated_save()
+                    self._save_membership(request, zone)
                     messages.success(
                         request,
                         format_html(
@@ -674,6 +665,8 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                     return redirect(return_url)
                 except ValidationError as error:
                     form.add_error(form_field_name, error.messages)
+                except ObjectDoesNotExist:
+                    form.add_error(None, OBJECT_PERMISSION_SAVE_ERROR)
         else:
             form = CatalogMembershipForm(user=request.user, catalog_zone=catalog_zone, zone=zone)
 
@@ -687,6 +680,16 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                 "title": title,
             },
         )
+
+    @staticmethod
+    def _save_membership(request, zone):
+        """Save `zone`'s catalog membership, refusing a result outside the user's object-level permissions.
+
+        Raises `ObjectDoesNotExist`, with the save rolled back, if the saved zone falls outside them.
+        """
+        with transaction.atomic():
+            zone.validated_save()
+            DNSZone.objects.restrict(request.user, "change").get(pk=zone.pk)
 
 
 class NSRecordUIViewSet(views.NautobotUIViewSet):

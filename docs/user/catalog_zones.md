@@ -22,7 +22,9 @@ Saving a catalog zone writes the NS and TXT records. If code that bypasses valid
 
 ## Rules
 
-A zone is added to a catalog by setting its `catalog_zone`, and removed from it by clearing that field. These rules apply to a member zone:
+A zone is added to a catalog by setting its `catalog_zone`, and removed from it by clearing that field. Adding a zone to a catalog, or removing it, needs change permission on the zone and view permission on the catalog zone.
+
+These rules apply to a member zone:
 
 - A zone moving to another DNS view must be removed from its catalog, or added to one in the new view, in the same edit.
 - When a member zone is deleted, its PTR record is removed from the catalog.
@@ -51,15 +53,6 @@ Each member is identified within its catalog by an opaque label, defined in [RFC
 Under RFC 9432, a consumer of the catalog treats a label it has not seen before as the arrival of a member, and one that stops appearing as its departure. Nautobot therefore keeps a member's label while the zone remains in the catalog, and issues a new label whenever a zone is added to a catalog. A zone that is renamed, or that is removed from a catalog and added again, gets a new label.
 
 To give a member a new label, which [RFC 9432 §5.6](https://datatracker.ietf.org/doc/html/rfc9432#section-5.6) uses to tell consumers to reset that member, take the zone out of its catalog and add it again. Do both steps before the catalog zone is next published to your name servers: a consumer that receives a version made between the two steps sees the zone removed.
-
-## Permissions
-
-Changing a zone's catalog requires two permissions:
-
-- on the zone itself: either `change_dnszone` to edit it or `add_dnszone` to create it already in a catalog
-- on any catalog zone it is added to or removed from: `change_dnszone`
-
-Deleting a member zone also requires `change_dnszone` on its catalog zone.
 
 ## Finding and Querying Members
 

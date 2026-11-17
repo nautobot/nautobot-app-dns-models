@@ -13,13 +13,11 @@ from nautobot_dns_models.choices import DNSZoneTypeChoices
 DNSZONE_CATALOG_BUTTONS = """
 {% if record.user_can_change and not record.is_catalog_zone %}
     {% if record.catalog_zone_id %}
-        {% if record.user_can_change_catalog %}
-            <li>
-                <a href="{% url 'plugins:nautobot_dns_models:dnszone_remove_from_catalog' pk=record.pk %}?return_url={{ request.path }}" class="dropdown-item text-danger">
-                    <span class="mdi mdi-folder-minus-outline me-4" aria-hidden="true"></span>Remove from Catalog
-                </a>
-            </li>
-        {% endif %}
+        <li>
+            <a href="{% url 'plugins:nautobot_dns_models:dnszone_remove_from_catalog' pk=record.pk %}?return_url={{ request.path }}" class="dropdown-item text-danger">
+                <span class="mdi mdi-folder-minus-outline me-4" aria-hidden="true"></span>Remove from Catalog
+            </a>
+        </li>
     {% elif record.user_has_catalog_in_view %}
         <li>
             <a href="{% url 'plugins:nautobot_dns_models:dnszone_add_to_catalog' pk=record.pk %}?return_url={{ request.path }}" class="dropdown-item text-success">
@@ -34,15 +32,16 @@ DNSZONE_CATALOG_BUTTONS = """
 def annotate_catalog_actions(queryset, user):
     """Annotate each zone with what `user` may do with its catalog membership.
 
-    `user_can_change` covers the zone itself, `user_can_change_catalog` the catalog zone holding it,
-    and `user_has_catalog_in_view` whether any catalog zone in its view could take it.
+    `user_can_change` covers the zone itself, and `user_has_catalog_in_view` whether any catalog
+    zone `user` may view in its view could take it.
     """
     changeable = models.DNSZone.objects.restrict(user, "change")
     # Uncorrelated, so the database finds the views once per query rather than once per row.
-    catalog_view_ids = changeable.filter(type=DNSZoneTypeChoices.TYPE_CATALOG).values("dns_view_id")
+    catalog_view_ids = (
+        models.DNSZone.objects.restrict(user, "view").filter(type=DNSZoneTypeChoices.TYPE_CATALOG).values("dns_view_id")
+    )
     return queryset.annotate(
         user_can_change=Exists(changeable.filter(pk=OuterRef("pk"))),
-        user_can_change_catalog=Exists(changeable.filter(pk=OuterRef("catalog_zone_id"))),
         user_has_catalog_in_view=ExpressionWrapper(Q(dns_view_id__in=catalog_view_ids), output_field=BooleanField()),
     )
 

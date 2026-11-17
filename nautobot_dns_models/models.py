@@ -15,7 +15,6 @@ from django.db.models.functions import Lower
 from nautobot.apps.models import BaseManager, BaseModel, PrimaryModel, RestrictedQuerySet, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 from nautobot.extras.models import StatusField
-from nautobot.extras.signals import change_context_state
 from nautobot.ipam.choices import IPAddressVersionChoices
 from netutils.ip import ipaddress_address
 
@@ -32,7 +31,6 @@ RESERVED_ROOTS = {"in-addr.arpa", "ip6.arpa", "arpa"}
 UINT32_MAX = 2**32 - 1
 
 SYSTEM_MANAGED_DELETE_ERROR = "System-managed records cannot be deleted directly."
-CATALOG_MEMBER_DELETE_ERROR = "Deleting a member zone requires permission to change its catalog zone."
 
 # Zone apex per RFC 1035 §5.1.
 APEX_RECORD_NAME = "@"
@@ -278,19 +276,6 @@ def delete_member_ptr_records(member_ptr_records):
         record.pk = pk
 
 
-def acting_user():
-    """Return the user the current change context attributes changes to, or None outside one.
-
-    Nautobot opens a change context for every web request, API request and job, so this names
-    the user behind a write wherever it starts, including the bulk edit job, whose form has no user.
-    """
-    change_context = change_context_state.get()
-    if change_context is None:
-        return None
-
-    return change_context.get_user()
-
-
 class DNSZoneQuerySet(RestrictedQuerySet):
     """QuerySet for DNSZone."""
 
@@ -334,11 +319,10 @@ class DNSZoneQuerySet(RestrictedQuerySet):
         return super().update(**kwargs)
 
     def prepare_for_delete(self):
-        """Refuse members whose catalog the acting user may not change, then withdraw their PTR records and clear system-managed records.
+        """Withdraw the member PTR records of these zones and clear their system-managed records.
 
         Run it in the same transaction as the delete, so that a refused delete keeps the records.
         """
-        self._refuse_member_deletes_without_catalog_permission()
         self._withdraw_member_ptr_records()
         self._purge_system_managed_records()
 
@@ -355,23 +339,6 @@ class DNSZoneQuerySet(RestrictedQuerySet):
         with system_write():
             for record_model in dns_record_models():
                 record_model.objects.filter(zone_id__in=managed_zone_pks).delete()
-
-    def _refuse_member_deletes_without_catalog_permission(self):
-        """Refuse to delete the members among these zones whose catalog zone the acting user may not change.
-
-        Deleting a member withdraws its PTR record from the catalog, as removing it from the catalog does.
-        Raises `ProtectedError`, which every delete path reports as a refusal. Outside a change context,
-        as in a shell or a migration, there is no user to hold to it.
-        """
-        user = acting_user()
-        if user is None:
-            return
-
-        refused = self.filter(catalog_zone__isnull=False).exclude(
-            catalog_zone__in=DNSZone.objects.restrict(user, "change")
-        )
-        if refused.exists():
-            raise ProtectedError(CATALOG_MEMBER_DELETE_ERROR, list(refused[:50]))
 
     def _refuse_member_renames(self):
         """Raise if this holds a catalog member, whose PTR record names it and which a rename gives a new label."""
@@ -930,22 +897,6 @@ class DNSZone(DNSModel):
         if self.catalog_zone_id:
             self._publish_member_ptr_record()
 
-    def _validate_catalog_permission(self, catalog_zone_ids):
-        """Require the acting user to be allowed to change every catalog zone in `catalog_zone_ids`.
-
-        Outside a change context, as in a shell or a migration, there is no user to hold to it.
-        """
-        user = acting_user()
-        if user is None or not catalog_zone_ids:
-            return
-
-        if DNSZone.objects.restrict(user, "change").filter(pk__in=catalog_zone_ids).count() != len(catalog_zone_ids):
-            raise ValidationError(
-                {
-                    "catalog_zone": "Changing a zone's catalog requires permission to change the catalog zones it is added to or removed from."
-                }
-            )
-
     def _validate_member_label(self):
         """Require the label to be exactly one DNS label, since it names a single node in the catalog."""
         if "." in self.member_label:
@@ -957,7 +908,7 @@ class DNSZone(DNSModel):
             )
 
     def _validate_membership(self, stored_zone, *, lock=False):
-        """Refuse a catalog membership RFC 9432 or this app cannot represent, or one the acting user may not make.
+        """Refuse a catalog membership RFC 9432 or this app cannot represent.
 
         Args:
             stored_zone (DNSZone): This zone as stored, or None for a new zone.
@@ -988,9 +939,6 @@ class DNSZone(DNSModel):
                 raise ValidationError({"catalog_zone": "Zones can only be members of a catalog zone."})
             if catalog["dns_view_id"] != self.dns_view_id:
                 raise ValidationError({"catalog_zone": "The catalog zone must be in the same view as this zone."})
-
-        if self.catalog_zone_id != stored_catalog_zone_id:
-            self._validate_catalog_permission({stored_catalog_zone_id, self.catalog_zone_id} - {None})
 
     def _validate_type_unchanged(self, stored_type):
         """Refuse a type that differs from the one already stored."""

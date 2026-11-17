@@ -1,19 +1,14 @@
 """Tests for nautobot_dns_models Form Classes."""
 
-from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.http import QueryDict
 from django.test import TestCase
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
-from nautobot.users.models import ObjectPermission
 
 from nautobot_dns_models import forms
 from nautobot_dns_models.choices import DNSZoneTypeChoices
 from nautobot_dns_models.models import DNSRegistrar, DNSView, DNSZone, PTRRecord
-
-User = get_user_model()
 
 
 class DNSViewFormTestCase(TestCase):
@@ -71,18 +66,6 @@ class DNSZoneFormTestCase(TestCase):
         }
         data.update(overrides)
         return data
-
-    def _user_permitted_to_change(self, *catalog_zones):
-        """Return a user who may change only `catalog_zones`."""
-        user = User.objects.create_user(username="zone-form-user")
-        permission = ObjectPermission.objects.create(
-            name="change some catalogs",
-            actions=["change"],
-            constraints={"pk__in": [str(zone.pk) for zone in catalog_zones]},
-        )
-        permission.object_types.set([ContentType.objects.get_for_model(DNSZone)])
-        permission.users.add(user)
-        return user
 
     def test_specifying_all_fields_success(self):
         registrar = DNSRegistrar.objects.create(
@@ -226,40 +209,8 @@ class DNSZoneFormTestCase(TestCase):
         form = forms.DNSZoneForm(instance=zone)
         self.assertFalse(form.fields["catalog_zone"].disabled)
 
-    def test_the_catalog_field_asks_for_catalogs_the_user_can_change(self):
-        """The catalog field asks for catalog zones the user may change."""
-        query_params = forms.DNSZoneForm().fields["catalog_zone"].query_params
-        self.assertEqual(query_params["can_change"], "True")
 
-    def test_a_catalog_the_user_cannot_change_is_not_a_choice(self):
-        """Given a user, only the catalog zones they may change are valid choices."""
-        other_catalog = DNSZone.objects.create(name="other-catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
-        user = self._user_permitted_to_change(self.catalog_zone)
-
-        refused = forms.DNSZoneForm(data=self._zone_data(catalog_zone=other_catalog.pk), user=user)
-        self.assertFalse(refused.is_valid())
-        self.assertIn("catalog_zone", refused.errors)
-
-        accepted = forms.DNSZoneForm(data=self._zone_data(catalog_zone=self.catalog_zone.pk), user=user)
-        self.assertTrue(accepted.is_valid(), accepted.errors)
-
-    def test_a_zone_in_a_catalog_the_user_cannot_change_stays_in_it(self):
-        """The catalog field is disabled, so other edits save and the zone keeps its catalog."""
-        zone = DNSZone.objects.create(name="member.example", catalog_zone=self.catalog_zone)
-        user = self._user_permitted_to_change()
-
-        form = forms.DNSZoneForm(
-            instance=zone, data=self._zone_data(name=zone.name, description="Edited", catalog_zone=""), user=user
-        )
-        self.assertTrue(form.fields["catalog_zone"].disabled)
-        self.assertTrue(form.is_valid(), form.errors)
-        zone = form.save()
-
-        self.assertEqual(zone.description, "Edited")
-        self.assertEqual(zone.catalog_zone, self.catalog_zone)
-
-
-def bulk_edit_form(zones, user=None, nullify=(), **data):
+def bulk_edit_form(zones, nullify=(), **data):
     """Return a bulk edit form posted for `zones`, with `zones` as its selection."""
     pks = [str(zone.pk) for zone in zones]
     posted = QueryDict(mutable=True)
@@ -267,19 +218,17 @@ def bulk_edit_form(zones, user=None, nullify=(), **data):
     posted.setlist("_nullify", list(nullify))
     for key, value in data.items():
         posted[key] = str(value)
-    return forms.DNSZoneBulkEditForm(DNSZone, data=posted, selection=DNSZone.objects.filter(pk__in=pks), user=user)
+    return forms.DNSZoneBulkEditForm(DNSZone, data=posted, selection=DNSZone.objects.filter(pk__in=pks))
 
 
 class DNSZoneBulkEditFormTest(TestCase):
     """Test the DNSZone bulk edit form.
 
-    Its catalog and PTR fields are judged against the zones the edit will reach and, given a user,
-    against the catalog zones that user may change.
+    Its catalog and PTR fields are judged against the zones the edit will reach.
     """
 
     form_class = forms.DNSZoneBulkEditForm
 
-    REFUSAL = "Some of the selected zones are in catalog zones you do not have permission to change."
     VIEW_MISMATCH = "The selected zones must be in the same view as the catalog zone."
 
     @classmethod
@@ -291,23 +240,9 @@ class DNSZoneBulkEditFormTest(TestCase):
             soa_rname="admin@example.com",
         )
         cls.catalog_zone = DNSZone.objects.create(name="catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
-        cls.other_catalog = DNSZone.objects.create(name="other-catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
-        cls.member = DNSZone.objects.create(name="member.example", catalog_zone=cls.catalog_zone)
-        cls.other_member = DNSZone.objects.create(name="other-member.example", catalog_zone=cls.other_catalog)
         cls.zones = [DNSZone.objects.create(name=f"zone-{index}.example") for index in range(2)]
         cls.other_view = DNSView.objects.create(name="Other View")
         cls.other_view_zone = DNSZone.objects.create(name="other-view-zone.example", dns_view=cls.other_view)
-
-        cls.user = User.objects.create_user(username="bulk-catalog-user")
-        permission = ObjectPermission.objects.create(
-            name="change all but other catalog",
-            actions=["view", "change"],
-            constraints={
-                "pk__in": [str(zone.pk) for zone in (cls.catalog_zone, cls.member, cls.other_member, cls.zone)]
-            },
-        )
-        permission.object_types.set([ContentType.objects.get_for_model(DNSZone)])
-        permission.users.add(cls.user)
 
     def test_soa_rname_accepts_dns_style_mailbox(self):
         form = self.form_class(
@@ -440,33 +375,6 @@ class DNSZoneBulkEditFormTest(TestCase):
         form = bulk_edit_form([self.zones[0], self.catalog_zone])
         self.assertNotIn("catalog_zone", form.nullable_fields)
         self.assertIn("catalog_zone", forms.DNSZoneBulkEditForm.Meta.nullable_fields)
-
-    def test_the_catalog_field_offers_only_catalogs_the_user_can_change(self):
-        """The catalog field offers only catalog zones the user can change."""
-        form = bulk_edit_form([self.zone], user=self.user)
-        self.assertEqual(list(form.fields["catalog_zone"].queryset), [self.catalog_zone])
-
-    def test_adding_to_a_catalog_the_user_can_change_is_accepted(self):
-        """Adding zones to a catalog zone the user can change is accepted."""
-        form = bulk_edit_form([self.zone], user=self.user, catalog_zone=self.catalog_zone.pk)
-        self.assertTrue(form.is_valid(), form.errors)
-
-    def test_moving_zones_out_of_a_catalog_the_user_cannot_change_is_refused(self):
-        """Moving zones out of a catalog zone the user cannot change is refused."""
-        form = bulk_edit_form([self.zone, self.other_member], user=self.user, catalog_zone=self.catalog_zone.pk)
-        self.assertFalse(form.is_valid())
-        self.assertIn(self.REFUSAL, form.errors["catalog_zone"])
-
-    def test_nulling_zones_in_a_catalog_the_user_cannot_change_is_refused(self):
-        """Setting the catalog to null for zones in a catalog the user cannot change is refused."""
-        form = bulk_edit_form([self.member, self.other_member], user=self.user, nullify=["catalog_zone"])
-        self.assertFalse(form.is_valid())
-        self.assertIn(self.REFUSAL, form.errors["catalog_zone"])
-
-    def test_nulling_zones_in_a_catalog_the_user_can_change_is_accepted(self):
-        """Setting the catalog to null for zones in a catalog the user can change is accepted."""
-        form = bulk_edit_form([self.member, self.zone], user=self.user, nullify=["catalog_zone"])
-        self.assertTrue(form.is_valid(), form.errors)
 
 
 class DNSRegistrarFormTestCase(TestCase):

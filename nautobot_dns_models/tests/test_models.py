@@ -10,7 +10,6 @@ from nautobot.apps.change_logging import web_request_context
 from nautobot.apps.testing import ModelTestCases, TestCase
 from nautobot.extras.models import ObjectChange, Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
-from nautobot.users.models import ObjectPermission
 from netutils.ip import ipaddress_address
 
 from nautobot_dns_models.choices import DNSZoneTypeChoices
@@ -1669,8 +1668,8 @@ class CatalogMembershipTest(TestCase):
     """Tests for membership of a catalog zone through `DNSZone.catalog_zone`.
 
     Covers adding, removing, moving and renaming a member, the view a catalog shares with its members,
-    deletion, the queryset paths that write zones without saving each one, the change permission each
-    catalog involved needs, and where a membership change is recorded.
+    deletion, the queryset paths that write zones without saving each one, and where a membership
+    change is recorded.
     """
 
     @classmethod
@@ -1678,19 +1677,6 @@ class CatalogMembershipTest(TestCase):
         cls.catalog_zone = create_zone("catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
         cls.other_catalog = create_zone("other-catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
         cls.other_view = DNSView.objects.create(name="Other")
-
-    def _permit_change(self, *zones):
-        """Let `self.user` change `zones` and no other zone."""
-        permission = ObjectPermission.objects.create(
-            name="change some zones", actions=["change"], constraints={"pk__in": [str(zone.pk) for zone in zones]}
-        )
-        permission.object_types.set([ContentType.objects.get_for_model(DNSZone)])
-        permission.users.add(self.user)
-
-    def _save_as_user(self, zone):
-        """Validate and save `zone` within a change context attributed to `self.user`."""
-        with web_request_context(self.user):
-            zone.validated_save()
 
     def test_a_zone_outside_a_catalog_has_no_label(self):
         """A zone outside a catalog has no member label."""
@@ -2298,120 +2284,9 @@ class CatalogMembershipTest(TestCase):
         self.catalog_zone.members.remove(zone, bulk=False)
         self.assertEqual(member_ptr_records(self.catalog_zone), set())
 
-    def test_adding_needs_change_permission_on_the_catalog(self):
-        """Adding a zone to a catalog without change permission on the catalog is refused."""
-        zone = create_zone("member.example")
-        self._permit_change(zone)
-        zone.catalog_zone = self.catalog_zone
-
-        with self.assertRaises(ValidationError) as context:
-            self._save_as_user(zone)
-
-        self.assertEqual(
-            context.exception.message_dict["catalog_zone"][0],
-            "Changing a zone's catalog requires permission to change the catalog zones it is added to or removed from.",
-        )
-        self.assertEqual(member_ptr_records(self.catalog_zone), set())
-
-    def test_adding_is_allowed_with_change_permission_on_both_zones(self):
-        """Adding a zone to a catalog is allowed with change permission on the zone and the catalog."""
-        zone = create_zone("member.example")
-        self._permit_change(zone, self.catalog_zone)
-        zone.catalog_zone = self.catalog_zone
-
-        self._save_as_user(zone)
-
-        self.assertEqual(len(member_ptr_records(self.catalog_zone)), 1)
-
-    def test_removing_needs_change_permission_on_the_catalog(self):
-        """Removing a zone from a catalog needs change permission on the catalog."""
-        zone = create_zone("member.example")
-        zone.catalog_zone = self.catalog_zone
-        zone.validated_save()
-        self._permit_change(zone)
-        zone.catalog_zone = None
-
-        with self.assertRaises(ValidationError):
-            self._save_as_user(zone)
-
-    def test_deleting_a_member_needs_change_permission_on_the_catalog(self):
-        """A member zone cannot be deleted without change permission on its catalog zone.
-
-        Deleting a member withdraws its PTR record, as removing it from the catalog does.
-        """
-        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
-
-        for path, delete in (("instance", zone.delete), ("queryset", DNSZone.objects.filter(pk=zone.pk).delete)):
-            with self.subTest(path=path), web_request_context(self.user), self.assertRaises(ProtectedError):
-                delete()
-
-        self.assertTrue(DNSZone.objects.filter(pk=zone.pk).exists())
-        self.assertTrue(PTRRecord.objects.filter(zone=self.catalog_zone, ptrdname=zone.name).exists())
-
-    def test_deleting_a_member_is_allowed_with_change_permission_on_the_catalog(self):
-        """A member zone can be deleted with change permission on its catalog zone."""
-        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
-        self._permit_change(self.catalog_zone)
-
-        with web_request_context(self.user):
-            zone.delete()
-
-        self.assertFalse(DNSZone.objects.filter(pk=zone.pk).exists())
-
-    def test_moving_needs_change_permission_on_the_old_catalog(self):
-        """Moving a zone to another catalog without change permission on its current catalog is refused."""
-        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
-        self._permit_change(zone, self.other_catalog)
-        zone.catalog_zone = self.other_catalog
-
-        with self.assertRaises(ValidationError) as context:
-            self._save_as_user(zone)
-
-        self.assertIn("catalog_zone", context.exception.message_dict)
-        self.assertEqual(member_ptr_records(self.other_catalog), set())
-
-    def test_moving_needs_change_permission_on_the_new_catalog(self):
-        """Moving a zone to a catalog without change permission on that catalog is refused."""
-        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
-        self._permit_change(zone, self.catalog_zone)
-        zone.catalog_zone = self.other_catalog
-
-        with self.assertRaises(ValidationError) as context:
-            self._save_as_user(zone)
-
-        self.assertIn("catalog_zone", context.exception.message_dict)
-        self.assertEqual(member_ptr_records(self.other_catalog), set())
-
-    def test_moving_is_allowed_with_change_permission_on_both_catalogs(self):
-        """Moving a zone between catalogs is allowed with change permission on the zone and both catalogs."""
-        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
-        self._permit_change(zone, self.catalog_zone, self.other_catalog)
-        zone.catalog_zone = self.other_catalog
-
-        self._save_as_user(zone)
-
-        self.assertEqual(member_ptr_records(self.catalog_zone), set())
-        self.assertEqual(len(member_ptr_records(self.other_catalog)), 1)
-
-    def test_renaming_a_member_needs_no_catalog_permission(self):
-        """Renaming a member needs no change permission on its catalog.
-
-        The rename republishes the member, but its catalog is unchanged.
-        """
-        zone = create_zone("member.example")
-        zone.catalog_zone = self.catalog_zone
-        zone.validated_save()
-        self._permit_change(zone)
-        zone.name = "renamed.example"
-
-        self._save_as_user(zone)
-
-        self.assertEqual(member_ptr_records(self.catalog_zone), {(zone.ptr_record_name, "renamed.example")})
-
     def test_adding_is_recorded_against_the_member_zone(self):
         """Adding a zone to a catalog is recorded as a change of the zone."""
         zone = create_zone("member.example")
-        self._permit_change(zone, self.catalog_zone)
 
         with web_request_context(self.user):
             zone.catalog_zone = self.catalog_zone
@@ -2424,7 +2299,6 @@ class CatalogMembershipTest(TestCase):
     def test_adding_records_no_change_against_the_catalog_zone(self):
         """Adding a zone records no change against the catalog zone, only against its PTR record."""
         zone = create_zone("member.example")
-        self._permit_change(zone, self.catalog_zone)
 
         with web_request_context(self.user):
             zone.catalog_zone = self.catalog_zone
@@ -2440,7 +2314,6 @@ class CatalogMembershipTest(TestCase):
     def test_renaming_a_member_records_a_withdrawal_and_an_addition(self):
         """Renaming a member records its old PTR record deleted and a new one created."""
         zone = create_zone("member.example", catalog_zone=self.catalog_zone)
-        self._permit_change(zone)
 
         with web_request_context(self.user):
             zone.name = "renamed.example"
