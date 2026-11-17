@@ -361,6 +361,22 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
         widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
     )
     filename = forms.CharField(required=False, label="Filename")
+    parent = DynamicModelMultipleChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        required=False,
+        label="Parent zone",
+    )
+    has_parent = forms.NullBooleanField(
+        required=False,
+        label="Has parent zone",
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
+    has_children = forms.NullBooleanField(
+        required=False,
+        label="Has child zones",
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     model = models.DNSZone
     # Define the fields above for ordering and widget purposes
     fields = [
@@ -368,6 +384,9 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
         "name",
         "enabled",
         "filename",
+        "parent",
+        "has_parent",
+        "has_children",
     ]
 
 
