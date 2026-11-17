@@ -270,6 +270,9 @@ def delete_member_ptr_records(member_ptr_records):
     ends. Django clears a deleted instance's primary key, and a tagged model without one cannot be
     serialized, so the whole batch would fail.
     """
+    # TODO: once the minimum Nautobot version is 3.2.10 or later, which includes the core fix
+    # (https://github.com/nautobot/nautobot/issues/9788), remove this function and have its
+    # callers delete the queryset directly.
     for record in member_ptr_records:
         pk = record.pk
         record.delete()
