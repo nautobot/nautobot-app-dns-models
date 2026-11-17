@@ -258,7 +258,7 @@ class CatalogMemberZoneTable(CatalogActionsTableMixin, BaseTable):  # pylint: di
     ptr_record_name = tables.Column(
         accessor="ptr_record_name", order_by=("member_label",), verbose_name="PTR Record Name"
     )
-    actions = ButtonsColumn(models.DNSZone, buttons=("edit",), prepend_template=DNSZONE_CATALOG_BUTTONS)
+    actions = ButtonsColumn(models.DNSZone, buttons=("changelog", "edit"), prepend_template=DNSZONE_CATALOG_BUTTONS)
 
     class Meta(BaseTable.Meta):
         """Meta attributes."""
