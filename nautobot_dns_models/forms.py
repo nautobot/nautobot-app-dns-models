@@ -495,40 +495,38 @@ class DNSZoneBulkDeleteForm(ConfirmationForm):
             pass
 
 
-class CatalogMembershipForm(BootstrapMixin, forms.Form):
-    """Pick the zone to pair with a catalog zone, or the catalog zone to pair with a zone.
-
-    From a catalog zone's detail page the member is picked; from a zone's detail page the catalog is picked.
-    """
+class AddToCatalogForm(BootstrapMixin, forms.Form):
+    """Pick the catalog zone to add a zone to, from the catalog zones in the zone's view."""
 
     catalog_zone = DynamicModelChoiceField(
-        queryset=models.DNSZone.objects.all(),
+        queryset=models.DNSZone.objects.filter(type=DNSZoneTypeChoices.TYPE_CATALOG),
+        query_params={"type": DNSZoneTypeChoices.TYPE_CATALOG},
         label="Catalog Zone",
     )
+
+    def __init__(self, *args, zone, **kwargs):
+        """Offer only the catalog zones in `zone`'s view."""
+        super().__init__(*args, **kwargs)
+        self.fields["catalog_zone"].widget.add_query_param("dns_view", zone.dns_view_id)
+
+
+class CatalogMemberAddForm(BootstrapMixin, forms.Form):
+    """Pick an existing zone to add to a catalog zone, from the zones in the catalog zone's view."""
+
     zone = DynamicModelChoiceField(
-        queryset=models.DNSZone.objects.all(),
+        queryset=models.DNSZone.objects.exclude(type=DNSZoneTypeChoices.TYPE_CATALOG),
+        query_params={
+            "is_catalog_member": "False",
+            "type__n": DNSZoneTypeChoices.TYPE_CATALOG,
+            "can_change": "True",
+        },
         label="Member Zone",
     )
 
-    def __init__(self, *args, catalog_zone=None, zone=None, **kwargs):
-        """Keep only the field for the zone to pick, offering the zones that could pair with the other."""
-        if (catalog_zone is None) == (zone is None):
-            raise TypeError("Pass exactly one of catalog_zone and zone.")
-
+    def __init__(self, *args, catalog_zone, **kwargs):
+        """Offer only the zones in `catalog_zone`'s view."""
         super().__init__(*args, **kwargs)
-
-        if catalog_zone is not None:
-            del self.fields["catalog_zone"]
-            self.fields["zone"].queryset = models.DNSZone.objects.exclude(type=DNSZoneTypeChoices.TYPE_CATALOG)
-            self.fields["zone"].widget.add_query_param("dns_view", catalog_zone.dns_view_id)
-            self.fields["zone"].widget.add_query_param("is_catalog_member", "False")
-            self.fields["zone"].widget.add_query_param("type__n", DNSZoneTypeChoices.TYPE_CATALOG)
-            self.fields["zone"].widget.add_query_param("can_change", "True")
-        else:
-            del self.fields["zone"]
-            self.fields["catalog_zone"].queryset = models.DNSZone.objects.filter(type=DNSZoneTypeChoices.TYPE_CATALOG)
-            self.fields["catalog_zone"].widget.add_query_param("dns_view", zone.dns_view_id)
-            self.fields["catalog_zone"].widget.add_query_param("type", DNSZoneTypeChoices.TYPE_CATALOG)
+        self.fields["zone"].widget.add_query_param("dns_view", catalog_zone.dns_view_id)
 
     def clean_zone(self):
         """Refuse a zone already in a catalog, which this form would otherwise move."""

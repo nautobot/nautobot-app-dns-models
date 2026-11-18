@@ -62,10 +62,11 @@ from nautobot_dns_models.forms import (
     AAAARecordBulkEditForm,
     AAAARecordFilterForm,
     AAAARecordForm,
+    AddToCatalogForm,
     ARecordBulkEditForm,
     ARecordFilterForm,
     ARecordForm,
-    CatalogMembershipForm,
+    CatalogMemberAddForm,
     CNAMERecordBulkEditForm,
     CNAMERecordFilterForm,
     CNAMERecordForm,
@@ -643,15 +644,15 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
 
     def _catalog_membership_form_response(self, request, *, title, add_another, catalog_zone=None, zone=None):
         """Render or process the form pairing a zone with a catalog zone, given one of the two, and return to the given one."""
+        data = request.POST if request.method == "POST" else None
         if catalog_zone is not None:
             given_zone, form_field_name, pick_action = catalog_zone, "zone", "change"
+            form = CatalogMemberAddForm(data, catalog_zone=catalog_zone)
         else:
             given_zone, form_field_name, pick_action = zone, "catalog_zone", "view"
+            form = AddToCatalogForm(data, zone=zone)
 
         return_url = self.get_return_url(request, given_zone)
-        form = CatalogMembershipForm(
-            request.POST if request.method == "POST" else None, catalog_zone=catalog_zone, zone=zone
-        )
         restrict_form_fields(form, request.user, pick_action)
 
         if request.method == "POST":
