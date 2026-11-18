@@ -36,7 +36,7 @@ class Migration(migrations.Migration):
                 condition=models.Q(
                     ("catalog_zone__isnull", True), models.Q(("type", "catalog"), _negated=True), _connector="OR"
                 ),
-                name="catalog_zone_not_a_member",
+                name="catalog_zone_not_nested",
                 violation_error_message="A catalog zone cannot be a member of another catalog zone.",
             ),
         ),

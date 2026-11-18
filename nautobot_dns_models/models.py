@@ -644,7 +644,7 @@ class DNSZone(DNSModel):
             # RFC 9432 says nothing about nested catalog zones, and most consumers do not support them.
             models.CheckConstraint(
                 condition=Q(catalog_zone__isnull=True) | ~Q(type=DNSZoneTypeChoices.TYPE_CATALOG),
-                name="catalog_zone_not_a_member",
+                name="catalog_zone_not_nested",
                 violation_error_message="A catalog zone cannot be a member of another catalog zone.",
             ),
             models.CheckConstraint(
