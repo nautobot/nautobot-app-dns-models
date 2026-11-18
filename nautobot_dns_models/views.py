@@ -138,7 +138,7 @@ class ZoneFieldsPanel(ObjectFieldsPanel):
         """Drop the Catalog Zone field on a catalog zone."""
         data = super().get_data(context)
         zone = get_obj_from_context(context)
-        if zone is not None and zone.is_catalog_zone:
+        if zone.is_catalog_zone:
             data.pop("catalog_zone", None)
 
         return data
@@ -175,9 +175,6 @@ class ZoneRecordsTablePanel(ObjectsTablePanel):
             return False
 
         zone = get_obj_from_context(context)
-        if zone is None:
-            return False
-
         if self.system_managed:
             return zone.is_catalog_zone
 
@@ -197,7 +194,7 @@ class CatalogMemberZonesPanel(ObjectsTablePanel):
             return False
 
         zone = get_obj_from_context(context)
-        return zone is not None and zone.is_catalog_zone
+        return zone.is_catalog_zone
 
     def _get_table_add_url(self, context):
         """Point Add at the catalog's add-member action, which adds an existing zone rather than creating one."""
@@ -225,7 +222,7 @@ class ZoneRegistrationPanel(ObjectsTablePanel):
             return False
 
         zone = get_obj_from_context(context)
-        return zone is not None and not zone.is_catalog_zone
+        return not zone.is_catalog_zone
 
 
 class RecordStatsPanel(StatsPanel):
@@ -237,7 +234,7 @@ class RecordStatsPanel(StatsPanel):
             return False
 
         zone = get_obj_from_context(context)
-        return zone is not None and not zone.is_catalog_zone
+        return not zone.is_catalog_zone
 
 
 class AddRecordButton(object_detail.Button):
@@ -255,7 +252,7 @@ class AddRecordButton(object_detail.Button):
             return False
 
         zone = get_obj_from_context(context)
-        return zone is not None and not zone.is_catalog_zone
+        return not zone.is_catalog_zone
 
 
 class AddRecordsDropdownButton(object_detail.DropdownButton):
