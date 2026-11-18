@@ -120,6 +120,13 @@ class DNSZoneFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
             "soa_rname": "icontains",
         }
     )
+    parent = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        label="Parent zone (name or ID)",
+    )
+    has_parent = RelatedMembershipBooleanFilter(field_name="parent", label="Has parent zone")
+    has_children = RelatedMembershipBooleanFilter(field_name="children", label="Has child zones")
     catalog_zone = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=models.DNSZone.objects.all(),
         query_params={"type": DNSZoneTypeChoices.TYPE_CATALOG},

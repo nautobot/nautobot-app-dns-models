@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     dependencies = [
         ("extras", "0145_objectmetadata_assigned_object_type_cascade"),
-        ("nautobot_dns_models", "0012_dnszone_type"),
+        ("nautobot_dns_models", "0013_dnszone_type"),
         ("tenancy", "0009_update_all_charfields_max_length_to_255"),
     ]
 

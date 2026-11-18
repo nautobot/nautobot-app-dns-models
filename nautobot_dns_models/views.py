@@ -369,7 +369,7 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
     filterset_form_class = DNSZoneFilterForm
     serializer_class = DNSZoneSerializer
     lookup_field = "pk"
-    queryset = DNSZone.objects.select_related("dns_view", "catalog_zone__dns_view")
+    queryset = DNSZone.objects.select_related("dns_view", "parent__dns_view", "catalog_zone__dns_view")
     table_class = DNSZoneTable
 
     object_detail_content = ObjectDetailContent(
@@ -407,6 +407,15 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                 section=SectionChoices.LEFT_HALF,
                 table_class=TXTRecordTable,
                 system_managed=True,
+            ),
+            ObjectsTablePanel(
+                weight=400,
+                section=SectionChoices.LEFT_HALF,
+                table_filter="parent",
+                table_class=DNSZoneTable,
+                table_title="Child Zones",
+                include_columns=["name", "enabled", "description", "actions"],
+                max_display_count=5,
             ),
             CatalogMemberZonesPanel(
                 weight=100,

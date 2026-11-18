@@ -20,6 +20,7 @@ from netutils.ip import ipaddress_address
 
 from nautobot_dns_models.choices import DNSZoneTypeChoices
 from nautobot_dns_models.system_writes import system_write, system_write_in_progress
+from nautobot_dns_models.utils import compute_zone_parents
 
 # Reverse-DNS roots per RFC 1035 §3.5 and RFC 3596 §2.5
 RESERVED_ROOTS = {"in-addr.arpa", "ip6.arpa", "arpa"}
@@ -524,6 +525,16 @@ class DNSZone(DNSModel):
         verbose_name="View",
         default=get_default_view_pk,
     )
+    parent = models.ForeignKey(
+        to="self",
+        on_delete=models.SET_NULL,
+        related_name="children",
+        blank=True,
+        null=True,
+        editable=False,
+        help_text=("Closest enclosing zone (ancestor) in the same DNS View. Set automatically (RFC 9499)."),
+        verbose_name="Parent Zone",
+    )
     catalog_zone = models.ForeignKey(
         to="self",
         on_delete=models.PROTECT,
@@ -710,7 +721,7 @@ class DNSZone(DNSModel):
             return super().delete(*args, **kwargs)
 
     def save(self, *args, **kwargs):
-        """Normalize the RNAME, then write the records this zone's type and catalog membership require.
+        """Normalize the RNAME, write the records the zone's type and catalog membership require, and set parents.
 
         Adding a zone to a catalog, removing it, moving it to another catalog, and renaming a member
         publish the member PTR under a new label and withdraw the old one, which a consumer sees as a
@@ -719,6 +730,10 @@ class DNSZone(DNSModel):
 
         Membership fields left out of `update_fields` take their stored values, so that the PTR
         record describes what is stored.
+
+        A new, renamed or moved zone can change the parent of other zones, so the whole view is recomputed. If the
+        zone moved to another view, its former view is recomputed too. A save that keeps the name and DNS View
+        changes no parent, so it skips the recompute and keeps the stored parent.
         """
         self.soa_rname = normalize_soa_rname(self.soa_rname)
         update_fields = kwargs.get("update_fields")
@@ -743,9 +758,24 @@ class DNSZone(DNSModel):
             if update_fields is not None and stored_zone is not None and self.member_label != stored_zone.member_label:
                 kwargs["update_fields"] = {*update_fields, "member_label"}
 
+            placement_changed = stored_zone is None or (stored_zone.name, stored_zone.dns_view_id) != (
+                self.name,
+                self.dns_view_id,
+            )
+            if not placement_changed:
+                self.parent_id = stored_zone.parent_id
+
             super().save(*args, **kwargs)
             self._reconcile_required_catalog_records()
             self._sync_member_ptr_record(stored_zone)
+
+            if placement_changed:
+                rebuild_zone_hierarchy(dns_view=self.dns_view_id)
+                if stored_zone is not None and stored_zone.dns_view_id != self.dns_view_id:
+                    rebuild_zone_hierarchy(dns_view=stored_zone.dns_view_id)
+
+        if placement_changed:
+            self.refresh_from_db(fields=["parent"])
 
     @property
     def ptr_record_name(self):
@@ -947,6 +977,25 @@ class DNSZone(DNSModel):
         """Refuse a type that differs from the one already stored."""
         if stored_type != self.type:
             raise ValidationError({"type": "Zone type cannot be changed after creation."})
+
+
+def rebuild_zone_hierarchy(dns_view=None):
+    """Recompute the parent of every zone, or of every zone in `dns_view`, and return how many changed.
+
+    `DNSZone.save()` and zone deletion call this for the affected view. Run it directly to repair parents after
+    writes that bypass them, such as `QuerySet.update()` or `bulk_create()`.
+    """
+    zones = DNSZone.objects.only("pk", "name", "dns_view_id", "parent_id")
+    if dns_view is not None:
+        zones = zones.filter(dns_view=dns_view)
+    zone_list = list(zones)
+    parents = compute_zone_parents((zone.pk, zone.name, zone.dns_view_id) for zone in zone_list)
+
+    changed = [zone for zone in zone_list if zone.parent_id != parents[zone.pk]]
+    for zone in changed:
+        zone.parent_id = parents[zone.pk]
+    DNSZone.objects.bulk_update(changed, ["parent"], batch_size=1000)
+    return len(changed)
 
 
 @extras_features(

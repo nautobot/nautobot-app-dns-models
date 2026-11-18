@@ -375,6 +375,8 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
             soa_expire=1209200,
             soa_minimum=7200,
         )
+        cls.parent_zone = DNSZone.objects.create(name="example.com", filename="example.conf")
+        cls.child_zone = DNSZone.objects.create(name="apps.example.com", filename="apps.conf")
         # Named so it stays out of the "Test"/"zone" search assertions below.
         cls.catalog_zone = DNSZone.objects.create(
             name="Catalog One",
@@ -413,7 +415,7 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
         distinct values and only two zone types exist.
         """
         self.assertEqual(self.filterset({"type": [DNSZoneTypeChoices.TYPE_CATALOG]}, self.queryset).qs.count(), 1)
-        self.assertEqual(self.filterset({"type": [DNSZoneTypeChoices.TYPE_PRIMARY]}, self.queryset).qs.count(), 3)
+        self.assertEqual(self.filterset({"type": [DNSZoneTypeChoices.TYPE_PRIMARY]}, self.queryset).qs.count(), 5)
 
     def test_catalog_zone(self):
         """The catalog zone filter accepts the catalog zone's name or ID."""
@@ -430,8 +432,16 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
 
     def test_enabled_filter(self):
         """enabled filter should match only zones with the given enabled value."""
-        self.assertEqual(self.filterset({"enabled": "true"}, self.queryset).qs.count(), 3)
+        self.assertEqual(self.filterset({"enabled": "true"}, self.queryset).qs.count(), 5)
         self.assertEqual(self.filterset({"enabled": "false"}, self.queryset).qs.count(), 1)
+
+    def test_hierarchy_filters(self):
+        """parent, has_parent and has_children should follow the derived zone hierarchy."""
+        for value in ("example.com", self.parent_zone.pk):
+            with self.subTest(parent=value):
+                self.assertQuerySetEqual(self.filterset({"parent": [value]}, self.queryset).qs, [self.child_zone])
+        self.assertQuerySetEqual(self.filterset({"has_parent": True}, self.queryset).qs, [self.child_zone])
+        self.assertQuerySetEqual(self.filterset({"has_children": True}, self.queryset).qs, [self.parent_zone])
 
     def test_can_change(self):
         """The can_change filter splits the zones by whether the requesting user may change them."""

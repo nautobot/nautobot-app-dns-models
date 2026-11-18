@@ -201,6 +201,7 @@ class DNSZoneTable(CatalogActionsTableMixin, BaseTable):
     name = tables.Column(linkify=True)
     tenant = TenantColumn()
     dns_view = tables.Column(linkify=True)
+    parent = tables.Column(linkify=True)
     catalog_zone = tables.Column(linkify=True, verbose_name="Catalog Zone")
     enabled = BooleanColumn()
     auto_create_ptr = BooleanColumn()
@@ -219,6 +220,7 @@ class DNSZoneTable(CatalogActionsTableMixin, BaseTable):
             "name",
             "type",
             "dns_view",
+            "parent",
             "catalog_zone",
             "member_label",
             "enabled",

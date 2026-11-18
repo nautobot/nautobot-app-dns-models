@@ -412,6 +412,17 @@ class DNSZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         """A primary zone has a Records Statistics panel."""
         self.assertIn("RECORDS STATISTICS", self._panel_headings(self.primary_zone))
 
+    def test_detail_view_lists_child_zones(self):
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+        parent = DNSZone.objects.create(name="example.com")
+        DNSZone.objects.create(name="apps.example.com")
+
+        response = self.client.get(parent.get_absolute_url())
+
+        self.assertHttpStatus(response, 200)
+        self.assertContains(response, "Child Zones")
+        self.assertContains(response, "apps.example.com")
+
     @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
     def test_catalog_zone_lists_its_members(self):
         """A catalog zone renders a Member Zones panel carrying each member's PTR record name."""

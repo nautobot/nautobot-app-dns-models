@@ -560,6 +560,30 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
         zone.refresh_from_db()
         self.assertFalse(zone.enabled)
 
+    def test_parent_is_derived_and_read_only(self):
+        """The API reports the derived parent zone and ignores a parent supplied by the client."""
+        self.add_permissions(
+            "nautobot_dns_models.add_dnszone", "nautobot_dns_models.view_dnszone", "nautobot_dns_models.view_dnsview"
+        )
+        dns_view = DNSView.objects.get(name="Default")
+        example = _create_zone(name="example.com", dns_view=dns_view)
+        unrelated = _create_zone(name="unrelated.example", dns_view=dns_view)
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnszone-list")
+        data = {
+            "name": "apps.example.com",
+            "dns_view": dns_view.id,
+            "filename": "apps.example.com.zone",
+            "soa_mname": "ns1.example.com",
+            "soa_rname": "admin@example.com",
+            "parent": unrelated.id,
+        }
+        response = self.client.post(url, data=data, format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["parent"]["id"], example.id)
+        self.assertEqual(DNSZone.objects.get(pk=response.data["id"]).parent, example)
+
     def test_list_orders_zones_by_view_name_then_zone_name(self):
         """The zone list, which the zone pickers read, is ordered by view name and then zone name."""
         self.add_permissions("nautobot_dns_models.view_dnszone")

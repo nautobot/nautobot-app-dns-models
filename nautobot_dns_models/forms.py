@@ -558,6 +558,22 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
         widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
     )
     filename = forms.CharField(required=False, label="Filename")
+    parent = DynamicModelMultipleChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        required=False,
+        label="Parent zone",
+    )
+    has_parent = forms.NullBooleanField(
+        required=False,
+        label="Has parent zone",
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
+    has_children = forms.NullBooleanField(
+        required=False,
+        label="Has child zones",
+        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+    )
     catalog_zone = DynamicModelMultipleChoiceField(
         queryset=models.DNSZone.objects.filter(type=DNSZoneTypeChoices.TYPE_CATALOG),
         required=False,
@@ -578,6 +594,9 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
         "type",
         "enabled",
         "filename",
+        "parent",
+        "has_parent",
+        "has_children",
         "catalog_zone",
         "is_catalog_member",
     ]

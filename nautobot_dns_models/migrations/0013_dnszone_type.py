@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     dependencies = [
         ("extras", "0145_objectmetadata_assigned_object_type_cascade"),
-        ("nautobot_dns_models", "0011_portal_url_txt_text_hash_zone_name_ci_unique"),
+        ("nautobot_dns_models", "0012_dnszone_parent"),
         ("tenancy", "0009_update_all_charfields_max_length_to_255"),
     ]
 

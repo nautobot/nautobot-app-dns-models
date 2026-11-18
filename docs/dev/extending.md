@@ -54,6 +54,7 @@ erDiagram
         charfield name UK
         charfield type
         DNSView dns_view FK
+        DNSZone parent FK
         DNSZone catalog_zone FK
         charfield member_label
         boolean enabled
@@ -136,6 +137,7 @@ erDiagram
     DNSZone ||--o{ DNSRecord: "contains"
     DNSZone }o--|| DNSView: "belongs to"
     DNSZone }o--o| tenancy_TenantModel: "belongs to"
+    DNSZone }o--o| DNSZone: "child of (derived)"
 
     DNSZone |o--o{ DNSZone: "catalog_zone"
     DNSZone ||..o| TXTRecord: "auto-creates version TXT (when type is catalog)"
