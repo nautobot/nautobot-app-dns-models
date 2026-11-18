@@ -414,14 +414,19 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
         `type` is not covered by `generic_filter_tests` because those require at least three
         distinct values and only two zone types exist.
         """
-        self.assertEqual(self.filterset({"type": [DNSZoneTypeChoices.TYPE_CATALOG]}, self.queryset).qs.count(), 1)
-        self.assertEqual(self.filterset({"type": [DNSZoneTypeChoices.TYPE_PRIMARY]}, self.queryset).qs.count(), 5)
+        for zone_type in (DNSZoneTypeChoices.TYPE_CATALOG, DNSZoneTypeChoices.TYPE_PRIMARY):
+            with self.subTest(type=zone_type):
+                self.assertQuerySetEqualAndNotEmpty(
+                    self.filterset({"type": [zone_type]}, self.queryset).qs, self.queryset.filter(type=zone_type)
+                )
 
     def test_catalog_zone(self):
         """The catalog zone filter accepts the catalog zone's name or ID."""
         for value in (self.catalog_zone.name, str(self.catalog_zone.pk)):
             with self.subTest(value=value):
-                self.assertEqual(list(self.filterset({"catalog_zone": [value]}, self.queryset).qs), [self.member_zone])
+                self.assertQuerySetEqual(
+                    self.filterset({"catalog_zone": [value]}, self.queryset).qs, [self.member_zone]
+                )
 
     def test_search(self):
         """Test filtering by Q search value."""
@@ -452,17 +457,19 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
         permission.object_types.set([ContentType.objects.get_for_model(DNSZone)])
         permission.users.add(user)
         request = SimpleNamespace(user=user)
-        others = list(self.queryset.exclude(pk=self.catalog_zone.pk))
 
-        self.assertEqual(
-            list(self.filterset({"can_change": True}, self.queryset, request=request).qs), [self.catalog_zone]
+        self.assertQuerySetEqual(
+            self.filterset({"can_change": True}, self.queryset, request=request).qs, [self.catalog_zone]
         )
-        self.assertEqual(list(self.filterset({"can_change": False}, self.queryset, request=request).qs), others)
+        self.assertQuerySetEqualAndNotEmpty(
+            self.filterset({"can_change": False}, self.queryset, request=request).qs,
+            self.queryset.exclude(pk=self.catalog_zone.pk),
+        )
 
     def test_can_change_without_a_user(self):
         """Without a requesting user, can_change matches no zone, and its negation every zone."""
         self.assertFalse(self.filterset({"can_change": True}, self.queryset).qs.exists())
-        self.assertEqual(self.filterset({"can_change": False}, self.queryset).qs.count(), self.queryset.count())
+        self.assertQuerySetEqualAndNotEmpty(self.filterset({"can_change": False}, self.queryset).qs, self.queryset)
 
 
 class NSRecordFilterTestCase(TestCase):
