@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                 condition=models.Q(
                     models.Q(("type", "catalog"), _negated=True), ("auto_create_ptr", False), _connector="OR"
                 ),
-                name="catalog_zone_no_auto_create_ptr",
+                name="nautobot_dns_models_dnszone_catalog_zone_no_auto_create_ptr",
                 violation_error_code="catalog_zone_auto_create_ptr",
                 violation_error_message="Catalog zones cannot enable automatic PTR creation.",
             ),

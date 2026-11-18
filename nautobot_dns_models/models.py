@@ -637,20 +637,20 @@ class DNSZone(DNSModel):
             ),
             models.CheckConstraint(
                 condition=~Q(type=DNSZoneTypeChoices.TYPE_CATALOG) | Q(auto_create_ptr=False),
-                name="catalog_zone_no_auto_create_ptr",
+                name="nautobot_dns_models_dnszone_catalog_zone_no_auto_create_ptr",
                 violation_error_message="Catalog zones cannot enable automatic PTR creation.",
                 violation_error_code="catalog_zone_auto_create_ptr",
             ),
             # RFC 9432 says nothing about nested catalog zones, and most consumers do not support them.
             models.CheckConstraint(
                 condition=Q(catalog_zone__isnull=True) | ~Q(type=DNSZoneTypeChoices.TYPE_CATALOG),
-                name="catalog_zone_not_nested",
+                name="nautobot_dns_models_dnszone_catalog_zone_not_nested",
                 violation_error_message="A catalog zone cannot be a member of another catalog zone.",
             ),
             models.CheckConstraint(
                 condition=(Q(catalog_zone__isnull=True) & Q(member_label=""))
                 | (Q(catalog_zone__isnull=False) & ~Q(member_label="")),
-                name="member_label_only_in_a_catalog",
+                name="nautobot_dns_models_dnszone_member_label_only_in_a_catalog",
                 violation_error_message="A zone has a member label exactly when it is in a catalog zone.",
             ),
             # RFC 4343 §3 compares labels without regard to case, so labels differing only in case would
@@ -659,7 +659,7 @@ class DNSZone(DNSModel):
             models.UniqueConstraint(
                 "catalog_zone",
                 Lower("member_label"),
-                name="member_label_unique_in_catalog_case_insensitive",
+                name="nautobot_dns_models_dnszone_member_label_ci_unique",
                 violation_error_message="This label is already used by another member of the catalog zone.",
             ),
         ]

@@ -36,7 +36,7 @@ class Migration(migrations.Migration):
                 condition=models.Q(
                     ("catalog_zone__isnull", True), models.Q(("type", "catalog"), _negated=True), _connector="OR"
                 ),
-                name="catalog_zone_not_nested",
+                name="nautobot_dns_models_dnszone_catalog_zone_not_nested",
                 violation_error_message="A catalog zone cannot be a member of another catalog zone.",
             ),
         ),
@@ -48,7 +48,7 @@ class Migration(migrations.Migration):
                     models.Q(("catalog_zone__isnull", False), models.Q(("member_label", ""), _negated=True)),
                     _connector="OR",
                 ),
-                name="member_label_only_in_a_catalog",
+                name="nautobot_dns_models_dnszone_member_label_only_in_a_catalog",
                 violation_error_message="A zone has a member label exactly when it is in a catalog zone.",
             ),
         ),
@@ -57,7 +57,7 @@ class Migration(migrations.Migration):
             constraint=models.UniqueConstraint(
                 models.F("catalog_zone"),
                 django.db.models.functions.text.Lower("member_label"),
-                name="member_label_unique_in_catalog_case_insensitive",
+                name="nautobot_dns_models_dnszone_member_label_ci_unique",
                 violation_error_message="This label is already used by another member of the catalog zone.",
             ),
         ),
