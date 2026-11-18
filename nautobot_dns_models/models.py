@@ -728,8 +728,8 @@ class DNSZone(DNSModel):
         removal and an addition (RFC 9432 §5.4). If those records cannot be written, the zone is not
         saved either.
 
-        Membership fields left out of `update_fields` take their stored values, so that the PTR
-        record describes what is stored.
+        The name, view and catalog left out of `update_fields` take their stored values, so that the member
+        label and PTR record follow what is stored.
 
         A new, renamed or moved zone can change the parent of other zones, so the whole view is recomputed. If the
         zone moved to another view, its former view is recomputed too. A save that keeps the name and DNS View
@@ -743,15 +743,6 @@ class DNSZone(DNSModel):
             if stored_zone is not None:
                 self._validate_type_unchanged(stored_zone.type)
                 if update_fields is not None:
-                    # This is a safeguard against code that changes the name, view or catalog but leaves
-                    # it out of `update_fields`.
-                    #
-                    #     zone.name = "renamed.example"
-                    #     zone.save(update_fields=["description"])
-                    #
-                    # Here, Django would not save the name, but the code above would still give the zone a
-                    # new label and a PTR record for that name. An unsaved catalog change does the same,
-                    # publishing the PTR record in a catalog the zone is not stored in.
                     self._keep_unwritten_fields(stored_zone, update_fields)
 
             self._enforce_membership_rules(stored_zone, lock=True)
@@ -834,7 +825,21 @@ class DNSZone(DNSModel):
             raise ValidationError({"type": "Zone type cannot be changed after creation."})
 
     def _keep_unwritten_fields(self, stored_zone, update_fields):
-        """Reset the name, view and catalog to their stored values when `update_fields` leaves them out."""
+        """Reset the name, view and catalog to their stored values when `update_fields` leaves them out.
+
+        Django doesn't write a field left out of `update_fields`, but the rest of `save()` reads these three
+        from the instance to assign the member label, check the membership and publish the member PTR record.
+        Without the reset, a save like this:
+
+            # zone.name is "zone.example"
+
+            zone.name = "renamed.example"
+            zone.save(update_fields=["description"])
+
+        ...would keep the stored name but give the zone a new label and a PTR record for "renamed.example".
+        Likewise, a catalog change left out of `update_fields` would move the zone's PTR record to the new
+        catalog while the zone stays a member of the old one.
+        """
         for attribute_name, names in (
             ("name", {"name"}),
             ("dns_view_id", {"dns_view", "dns_view_id"}),
