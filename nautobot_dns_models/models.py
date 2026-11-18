@@ -763,7 +763,7 @@ class DNSZone(DNSModel):
                 self.dns_view_id,
             )
             if not placement_changed:
-                self.parent_id = stored_zone.parent_id
+                self.refresh_from_db(fields=["parent"])
 
             super().save(*args, **kwargs)
             self._reconcile_required_catalog_records()
