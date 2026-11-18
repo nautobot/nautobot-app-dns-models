@@ -17,7 +17,7 @@ from nautobot.extras.models import StatusField
 from nautobot.ipam.choices import IPAddressVersionChoices
 from netutils.ip import ipaddress_address
 
-from nautobot_dns_models.choices import DNSZoneTypeChoices, NameServerBailiwickChoices
+from nautobot_dns_models.choices import DNSZoneTypeChoices, NameServerRelationshipChoices
 from nautobot_dns_models.querysets import (
     SYSTEM_MANAGED_DELETE_ERROR,
     SYSTEM_MANAGED_WRITE_ERROR,
@@ -1592,26 +1592,26 @@ class DNSDelegation(PrimaryModel):
         return zones.first()
 
     def classify_name_server(self, server):
-        """Return where `server` sits relative to this zone cut, as a `NameServerBailiwickChoices` value."""
+        """Return where `server` sits relative to this zone cut, as a `NameServerRelationshipChoices` value."""
         server_key = dns_name_key(server)
         cut_key = dns_name_key(self.get_fqdn())
         zone_key = dns_name_key(self.zone.name)
         if server_key == cut_key or is_subdomain(server_key, cut_key):
-            return NameServerBailiwickChoices.IN_DOMAIN
+            return NameServerRelationshipChoices.IN_DOMAIN
         if server_key == zone_key or is_subdomain(server_key, zone_key):
-            return NameServerBailiwickChoices.SIBLING
-        return NameServerBailiwickChoices.OUT_OF_BAILIWICK
+            return NameServerRelationshipChoices.SIBLING_DOMAIN
+        return NameServerRelationshipChoices.UNRELATED
 
     def get_glue_records(self, server, user=None):
         """Return the A and AAAA records in the parent zone at the name `server`, limited to `user`'s if given."""
         return get_address_records(self.zone, server, user=user)
 
     def _glue_owner_filter(self):
-        """Return a filter matching the parent-zone owner names of this delegation's in-domain and sibling servers."""
+        """Return a filter matching the parent-zone owner names of this delegation's in-domain and sibling domain servers."""
         zone_key = dns_name_key(self.zone.name)
         query = Q(pk=None)
         for server in self.ns_records.values_list("server", flat=True):
-            if self.classify_name_server(server) == NameServerBailiwickChoices.OUT_OF_BAILIWICK:
+            if self.classify_name_server(server) == NameServerRelationshipChoices.UNRELATED:
                 continue
             owner = relative_owner_name(dns_name_key(server), zone_key)
             query |= Q(name__in=["@", ""]) if owner == "@" else Q(name__iexact=owner)
@@ -1636,10 +1636,10 @@ class DNSDelegation(PrimaryModel):
     def get_name_server_addresses(self, server, user=None):
         """Return the address records known for `server`, limited to those `user` may view if given.
 
-        In-domain and sibling name servers resolve through the parent zone's own records. An out-of-bailiwick name
+        In-domain and sibling domain name servers resolve through the parent zone's own records. An unrelated name
         server resolves through whichever zone in the same DNS View contains it, if any.
         """
-        if self.classify_name_server(server) != NameServerBailiwickChoices.OUT_OF_BAILIWICK:
+        if self.classify_name_server(server) != NameServerRelationshipChoices.UNRELATED:
             return self.get_glue_records(server, user=user)
         server_key = dns_name_key(server)
         zone = DNSZone.objects.filter(

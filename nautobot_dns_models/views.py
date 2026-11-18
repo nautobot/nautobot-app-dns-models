@@ -46,7 +46,7 @@ from nautobot_dns_models.api.serializers import (
     SRVRecordSerializer,
     TXTRecordSerializer,
 )
-from nautobot_dns_models.choices import DNSZoneTypeChoices, NameServerBailiwickChoices
+from nautobot_dns_models.choices import DNSZoneTypeChoices, NameServerRelationshipChoices
 from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
@@ -779,8 +779,8 @@ class DNSDelegationUIViewSet(views.NautobotUIViewSet):
                 section=SectionChoices.RIGHT_HALF,
                 label="Name Servers",
                 context_data_key="name_servers",
-                columns=["server", "bailiwick", "addresses"],
-                column_headers=["Name Server", "Bailiwick", "Addresses"],
+                columns=["server", "relationship", "addresses"],
+                column_headers=["Name Server", "Relationship", "Addresses"],
             ),
             ObjectsTablePanel(
                 weight=200,
@@ -836,11 +836,11 @@ class DNSDelegationUIViewSet(views.NautobotUIViewSet):
     @staticmethod
     def _name_server_row(delegation, server, user):
         """Summarize one name server; an in-domain server without glue gets links to add it, if the user may."""
-        bailiwick = delegation.classify_name_server(server)
+        relationship = delegation.classify_name_server(server)
         addresses = ", ".join(
             str(record.ip_address.host) for record in delegation.get_name_server_addresses(server, user=user)
         )
-        if not addresses and bailiwick == NameServerBailiwickChoices.IN_DOMAIN:
+        if not addresses and relationship == NameServerRelationshipChoices.IN_DOMAIN:
             query = urlencode(
                 {
                     "zone": delegation.zone_id,
@@ -855,7 +855,7 @@ class DNSDelegationUIViewSet(views.NautobotUIViewSet):
                     addresses = format_html('{} · <a href="{}?{}">{}</a>', addresses, url, query, label)
         return {
             "server": server,
-            "bailiwick": NameServerBailiwickChoices.as_dict()[bailiwick],
+            "relationship": NameServerRelationshipChoices.as_dict()[relationship],
             "addresses": addresses or "—",
         }
 

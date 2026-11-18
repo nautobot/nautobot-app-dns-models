@@ -1,5 +1,6 @@
 """Test the Data Validation Engine rules for nautobot_dns_models."""
 
+from constance.test import override_config
 from django.contrib.contenttypes.models import ContentType
 from nautobot.apps.testing import TestCase
 from nautobot.data_validation.models import DataCompliance
@@ -17,8 +18,9 @@ def _create_zone(name):
     )
 
 
+@override_config(nautobot_dns_models__DELEGATION_COMPLIANCE_ENABLED=True)
 class DNSComplianceRuleTestCase(TestCase):
-    """Shared fixtures: `example.com` delegates `apps` to an in-domain and an out-of-bailiwick name server."""
+    """Shared fixtures: `example.com` delegates `apps` to an in-domain and an unrelated name server."""
 
     @classmethod
     def setUpTestData(cls):
@@ -78,6 +80,15 @@ class RuleRegistrationTestCase(DNSComplianceRuleTestCase):
         delegation = DNSDelegation(zone=self.zone, name="empty")
         delegation.validated_save()
         self.assertTrue(DNSDelegation.objects.filter(pk=delegation.pk).exists())
+
+    @override_config(nautobot_dns_models__DELEGATION_COMPLIANCE_ENABLED=False)
+    def test_disabled_rules_record_no_results(self):
+        delegation = DNSDelegation(zone=self.zone, name="empty")
+        delegation.validated_save()
+        ARecord.objects.create(name="www", ip_address=self.ip_10, zone=self.zone).validated_save()
+
+        rule_names = [rule.name for rule in custom_validators.custom_validators]
+        self.assertFalse(DataCompliance.objects.filter(compliance_class_name__in=rule_names).exists())
 
 
 class DNSDelegationRulesTestCase(DNSComplianceRuleTestCase):

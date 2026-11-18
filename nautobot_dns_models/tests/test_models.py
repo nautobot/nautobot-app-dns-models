@@ -17,7 +17,7 @@ from nautobot.extras.models import ObjectChange, Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from netutils.ip import ipaddress_address
 
-from nautobot_dns_models.choices import DNSZoneTypeChoices, NameServerBailiwickChoices
+from nautobot_dns_models.choices import DNSZoneTypeChoices, NameServerRelationshipChoices
 from nautobot_dns_models.models import (
     APEX_RECORD_NAME,
     CATALOG_APEX_NS_SERVER,
@@ -1562,14 +1562,14 @@ class DNSDelegationTestCase(TestCase):
     def test_classify_name_server(self):
         delegation = self._create_delegation()
         cases = (
-            ("ns1.apps.example.com", NameServerBailiwickChoices.IN_DOMAIN),
-            ("NS1.Apps.Example.com.", NameServerBailiwickChoices.IN_DOMAIN),
-            ("apps.example.com", NameServerBailiwickChoices.IN_DOMAIN),
-            ("ns.example.com", NameServerBailiwickChoices.SIBLING),
-            ("ns.mail.example.com", NameServerBailiwickChoices.SIBLING),
-            ("example.com", NameServerBailiwickChoices.SIBLING),
-            ("ns2.other.net", NameServerBailiwickChoices.OUT_OF_BAILIWICK),
-            ("ns.notexample.com", NameServerBailiwickChoices.OUT_OF_BAILIWICK),
+            ("ns1.apps.example.com", NameServerRelationshipChoices.IN_DOMAIN),
+            ("NS1.Apps.Example.com.", NameServerRelationshipChoices.IN_DOMAIN),
+            ("apps.example.com", NameServerRelationshipChoices.IN_DOMAIN),
+            ("ns.example.com", NameServerRelationshipChoices.SIBLING_DOMAIN),
+            ("ns.mail.example.com", NameServerRelationshipChoices.SIBLING_DOMAIN),
+            ("example.com", NameServerRelationshipChoices.SIBLING_DOMAIN),
+            ("ns2.other.net", NameServerRelationshipChoices.UNRELATED),
+            ("ns.notexample.com", NameServerRelationshipChoices.UNRELATED),
         )
         for server, expected in cases:
             with self.subTest(server=server):
