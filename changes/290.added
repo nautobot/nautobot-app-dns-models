@@ -1,1 +1,1 @@
-Added DNS delegations, which mark a zone cut in a parent zone and report missing glue, mismatched child zone data and records hidden below the cut under Data Compliance.
+Added DNS delegations, which mark a zone cut in a parent zone and report missing glue, mismatched child zone data and records hidden below the cut under Data Compliance when the `DELEGATION_COMPLIANCE_ENABLED` setting is enabled.

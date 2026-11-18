@@ -92,6 +92,11 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
             help_text="Enforce CNAME exclusivity",
             field_type=bool,
         ),
+        "DELEGATION_COMPLIANCE_ENABLED": ConstanceConfigItem(
+            default=False,
+            help_text="Record DNS delegation Data Compliance results when zones, delegations and records are saved.",
+            field_type=bool,
+        ),
     }
 
     def ready(self):

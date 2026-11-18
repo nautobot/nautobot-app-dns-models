@@ -1,13 +1,15 @@
 """Data Validation Engine rules for nautobot_dns_models.
 
 Registered automatically through `NautobotAppConfig.custom_validators`. Every rule here is audit-only: it records its
-result under Data Compliance and never blocks a save. The rules compare several objects, so a result can go stale when
-a related object changes; the core job "Run Registered Data Compliance Rules" refreshes all results.
+result under Data Compliance and never blocks a save. The rules run only when the `DELEGATION_COMPLIANCE_ENABLED`
+setting is on. They compare several objects, so a result can go stale when a related object changes; the core job
+"Run Registered Data Compliance Rules" refreshes all results.
 """
 
+from constance import config as constance_config
 from nautobot.apps.models import ComplianceError, DataComplianceRule
 
-from nautobot_dns_models.choices import NameServerBailiwickChoices
+from nautobot_dns_models.choices import NameServerRelationshipChoices
 from nautobot_dns_models.models import (
     DNSDelegation,
     DNSZone,
@@ -27,6 +29,11 @@ class DNSComplianceRule(DataComplianceRule):  # pylint: disable=abstract-method
         super().__init__(obj)
         self.instance = obj
 
+    def clean(self):
+        """Run the rule only when `DELEGATION_COMPLIANCE_ENABLED` is on, so that no result is recorded otherwise."""
+        if getattr(constance_config, "nautobot_dns_models__DELEGATION_COMPLIANCE_ENABLED", False):
+            super().clean()
+
 
 def _address_set(records):
     return {str(record.ip_address.host) for record in records}
@@ -37,7 +44,7 @@ def _in_domain_servers(delegation):
         {
             ns_record.server
             for ns_record in delegation.ns_records
-            if delegation.classify_name_server(ns_record.server) == NameServerBailiwickChoices.IN_DOMAIN
+            if delegation.classify_name_server(ns_record.server) == NameServerRelationshipChoices.IN_DOMAIN
         }
     )
 

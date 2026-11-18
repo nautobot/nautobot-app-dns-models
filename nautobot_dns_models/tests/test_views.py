@@ -244,7 +244,7 @@ class DNSDelegationViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
         self.assertHttpStatus(response, 200)
         body = extract_page_body(response.content.decode(response.charset))
-        for text in ("apps.example.com", "ns1.apps.example.com", "In-domain", "ns2.other.net", "Out-of-bailiwick"):
+        for text in ("apps.example.com", "ns1.apps.example.com", "In-domain", "ns2.other.net", "Unrelated"):
             self.assertIn(text, body)
 
     def test_detail_view_lists_glue_records(self):
