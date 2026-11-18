@@ -233,6 +233,9 @@ class RecordStatsPanel(StatsPanel):
 
     def should_render(self, context):
         """Render only where the zone permits users to manage records."""
+        if not super().should_render(context):
+            return False
+
         zone = get_obj_from_context(context)
         return zone is not None and not zone.is_catalog_zone
 
