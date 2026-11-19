@@ -11,14 +11,29 @@
  *    create; on edit the type is fixed and the server sets these controls.
  */
 
-document.addEventListener("DOMContentLoaded", function () {
-    const zoneTypeField = document.getElementById("id_type");
-    const catalogZoneField = document.getElementById("id_catalog_zone");
+// Nautobot fires this on the form on page load and when the form opens in a modal. The suffix is
+// DNSZone's verbose_name.
+document.addEventListener("nb-form:load:DNS Zone", function (event) {
+    const form = event.target;
+
+    // Sets up each form once; the modal loads this file again, which adds another listener.
+    if (form.dataset.dnsZoneFormReady) {
+        return;
+    }
+    form.dataset.dnsZoneFormReady = "true";
+
+    // Finds fields by name within this form, since their ids change in a modal.
+    function fieldNamed(name) {
+        return form.querySelector('[name="' + name + '"]');
+    }
+
+    const zoneTypeField = fieldNamed("type");
+    const catalogZoneField = fieldNamed("catalog_zone");
 
     // Returns a control's field, help text element and state function, or null if the field is
-    // not on the page.
-    function control(id, inactiveHelpText, applyState) {
-        const field = document.getElementById(id);
+    // not in the form.
+    function control(name, inactiveHelpText, applyState) {
+        const field = fieldNamed(name);
         if (!field) {
             return null;
         }
@@ -54,7 +69,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // loads with the field empty.
     let heldLabel = "";
     const memberLabel = control(
-        "id_member_label",
+        "member_label",
         "Only a zone in a catalog zone has a member label.",
         function (field, inactive) {
             // Save only while the field is enabled, so a repeat call does not overwrite the save.
@@ -89,7 +104,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const typeControls = [
         control(
-            "id_auto_create_ptr",
+            "auto_create_ptr",
             "Catalog zones cannot enable automatic PTR creation.",
             function (field, isCatalog) {
                 field.disabled = isCatalog;
@@ -100,7 +115,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         ),
         control(
-            "id_catalog_zone",
+            "catalog_zone",
             "A catalog zone cannot be a member of another catalog zone.",
             function (field, isCatalog) {
                 field.disabled = isCatalog;
