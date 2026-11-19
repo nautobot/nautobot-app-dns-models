@@ -293,7 +293,7 @@ class DNSZoneForm(NautobotModelForm, TenancyForm):
         help_text="The catalog zone this zone is a member of.",
     )
 
-    field_order = ["name", "type", "dns_view", "catalog_zone", "enabled", "auto_create_ptr"]
+    field_order = ["name", "type", "dns_view", "catalog_zone", "member_label", "enabled", "auto_create_ptr"]
 
     class Meta:
         """Meta attributes."""
@@ -303,13 +303,24 @@ class DNSZoneForm(NautobotModelForm, TenancyForm):
         widgets = {"type": StaticSelect2()}
 
     class Media:
-        """Load create-time toggling of the controls a catalog zone cannot use."""
+        """Load the toggling of the controls that depend on the zone's type and catalog zone."""
 
         js = ("nautobot_dns_models/js/dns_zone_form.js",)
 
     def __init__(self, *args, **kwargs):
         """Configure fields according to the stored zone state."""
         super().__init__(*args, **kwargs)
+
+        # The label placeholder would read as a label on a zone in no catalog, whose field is empty.
+        self.fields["member_label"].widget.attrs["placeholder"] = ""
+
+        # The zone's label, or a generated one for a zone not yet in a catalog, offered should a
+        # catalog be chosen. The script reads the data attribute, since a re-rendered form has no
+        # value for a label that was disabled on submit.
+        if not self.instance.is_catalog_zone:
+            if not self.initial.get("member_label"):
+                self.initial["member_label"] = models.catalog_member_label()
+            self.fields["member_label"].widget.attrs["data-default-label"] = self.initial["member_label"]
 
         # New zones keep their create-time controls editable.
         if not self.instance.present_in_database:
@@ -325,6 +336,22 @@ class DNSZoneForm(NautobotModelForm, TenancyForm):
             self.fields["auto_create_ptr"].help_text = "Catalog zones cannot enable automatic PTR creation."
             self.fields["catalog_zone"].disabled = True
             self.fields["catalog_zone"].help_text = "A catalog zone cannot be a member of another catalog zone."
+            self.fields["member_label"].disabled = True
+            self.fields["member_label"].help_text = "A catalog zone has no member label."
+
+    def clean(self):
+        """Require a member label for a zone in a catalog, and drop it for any other zone."""
+        super().clean()
+
+        catalog_zone = self.cleaned_data.get("catalog_zone")
+        member_label = self.cleaned_data.get("member_label")
+
+        if not catalog_zone:
+            self.cleaned_data["member_label"] = ""
+        elif not member_label and not self.has_error("member_label"):
+            self.add_error("member_label", "A zone in a catalog zone needs a member label.")
+
+        return self.cleaned_data
 
 
 class DNSZoneBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):
@@ -503,6 +530,12 @@ class AddToCatalogForm(BootstrapMixin, forms.Form):
         query_params={"type": DNSZoneTypeChoices.TYPE_CATALOG},
         label="Catalog Zone",
     )
+    member_label = forms.CharField(
+        max_length=63,
+        initial=models.catalog_member_label,
+        label="Member Label",
+        help_text="DNS label identifying the zone within the catalog zone.",
+    )
 
     def __init__(self, *args, zone, **kwargs):
         """Offer only the catalog zones in `zone`'s view."""
@@ -521,6 +554,12 @@ class CatalogMemberAddForm(BootstrapMixin, forms.Form):
             "can_change": "True",
         },
         label="Member Zone",
+    )
+    member_label = forms.CharField(
+        max_length=63,
+        initial=models.catalog_member_label,
+        label="Member Label",
+        help_text="DNS label identifying the zone within the catalog zone.",
     )
 
     def __init__(self, *args, catalog_zone, **kwargs):

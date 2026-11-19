@@ -177,13 +177,50 @@ class DNSZoneFormTestCase(TestCase):
 
     def test_adding_to_a_catalog_publishes_the_zone(self):
         """Saving the form with a catalog zone adds the zone to it and publishes its PTR record."""
-        form = forms.DNSZoneForm(data=self._zone_data(catalog_zone=self.catalog_zone.pk))
+        form = forms.DNSZoneForm(data=self._zone_data(catalog_zone=self.catalog_zone.pk, member_label="chosen"))
         self.assertTrue(form.is_valid(), form.errors)
         zone = form.save()
 
         self.assertEqual(zone.catalog_zone, self.catalog_zone)
-        self.assertNotEqual(zone.member_label, "")
-        self.assertTrue(PTRRecord.objects.filter(zone=self.catalog_zone, name=zone.ptr_record_name).exists())
+        self.assertEqual(zone.member_label, "chosen")
+        self.assertTrue(PTRRecord.objects.filter(zone=self.catalog_zone, name="chosen.zones").exists())
+
+    def test_the_member_label_is_filled_in_with_a_generated_label(self):
+        """A zone in no catalog is offered a generated label, for use should a catalog zone be chosen."""
+        for instance in (None, DNSZone.objects.create(name="no-catalog.example")):
+            with self.subTest(instance=instance):
+                self.assertRegex(forms.DNSZoneForm(instance=instance).initial["member_label"], r"^[a-z2-7]{26}$")
+
+    def test_a_member_zone_offers_its_own_label_to_the_script(self):
+        """A member zone's label is kept for the script, including on a form re-rendered after an error."""
+        zone = DNSZone.objects.create(name="member.example", catalog_zone=self.catalog_zone, member_label="kept")
+        bound = self._zone_data(name=zone.name, catalog_zone="", ttl="not-a-number")
+        for form in (forms.DNSZoneForm(instance=zone), forms.DNSZoneForm(instance=zone, data=bound)):
+            with self.subTest(bound=form.is_bound):
+                self.assertEqual(form.fields["member_label"].widget.attrs["data-default-label"], "kept")
+
+        form = forms.DNSZoneForm(instance=self.catalog_zone)
+        self.assertNotIn("data-default-label", form.fields["member_label"].widget.attrs)
+
+    def test_a_member_label_needs_a_catalog_zone(self):
+        """A label submitted without a catalog zone is dropped, and a zone in a catalog zone must have one."""
+        form = forms.DNSZoneForm(data=self._zone_data(member_label="stray"))
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.save().member_label, "")
+
+        form = forms.DNSZoneForm(data=self._zone_data(name="other", catalog_zone=self.catalog_zone.pk))
+        self.assertEqual(form.errors, {"member_label": ["A zone in a catalog zone needs a member label."]})
+
+    def test_an_over_long_member_label_reports_only_its_length(self):
+        """A label longer than a DNS label allows gets the length error alone."""
+        form = forms.DNSZoneForm(data=self._zone_data(catalog_zone=self.catalog_zone.pk, member_label="a" * 64))
+        self.assertEqual(form.errors, {"member_label": ["Ensure this value has at most 63 characters (it has 64)."]})
+
+    def test_member_label_is_disabled_when_editing_a_catalog_zone(self):
+        """The member label field is disabled and empty when editing a catalog zone."""
+        form = forms.DNSZoneForm(instance=self.catalog_zone)
+        self.assertTrue(form.fields["member_label"].disabled)
+        self.assertEqual(form.initial["member_label"], "")
 
     def test_removing_from_a_catalog_withdraws_the_zone(self):
         """Clearing the catalog field removes the zone from its catalog and withdraws its PTR record."""

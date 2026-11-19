@@ -46,11 +46,11 @@ In the web UI:
 
 ## Member Labels
 
-Each member is identified within its catalog by an opaque label, defined in [RFC 9432 §4.1](https://datatracker.ietf.org/doc/html/rfc9432#section-4.1). Nautobot generates the label, and no form or API accepts one.
+Each member is identified within its catalog by a label, defined in [RFC 9432 §4.1](https://datatracker.ietf.org/doc/html/rfc9432#section-4.1). A label can be given when a zone is added to a catalog; otherwise Nautobot generates one.
 
-Under RFC 9432, a consumer of the catalog treats a label it has not seen before as the arrival of a member, and one that stops appearing as its departure. Nautobot therefore keeps a member's label while the zone remains in the catalog, and issues a new label whenever a zone is added to a catalog. A zone that is renamed, or that is removed from a catalog and added again, gets a new label.
+Under RFC 9432, a consumer of the catalog treats a label it has not seen before as the arrival of a member, and one that stops appearing as its departure. Nautobot therefore keeps a member's label while the zone remains in the catalog. Renaming a zone or moving it to another catalog gives it a new label, unless a different label is given in the same change.
 
-To give a member a new label, which [RFC 9432 §5.6](https://datatracker.ietf.org/doc/html/rfc9432#section-5.6) uses to tell consumers to reset that member, take the zone out of its catalog and add it again. Do both steps before the catalog zone is next published to your name servers: a consumer that receives a version made between the two steps sees the zone removed.
+Changing a member's label tells consumers to reset that member, as [RFC 9432 §5.6](https://datatracker.ietf.org/doc/html/rfc9432#section-5.6) describes.
 
 ## Finding and Querying Members
 
@@ -64,4 +64,4 @@ The app writes only the schema version and the member list. It does not support 
 - groups ([`group`, §4.3.2](https://datatracker.ietf.org/doc/html/rfc9432#section-4.3.2))
 - custom properties ([`*.ext`, §4.4](https://datatracker.ietf.org/doc/html/rfc9432#section-4.4))
 
-Without `coo`, moving a zone to another catalog gives it a new label, so consumers treat the move as the zone's removal and a new addition, as described under [Member Labels](#member-labels).
+Without `coo`, consumers treat moving a zone to another catalog as the zone's removal and a new addition.

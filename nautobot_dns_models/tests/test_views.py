@@ -488,18 +488,20 @@ class DNSZoneViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         self.assertIn(self.catalog_zone.get_absolute_url(), content)
 
     @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
-    def test_member_zone_has_no_member_label_row(self):
-        """A member zone's fields panel leaves out its member label."""
-        content = self._detail(self.member_zone)
-        self.assertInHTML("<td>Member Label</td>", content, 0)
-        self.assertNotIn(self.member_zone.member_label, content)
+    def test_the_fields_panel_shows_membership_fields_only_where_they_apply(self):
+        """Only a member zone shows a Member Label row; a catalog zone shows no Catalog Zone row either."""
+        cases = (
+            ("member zone", self.member_zone, 1, 1),
+            ("zone in no catalog", create_zone("no-catalog.example"), 0, 1),
+            ("catalog zone", self.catalog_zone, 0, 0),
+        )
+        for case, zone, label_rows, catalog_zone_rows in cases:
+            with self.subTest(case):
+                content = self._detail(zone)
+                self.assertInHTML("<td>Member Label</td>", content, label_rows)
+                self.assertInHTML("<td>Catalog Zone</td>", content, catalog_zone_rows)
 
-    @override_settings(EXEMPT_VIEW_PERMISSIONS=["*"])
-    def test_catalog_zone_omits_the_membership_fields(self):
-        """A catalog zone carries no Catalog Zone or Member Label row."""
-        content = self._detail(self.catalog_zone)
-        self.assertInHTML("<td>Catalog Zone</td>", content, 0)
-        self.assertInHTML("<td>Member Label</td>", content, 0)
+        self.assertIn(self.member_zone.member_label, self._detail(self.member_zone))
 
 
 class NSRecordViewTest(ViewTestCases.PrimaryObjectViewTestCase):
@@ -1347,7 +1349,7 @@ class DNSZoneCatalogMembershipViewTest(TestCase):
     def _post_add_member_refused(self, zone):
         """Post `zone` to the add-member page, assert it was not added, and return the re-rendered page."""
         url = reverse("plugins:nautobot_dns_models:dnszone_add_member", kwargs={"pk": self.catalog_zone.pk})
-        response = self.client.post(url, {"zone": str(zone.pk), "_save": ""})
+        response = self.client.post(url, {"zone": str(zone.pk), "member_label": "chosen", "_save": ""})
         self.assertHttpStatus(response, 200)
         self.assertFalse(DNSZone.objects.filter(pk=zone.pk, catalog_zone=self.catalog_zone).exists())
         return extract_page_body(response.content.decode(response.charset))
@@ -1355,7 +1357,7 @@ class DNSZoneCatalogMembershipViewTest(TestCase):
     def _post_add_to_catalog_refused(self, catalog_zone):
         """Post `catalog_zone` to the add-to-catalog page, assert the zone was not added, and return the re-rendered page."""
         url = reverse("plugins:nautobot_dns_models:dnszone_add_to_catalog", kwargs={"pk": self.zone.pk})
-        response = self.client.post(url, {"catalog_zone": str(catalog_zone.pk), "_save": ""})
+        response = self.client.post(url, {"catalog_zone": str(catalog_zone.pk), "member_label": "chosen", "_save": ""})
         self.assertHttpStatus(response, 200)
         self.zone.refresh_from_db()
         self.assertIsNone(self.zone.catalog_zone)
@@ -1475,18 +1477,44 @@ class DNSZoneCatalogMembershipViewTest(TestCase):
         """Adding a member from the catalog's page publishes it and returns to the catalog."""
         self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.change_dnszone")
         url = reverse("plugins:nautobot_dns_models:dnszone_add_member", kwargs={"pk": self.catalog_zone.pk})
-        response = self.client.post(url, {"zone": str(self.zone.pk), "_save": ""})
+        response = self.client.post(url, {"zone": str(self.zone.pk), "member_label": "chosen", "_save": ""})
 
         self.assertRedirects(response, self.catalog_zone.get_absolute_url(), fetch_redirect_response=False)
         self.zone.refresh_from_db()
         self.assertEqual(self.zone.catalog_zone, self.catalog_zone)
-        self.assertTrue(PTRRecord.objects.filter(zone=self.catalog_zone, name=self.zone.ptr_record_name).exists())
+        self.assertEqual(self.zone.member_label, "chosen")
+        self.assertTrue(PTRRecord.objects.filter(zone=self.catalog_zone, name="chosen.zones").exists())
+
+    def test_the_add_member_page_offers_a_generated_member_label(self):
+        """The add-member page's label field is filled in with a generated label, which the user may replace."""
+        self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.change_dnszone")
+        url = reverse("plugins:nautobot_dns_models:dnszone_add_member", kwargs={"pk": self.catalog_zone.pk})
+        response = self.client.get(url)
+        self.assertHttpStatus(response, 200)
+        body = extract_page_body(response.content.decode(response.charset))
+        self.assertRegex(body, r'name="member_label" value="[a-z2-7]{26}"')
+
+    def test_the_add_member_page_refuses_a_label_already_in_the_catalog(self):
+        """The add-member page refuses a label another member uses, on the label field."""
+        self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.change_dnszone")
+        url = reverse("plugins:nautobot_dns_models:dnszone_add_member", kwargs={"pk": self.catalog_zone.pk})
+        response = self.client.post(
+            url, {"zone": str(self.zone.pk), "member_label": self.member_zone.member_label.upper(), "_save": ""}
+        )
+
+        self.assertHttpStatus(response, 200)
+        self.assertEqual(
+            response.context["form"].errors,
+            {"member_label": ["This label is already used by another member of the catalog zone."]},
+        )
+        self.zone.refresh_from_db()
+        self.assertIsNone(self.zone.catalog_zone)
 
     def test_add_another_returns_to_the_add_member_page(self):
         """The "Save and Add Another" button brings the user back to the add-member page for the next zone."""
         self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.change_dnszone")
         url = reverse("plugins:nautobot_dns_models:dnszone_add_member", kwargs={"pk": self.catalog_zone.pk})
-        response = self.client.post(url, {"zone": str(self.zone.pk), "_addanother": ""})
+        response = self.client.post(url, {"zone": str(self.zone.pk), "member_label": "chosen", "_addanother": ""})
         self.assertRedirects(response, url, fetch_redirect_response=False)
 
     def test_the_add_member_page_cannot_add_a_zone_in_a_different_view(self):
@@ -1512,7 +1540,7 @@ class DNSZoneCatalogMembershipViewTest(TestCase):
         """A user who may change the zone and only view the catalog can add the zone from the catalog's page."""
         permit_zone_change(self.user, self.zone)
         url = reverse("plugins:nautobot_dns_models:dnszone_add_member", kwargs={"pk": self.catalog_zone.pk})
-        response = self.client.post(url, {"zone": str(self.zone.pk), "_save": ""})
+        response = self.client.post(url, {"zone": str(self.zone.pk), "member_label": "chosen", "_save": ""})
 
         self.assertRedirects(response, self.catalog_zone.get_absolute_url(), fetch_redirect_response=False)
         self.zone.refresh_from_db()
@@ -1561,12 +1589,24 @@ class DNSZoneCatalogMembershipViewTest(TestCase):
         """Adding a zone to a catalog from the zone's page publishes it and returns to the zone."""
         self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.change_dnszone")
         url = reverse("plugins:nautobot_dns_models:dnszone_add_to_catalog", kwargs={"pk": self.zone.pk})
-        response = self.client.post(url, {"catalog_zone": str(self.catalog_zone.pk), "_save": ""})
+        response = self.client.post(
+            url, {"catalog_zone": str(self.catalog_zone.pk), "member_label": "chosen", "_save": ""}
+        )
 
         self.assertRedirects(response, self.zone.get_absolute_url(), fetch_redirect_response=False)
         self.zone.refresh_from_db()
         self.assertEqual(self.zone.catalog_zone, self.catalog_zone)
-        self.assertTrue(PTRRecord.objects.filter(zone=self.catalog_zone, name=self.zone.ptr_record_name).exists())
+        self.assertEqual(self.zone.member_label, "chosen")
+        self.assertTrue(PTRRecord.objects.filter(zone=self.catalog_zone, name="chosen.zones").exists())
+
+    def test_the_add_to_catalog_page_offers_a_generated_member_label(self):
+        """The add-to-catalog page's label field is filled in with a generated label, which the user may replace."""
+        self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.change_dnszone")
+        url = reverse("plugins:nautobot_dns_models:dnszone_add_to_catalog", kwargs={"pk": self.zone.pk})
+        response = self.client.get(url)
+        self.assertHttpStatus(response, 200)
+        body = extract_page_body(response.content.decode(response.charset))
+        self.assertRegex(body, r'name="member_label" value="[a-z2-7]{26}"')
 
     def test_the_add_to_catalog_page_cannot_add_to_a_catalog_zone_in_a_different_view(self):
         """The add-to-catalog page refuses a catalog zone in a different view, on the catalog field."""
@@ -1578,7 +1618,9 @@ class DNSZoneCatalogMembershipViewTest(TestCase):
         """The add-to-catalog page accepts a catalog the user may only view."""
         permit_zone_change(self.user, self.zone)
         url = reverse("plugins:nautobot_dns_models:dnszone_add_to_catalog", kwargs={"pk": self.zone.pk})
-        response = self.client.post(url, {"catalog_zone": str(self.catalog_zone.pk), "_save": ""})
+        response = self.client.post(
+            url, {"catalog_zone": str(self.catalog_zone.pk), "member_label": "chosen", "_save": ""}
+        )
 
         self.assertRedirects(response, self.zone.get_absolute_url(), fetch_redirect_response=False)
         self.zone.refresh_from_db()

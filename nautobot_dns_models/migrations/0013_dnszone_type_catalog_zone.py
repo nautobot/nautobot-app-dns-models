@@ -31,7 +31,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="dnszone",
             name="member_label",
-            field=models.CharField(blank=True, default="", editable=False, max_length=63),
+            field=models.CharField(blank=True, default="", max_length=63),
         ),
         migrations.AddConstraint(
             model_name="dnszone",
@@ -72,6 +72,7 @@ class Migration(migrations.Migration):
                 models.F("catalog_zone"),
                 django.db.models.functions.text.Lower("member_label"),
                 name="nautobot_dns_models_dnszone_member_label_ci_unique",
+                violation_error_code="member_label_not_unique",
                 violation_error_message="This label is already used by another member of the catalog zone.",
             ),
         ),

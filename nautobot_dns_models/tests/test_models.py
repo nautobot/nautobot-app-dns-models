@@ -1916,23 +1916,32 @@ class CatalogMembershipTest(TestCase):
         self.assertEqual(zone.member_label, "chosen")
         self.assertEqual(member_ptr_records(self.catalog_zone), {("chosen.zones", "member.example")})
 
-    def test_an_edited_label_is_refused_when_no_change_is_due(self):
-        """An edited label is refused while the membership stands.
+    def test_an_edited_label_republishes_the_member(self):
+        """An edited label on a member that stays in its catalog moves its PTR record to the new label.
 
-        The label is the member's identity for consumer state.
+        RFC 9432 §5.6 resets a member by giving it a new label.
         """
         zone = create_zone("member.example", catalog_zone=self.catalog_zone)
-        original_label = zone.member_label
 
-        for method in ("validated_save", "save"):
+        for method, label in (("validated_save", "edited"), ("save", "edited-again")):
             with self.subTest(method=method):
-                zone.member_label = "edited"
-                with self.assertRaises(ValidationError):
-                    getattr(zone, method)()
+                zone.member_label = label
+                getattr(zone, method)()
 
                 zone.refresh_from_db()
-                self.assertEqual(zone.member_label, original_label)
-                self.assertEqual(member_ptr_records(self.catalog_zone), {(f"{original_label}.zones", "member.example")})
+                self.assertEqual(zone.member_label, label)
+                self.assertEqual(member_ptr_records(self.catalog_zone), {(f"{label}.zones", "member.example")})
+
+    def test_a_cleared_label_is_replaced_by_a_generated_one(self):
+        """Clearing a member's label gives it a new generated label rather than none."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone, member_label="chosen")
+
+        zone.member_label = ""
+        zone.validated_save()
+
+        zone.refresh_from_db()
+        self.assertNotIn(zone.member_label, ("", "chosen"))
+        self.assertEqual(member_ptr_records(self.catalog_zone), {(f"{zone.member_label}.zones", "member.example")})
 
     def test_a_label_is_refused_outside_a_catalog(self):
         """A label supplied on a zone outside any catalog is refused."""
@@ -2090,8 +2099,8 @@ class CatalogMembershipTest(TestCase):
             zone.full_clean()
 
         self.assertEqual(
-            context.exception.message_dict["__all__"][0],
-            "This label is already used by another member of the catalog zone.",
+            context.exception.message_dict,
+            {"member_label": ["This label is already used by another member of the catalog zone."]},
         )
 
     def test_the_database_refuses_a_label_reused_in_another_case(self):

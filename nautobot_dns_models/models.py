@@ -48,6 +48,7 @@ TXT_RDATA_MAX_OCTETS = 2**16 - 1
 
 # RFC 1035 §2.3.3 and RFC 4343 §2: domain name comparisons are case-insensitive.
 DNS_ZONE_NAME_UNIQUE_ERROR_CODE = "dns_zone_name_not_unique"
+MEMBER_LABEL_UNIQUE_ERROR_CODE = "member_label_not_unique"
 
 # The fields holding a zone's catalog membership, which only `DNSZone.save()` can keep consistent
 # with the member PTR record it publishes.
@@ -549,11 +550,7 @@ class DNSZone(DNSModel):
         max_length=63,
         blank=True,
         default="",
-        editable=False,
-        help_text=(
-            "Opaque DNS label identifying this zone within its catalog zone. "
-            "Generated when the zone is added to a catalog or renamed."
-        ),
+        help_text="DNS label identifying this zone within its catalog zone.",
         verbose_name="Member Label",
     )
     ttl = models.PositiveBigIntegerField(
@@ -660,6 +657,7 @@ class DNSZone(DNSModel):
                 "catalog_zone",
                 Lower("member_label"),
                 name="nautobot_dns_models_dnszone_member_label_ci_unique",
+                violation_error_code=MEMBER_LABEL_UNIQUE_ERROR_CODE,
                 violation_error_message="This label is already used by another member of the catalog zone.",
             ),
         ]
@@ -671,13 +669,17 @@ class DNSZone(DNSModel):
         return f"{self.name} ({self.dns_view})"
 
     def validate_constraints(self, exclude=None):
-        """Report a zone name that collides with another zone in the same view as an error on `name`."""
+        """Report a name or member label already in use as an error on `name` or `member_label`."""
         try:
             super().validate_constraints(exclude=exclude)
         except ValidationError as error:
+            fields_by_code = {
+                DNS_ZONE_NAME_UNIQUE_ERROR_CODE: "name",
+                MEMBER_LABEL_UNIQUE_ERROR_CODE: "member_label",
+            }
             errors = error.update_error_dict({})
             for non_field_error in errors.pop(NON_FIELD_ERRORS, []):
-                field = "name" if non_field_error.code == DNS_ZONE_NAME_UNIQUE_ERROR_CODE else NON_FIELD_ERRORS
+                field = fields_by_code.get(non_field_error.code, NON_FIELD_ERRORS)
                 errors.setdefault(field, []).append(non_field_error)
             raise ValidationError(errors) from error
 
@@ -875,18 +877,14 @@ class DNSZone(DNSModel):
 
         catalog_changed = stored_zone is None or stored_zone.catalog_zone_id != self.catalog_zone_id
         name_changed = stored_zone is not None and stored_zone.name != self.name
-        if not (catalog_changed or name_changed):
-            # Consumers identify the member by its label (RFC 9432 §4.1), so it changes only with the membership.
-            if self.member_label != stored_label:
-                raise ValidationError(
-                    {
-                        "member_label": "The member label can only be set when the zone is added to a catalog, "
-                        "moved to another, or renamed."
-                    }
-                )
-        # A supplied label is kept, so that `save()` keeps the label an earlier `clean()` generated and so that
-        # code importing an existing catalog can keep its members' labels.
-        elif not self.member_label or self.member_label == stored_label:
+        # Consumers identify the member by its label (RFC 9432 §4.1), so joining, moving or renaming
+        # gives it a new one unless one is supplied. A supplied label is kept, so that `save()` keeps
+        # the label an earlier `clean()` generated, and so that an imported catalog keeps its labels.
+        # A new label on an unchanged membership resets the member's consumer state (§5.6).
+        if catalog_changed or name_changed:
+            if not self.member_label or self.member_label == stored_label:
+                self.member_label = catalog_member_label()
+        elif not self.member_label:
             self.member_label = catalog_member_label()
 
     def _validate_member_label(self):

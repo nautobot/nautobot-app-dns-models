@@ -1258,11 +1258,8 @@ class CatalogMembershipAPITestCase(APITestCase):
         self.assertEqual(response.data["member_label"], "")
         self.assertFalse(PTRRecord.objects.filter(zone=self.catalog_zone).exists())
 
-    def test_a_submitted_member_label_is_ignored(self):
-        """A member label submitted through the API is ignored.
-
-        The app assigns member labels.
-        """
+    def test_a_submitted_member_label_is_kept(self):
+        """A member label submitted with the catalog zone is the one the zone is published under."""
         self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.change_dnszone")
 
         response = self.client.patch(
@@ -1273,7 +1270,38 @@ class CatalogMembershipAPITestCase(APITestCase):
         )
 
         self.assertHttpStatus(response, status.HTTP_200_OK)
-        self.assertNotEqual(response.data["member_label"], "chosen")
+        self.assertEqual(response.data["member_label"], "chosen")
+        self.assertTrue(PTRRecord.objects.filter(zone=self.catalog_zone, name="chosen.zones").exists())
+
+    def test_patching_a_members_label_republishes_it(self):
+        """A new label on a member moves its PTR record to the new label."""
+        self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.change_dnszone")
+        self.zone.catalog_zone = self.catalog_zone
+        self.zone.validated_save()
+
+        response = self.client.patch(self._zone_url(self.zone), {"member_label": "reset"}, format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertEqual(
+            set(PTRRecord.objects.filter(zone=self.catalog_zone).values_list("name", flat=True)), {"reset.zones"}
+        )
+
+    def test_a_label_already_in_the_catalog_is_refused(self):
+        """A label another member uses, in any letter case, is refused with a 400 on `member_label`."""
+        self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.change_dnszone")
+        _create_zone("first.example", catalog_zone=self.catalog_zone, member_label="shared")
+
+        response = self.client.patch(
+            self._zone_url(self.zone),
+            {"catalog_zone": str(self.catalog_zone.pk), "member_label": "SHARED"},
+            format="json",
+            **self.header,
+        )
+
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["member_label"], ["This label is already used by another member of the catalog zone."]
+        )
 
     def test_patch_cannot_add_a_zone_to_a_catalog_zone_in_a_different_view(self):
         """Adding a zone to a catalog zone in a different view is refused with a 400."""

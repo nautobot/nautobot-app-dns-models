@@ -132,14 +132,16 @@ OBJECT_PERMISSION_SAVE_ERROR = "Object save failed due to object-level permissio
 
 
 class ZoneFieldsPanel(ObjectFieldsPanel):
-    """The zone's own fields, minus a catalog zone's Catalog Zone field, which cannot apply to it."""
+    """The zone's own fields, minus the membership fields that cannot apply to it."""
 
     def get_data(self, context):
-        """Drop the Catalog Zone field on a catalog zone."""
+        """Drop the Catalog Zone field on a catalog zone, and the Member Label field on a zone in no catalog."""
         data = super().get_data(context)
         zone = get_obj_from_context(context)
         if zone.is_catalog_zone:
             data.pop("catalog_zone", None)
+        if not zone.catalog_zone_id:
+            data.pop("member_label", None)
 
         return data
 
@@ -380,7 +382,6 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                 weight=100,
                 section=SectionChoices.LEFT_HALF,
                 fields="__all__",
-                exclude_fields=["member_label"],
             ),
             ZoneRegistrationPanel(
                 weight=200,
@@ -662,6 +663,7 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                 else:
                     zone = form.cleaned_data["zone"]
                 zone.catalog_zone = catalog_zone
+                zone.member_label = form.cleaned_data["member_label"]
                 try:
                     self._save_membership(request, zone)
                     messages.success(
@@ -679,7 +681,11 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
 
                     return redirect(return_url)
                 except ValidationError as error:
-                    form.add_error(form_field_name, error.messages)
+                    if "member_label" in getattr(error, "error_dict", {}):
+                        form.add_error("member_label", error.error_dict.pop("member_label"))
+
+                    if error.messages:
+                        form.add_error(form_field_name, error.messages)
                 except ObjectDoesNotExist:
                     form.add_error(None, OBJECT_PERMISSION_SAVE_ERROR)
 
