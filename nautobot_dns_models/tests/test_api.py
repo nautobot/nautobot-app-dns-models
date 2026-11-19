@@ -1,18 +1,17 @@
 """Unit tests for nautobot_dns_models."""
 # pylint: disable=too-many-lines
 
-# pylint: disable=too-many-lines
-
 from datetime import date
 
 from constance.test import override_config
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
-from nautobot.apps.testing import APIViewTestCases
+from nautobot.apps.testing import APITestCase, APIViewTestCases
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from rest_framework import status
 
+from nautobot_dns_models.choices import DNSZoneTypeChoices
 from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
@@ -30,7 +29,7 @@ from nautobot_dns_models.models import (
 )
 
 
-def _create_zone(name, dns_view=None):
+def _create_zone(name, dns_view=None, **kwargs):
     zone_data = {
         "name": name,
         "filename": f"{name}.zone",
@@ -39,6 +38,7 @@ def _create_zone(name, dns_view=None):
     }
     if dns_view is not None:
         zone_data["dns_view"] = dns_view
+    zone_data.update(kwargs)
 
     return DNSZone.objects.create(
         **zone_data,
@@ -415,6 +415,7 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
         "soa_mname",
         "soa_rname",
     ]
+    choices_fields = ["type"]
 
     @classmethod
     def setUpTestData(cls):
@@ -582,6 +583,25 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
         self.assertEqual(response.data["parent"]["id"], example.id)
         self.assertEqual(DNSZone.objects.get(pk=response.data["id"]).parent, example)
+
+    def test_list_orders_zones_by_view_name_then_zone_name(self):
+        """The zone list, which the zone pickers read, is ordered by view name and then zone name."""
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+        later_view = DNSView.objects.create(name="Zzz View")
+        earlier_view = DNSView.objects.create(name="Aaa View")
+        _create_zone(name="a.example", dns_view=later_view)
+        _create_zone(name="z.example", dns_view=earlier_view)
+        _create_zone(name="b.example", dns_view=earlier_view)
+
+        url = reverse("plugins-api:nautobot_dns_models-api:dnszone-list")
+        response = self.client.get(f"{url}?limit=0", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        names = [zone["name"] for zone in response.data["results"]]
+        self.assertEqual(
+            [name for name in names if name in ("a.example", "b.example", "z.example")],
+            ["b.example", "z.example", "a.example"],
+        )
 
     def test_create_zone_helper_uses_supplied_dns_view(self):
         """_create_zone should use the DNSView explicitly provided by the caller."""
@@ -1198,3 +1218,177 @@ class CNAMEExclusivityAPITestCase(APIViewTestCases.APIViewTestCase):
         data_c = {"name": "opt", "alias": "opt.example.com", "zone": self.zone.id}
         response = self.client.post(url_c, data=data_c, format="json", **self.header)
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
+
+
+class CatalogMembershipAPITestCase(APITestCase):
+    """Tests adding zones to and removing them from a catalog zone through the zone endpoint."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.catalog_zone = _create_zone("catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
+        cls.zone = _create_zone("member.example")
+
+    def _zone_url(self, zone):
+        return reverse("plugins-api:nautobot_dns_models-api:dnszone-detail", kwargs={"pk": zone.pk})
+
+    def test_get_reports_the_catalog_zone_and_member_label(self):
+        """The API returns a member zone's catalog zone and member label."""
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+        self.zone.catalog_zone = self.catalog_zone
+        self.zone.validated_save()
+
+        response = self.client.get(self._zone_url(self.zone), **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertEqual(response.data["catalog_zone"]["id"], self.catalog_zone.pk)
+        self.assertEqual(response.data["member_label"], self.zone.member_label)
+
+    def test_patch_adds_a_zone_to_a_catalog_and_removes_it(self):
+        """Setting and clearing the catalog zone adds the zone to the catalog and removes it."""
+        self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.change_dnszone")
+
+        response = self.client.patch(
+            self._zone_url(self.zone), {"catalog_zone": str(self.catalog_zone.pk)}, format="json", **self.header
+        )
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertTrue(PTRRecord.objects.filter(zone=self.catalog_zone, ptrdname="member.example").exists())
+
+        response = self.client.patch(self._zone_url(self.zone), {"catalog_zone": None}, format="json", **self.header)
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertEqual(response.data["member_label"], "")
+        self.assertFalse(PTRRecord.objects.filter(zone=self.catalog_zone).exists())
+
+    def test_a_submitted_member_label_is_kept(self):
+        """A member label submitted with the catalog zone is the one the zone is published under."""
+        self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.change_dnszone")
+
+        response = self.client.patch(
+            self._zone_url(self.zone),
+            {"catalog_zone": str(self.catalog_zone.pk), "member_label": "chosen"},
+            format="json",
+            **self.header,
+        )
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertEqual(response.data["member_label"], "chosen")
+        self.assertTrue(PTRRecord.objects.filter(zone=self.catalog_zone, name="chosen.zones").exists())
+
+    def test_patching_a_members_label_republishes_it(self):
+        """A new label on a member moves its PTR record to the new label."""
+        self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.change_dnszone")
+        self.zone.catalog_zone = self.catalog_zone
+        self.zone.validated_save()
+
+        response = self.client.patch(self._zone_url(self.zone), {"member_label": "reset"}, format="json", **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertEqual(
+            set(PTRRecord.objects.filter(zone=self.catalog_zone).values_list("name", flat=True)), {"reset.zones"}
+        )
+
+    def test_a_label_already_in_the_catalog_is_refused(self):
+        """A label another member uses, in any letter case, is refused with a 400 on `member_label`."""
+        self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.change_dnszone")
+        _create_zone("first.example", catalog_zone=self.catalog_zone, member_label="shared")
+
+        response = self.client.patch(
+            self._zone_url(self.zone),
+            {"catalog_zone": str(self.catalog_zone.pk), "member_label": "SHARED"},
+            format="json",
+            **self.header,
+        )
+
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["member_label"], ["This label is already used by another member of the catalog zone."]
+        )
+
+    def test_patch_cannot_add_a_zone_to_a_catalog_zone_in_a_different_view(self):
+        """Adding a zone to a catalog zone in a different view is refused with a 400."""
+        self.add_permissions("nautobot_dns_models.view_dnszone", "nautobot_dns_models.change_dnszone")
+        other_zone = _create_zone("other.example", dns_view=DNSView.objects.create(name="Other"))
+
+        response = self.client.patch(
+            self._zone_url(other_zone), {"catalog_zone": str(self.catalog_zone.pk)}, format="json", **self.header
+        )
+
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["catalog_zone"], ["The catalog zone must be in the same view as this zone."])
+
+    def test_adding_a_zone_to_a_catalog_needs_no_change_permission_on_the_catalog_zone(self):
+        """A user who can change the zone and view the catalog zone can add the zone to the catalog."""
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+        self.add_permissions("nautobot_dns_models.change_dnszone", constraints={"pk": str(self.zone.pk)})
+
+        response = self.client.patch(
+            self._zone_url(self.zone), {"catalog_zone": str(self.catalog_zone.pk)}, format="json", **self.header
+        )
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertTrue(PTRRecord.objects.filter(zone=self.catalog_zone, ptrdname="member.example").exists())
+
+    def test_post_creates_a_member(self):
+        """Creating a zone with a catalog zone adds it to the catalog and publishes its PTR record."""
+        self.add_permissions("nautobot_dns_models.add_dnszone", "nautobot_dns_models.view_dnszone")
+
+        response = self.client.post(
+            reverse("plugins-api:nautobot_dns_models-api:dnszone-list"),
+            {
+                "name": "new.example",
+                "filename": "new.example.zone",
+                "soa_mname": "ns1.new.example",
+                "soa_rname": "admin@new.example",
+                "catalog_zone": str(self.catalog_zone.pk),
+            },
+            format="json",
+            **self.header,
+        )
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertTrue(PTRRecord.objects.filter(zone=self.catalog_zone, ptrdname="new.example").exists())
+
+    def test_csv_import_gives_each_member_its_own_label(self):
+        """CSV import of several member zones gives each its own label and PTR record.
+
+        Labels are assigned in `save()`, so an import path that skipped it would leave them blank.
+        """
+        self.add_permissions("nautobot_dns_models.add_dnszone", "nautobot_dns_models.view_dnszone")
+        csv_data = "\n".join(
+            [
+                "name,filename,soa_mname,soa_rname,catalog_zone",
+                f"first.example,first.zone,ns1.first.example,admin@first.example,{self.catalog_zone.pk}",
+                f"second.example,second.zone,ns1.second.example,admin@second.example,{self.catalog_zone.pk}",
+            ]
+        )
+
+        response = self.client.post(
+            reverse("plugins-api:nautobot_dns_models-api:dnszone-list"),
+            csv_data,
+            content_type="text/csv",
+            **self.header,
+        )
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        labels = set(DNSZone.objects.filter(catalog_zone=self.catalog_zone).values_list("member_label", flat=True))
+        self.assertEqual(len(labels), 2)
+        self.assertEqual(PTRRecord.objects.filter(zone=self.catalog_zone).count(), 2)
+
+    def test_the_member_pickers_query_lists_only_zones_the_user_can_change(self):
+        """The query the add-member zone picker sends returns only the zones the requesting user may change."""
+        _create_zone("other.example")
+        self.add_permissions("nautobot_dns_models.view_dnszone")
+        self.add_permissions("nautobot_dns_models.change_dnszone", constraints={"pk": str(self.zone.pk)})
+
+        response = self.client.get(
+            reverse("plugins-api:nautobot_dns_models-api:dnszone-list"),
+            {
+                "dns_view": self.catalog_zone.dns_view_id,
+                "is_catalog_member": "False",
+                "type__n": DNSZoneTypeChoices.TYPE_CATALOG,
+                "can_change": "True",
+            },
+            **self.header,
+        )
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.assertEqual([result["id"] for result in response.data["results"]], [str(self.zone.pk)])
