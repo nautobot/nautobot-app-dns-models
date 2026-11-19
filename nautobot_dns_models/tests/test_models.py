@@ -31,6 +31,7 @@ from nautobot_dns_models.models import (
     SRVRecord,
     TXTRecord,
     dns_wire_label_length,
+    get_address_records,
     rebuild_zone_hierarchy,
     split_txt_character_strings,
     txt_wire_rdata_length,
@@ -1323,7 +1324,12 @@ class DNSDelegationTestCase(TestCase):
         self._create_delegation(name="apps")
         with self.assertRaises(ValidationError) as context:
             DNSDelegation(zone=self.zone, name="Apps").full_clean()
-        self.assertIn("ignoring case", str(context.exception))
+        self.assertIn("ignoring letter case", str(context.exception.message_dict["name"]))
+
+    def test_database_rejects_a_name_differing_only_by_case(self):
+        self._create_delegation(name="apps")
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            DNSDelegation.objects.create(zone=self.zone, name="APPS")
 
     @override_config(nautobot_dns_models__CNAME_RESTRICTION_ENABLED=True)
     def test_cannot_share_an_owner_name_with_a_cname(self):
@@ -1370,9 +1376,9 @@ class DNSDelegationTestCase(TestCase):
     def test_glue_records_are_address_records_in_the_parent_zone(self):
         delegation = self._create_delegation()
         glue = ARecord.objects.create(name="ns1.apps", ip_address=self.glue_ip, zone=self.zone)
-        self.assertEqual(delegation.get_glue_records("ns1.apps.example.com."), [glue])
-        self.assertEqual(delegation.get_glue_records("ns2.apps.example.com"), [])
-        self.assertEqual(delegation.get_glue_records("ns1.other.net"), [])
+        self.assertEqual(get_address_records(delegation.zone, "ns1.apps.example.com."), [glue])
+        self.assertEqual(get_address_records(delegation.zone, "ns2.apps.example.com"), [])
+        self.assertEqual(get_address_records(delegation.zone, "ns1.other.net"), [])
 
     def test_glue_querysets_hold_the_address_records_of_in_zone_name_servers(self):
         delegation = self._create_delegation()

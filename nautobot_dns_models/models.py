@@ -41,6 +41,7 @@ TXT_RDATA_MAX_OCTETS = 2**16 - 1
 
 # RFC 1035 §2.3.3 and RFC 4343 §2: domain name comparisons are case-insensitive.
 DNS_ZONE_NAME_UNIQUE_ERROR_CODE = "dns_zone_name_not_unique"
+DNS_DELEGATION_NAME_UNIQUE_ERROR_CODE = "dns_delegation_name_not_unique"
 
 
 def dns_wire_label_length(label):
@@ -1151,19 +1152,39 @@ class DNSDelegation(PrimaryModel):
     )
     description = models.TextField(help_text="Description of the delegation.", blank=True)
 
+    # The case-insensitive UniqueConstraint has no `fields`, so Nautobot cannot derive the natural key from it.
     natural_key_field_names = ["zone", "name"]
 
     class Meta:
         """Meta attributes for DNSDelegation."""
 
         ordering = ["zone__name", "name"]
-        unique_together = [["zone", "name"]]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                "zone",
+                name="nautobot_dns_models_dnsdelegation_name_ci_unique",
+                violation_error_code=DNS_DELEGATION_NAME_UNIQUE_ERROR_CODE,
+                violation_error_message="A DNS delegation with this name (ignoring letter case) already exists in this zone.",
+            ),
+        ]
         verbose_name = "DNS Delegation"
         verbose_name_plural = "DNS Delegations"
 
     def __str__(self):
         """Stringify instance."""
         return self.get_fqdn()
+
+    def validate_constraints(self, exclude=None):
+        """Report a name that collides with another delegation in the same zone as an error on `name`."""
+        try:
+            super().validate_constraints(exclude=exclude)
+        except ValidationError as error:
+            errors = error.update_error_dict({})
+            for non_field_error in errors.pop(NON_FIELD_ERRORS, []):
+                field = "name" if non_field_error.code == DNS_DELEGATION_NAME_UNIQUE_ERROR_CODE else NON_FIELD_ERRORS
+                errors.setdefault(field, []).append(non_field_error)
+            raise ValidationError(errors) from error
 
     def _normalize_name(self):
         """Store an absolute name entered as `apps.example.com.` relative to the zone, as `apps`."""
@@ -1172,7 +1193,7 @@ class DNSDelegation(PrimaryModel):
             self.name = self.name[: -(len(zone.name.rstrip(".")) + 2)]
 
     def clean(self):
-        """Validate the owner name: below the zone apex, well formed, unique per zone, and not shared with a CNAME."""
+        """Validate the owner name: below the zone apex, well formed, and not shared with a CNAME."""
         super().clean()
 
         self._normalize_name()
@@ -1180,13 +1201,6 @@ class DNSDelegation(PrimaryModel):
 
         if self.name in ("", "@"):
             raise ValidationError({"name": "A delegation must be below the zone apex, e.g. `apps`."})
-
-        if (
-            zone is not None
-            and DNSDelegation.objects.filter(zone=zone, name__iexact=self.name).exclude(pk=self.pk).exists()
-        ):
-            # DNS names compare case-insensitively (RFC 4343), so `Apps` would be the same zone cut as `apps`.
-            raise ValidationError({"name": "A delegation with this name, ignoring case, already exists in this zone."})
 
         if getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL") == "wire-format":
             for label in self.name.split("."):
@@ -1237,10 +1251,6 @@ class DNSDelegation(PrimaryModel):
             return NameServerRelationshipChoices.SIBLING_DOMAIN
         return NameServerRelationshipChoices.UNRELATED
 
-    def get_glue_records(self, server, user=None):
-        """Return the A and AAAA records in the parent zone at the name `server`, limited to `user`'s if given."""
-        return get_address_records(self.zone, server, user=user)
-
     def _glue_owner_filter(self):
         """Return a filter matching the parent-zone owner names of this delegation's in-domain and sibling domain servers."""
         zone_key = dns_name_key(self.zone.name)
@@ -1275,7 +1285,8 @@ class DNSDelegation(PrimaryModel):
         server resolves through whichever zone in the same DNS View contains it, if any.
         """
         if self.classify_name_server(server) != NameServerRelationshipChoices.UNRELATED:
-            return self.get_glue_records(server, user=user)
+            # The glue: the A and AAAA records in the parent zone at the name server's name.
+            return get_address_records(self.zone, server, user=user)
         server_key = dns_name_key(server)
         zone = DNSZone.objects.filter(
             Q(name__iexact=server_key) | Q(name__iexact=f"{server_key}."), dns_view_id=self.zone.dns_view_id

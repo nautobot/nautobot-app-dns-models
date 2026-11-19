@@ -73,7 +73,12 @@ class DNSDelegationGlueRule(DNSComplianceRule):
 
     def audit(self):
         """Report in-domain name servers with no A or AAAA record in the parent zone."""
-        missing = [server for server in _in_domain_servers(self.instance) if not self.instance.get_glue_records(server)]
+        # The glue of each name server: the A and AAAA records in the parent zone at its name.
+        missing = [
+            server
+            for server in _in_domain_servers(self.instance)
+            if not get_address_records(self.instance.zone, server)
+        ]
         if missing:
             raise ComplianceError(
                 {
@@ -99,7 +104,8 @@ class DNSDelegationChildGlueRule(DNSComplianceRule):
         mismatched = [
             server
             for server in _in_domain_servers(self.instance)
-            if _address_set(self.instance.get_glue_records(server))
+            # The parent zone's glue against the child zone's own address records.
+            if _address_set(get_address_records(self.instance.zone, server))
             != _address_set(get_address_records(child_zone, server))
         ]
         if mismatched:
