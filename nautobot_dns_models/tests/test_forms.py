@@ -40,32 +40,28 @@ class DNSViewFormTestCase(TestCase):
         self.assertIn("This field is required.", form.errors["name"])
 
 
+def zone_data(**overrides):
+    """Return a valid DNSZoneForm payload, with any supplied overrides applied."""
+    data = {
+        "name": "Development",
+        "type": DNSZoneTypeChoices.TYPE_PRIMARY,
+        "dns_view": DNSView.objects.get(name="Default").id,
+        "ttl": 1010101,
+        "filename": "development.zone",
+        "soa_mname": "ns1.example.com",
+        "soa_rname": "admin@example.com",
+        "soa_refresh": 10800,
+        "soa_retry": 3600,
+        "soa_expire": 604800,
+        "soa_serial": 202,
+        "soa_minimum": 3600,
+    }
+    data.update(overrides)
+    return data
+
+
 class DNSZoneFormTestCase(TestCase):
     """Test DNSZone forms."""
-
-    @classmethod
-    def setUpTestData(cls):
-        cls.dns_view = DNSView.objects.get(name="Default")
-        cls.catalog_zone = DNSZone.objects.create(name="catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
-
-    def _zone_data(self, **overrides):
-        """Return a valid DNSZoneForm payload, with any supplied overrides applied."""
-        data = {
-            "name": "Development",
-            "type": DNSZoneTypeChoices.TYPE_PRIMARY,
-            "dns_view": self.dns_view.id,
-            "ttl": 1010101,
-            "filename": "development.zone",
-            "soa_mname": "ns1.example.com",
-            "soa_rname": "admin@example.com",
-            "soa_refresh": 10800,
-            "soa_retry": 3600,
-            "soa_expire": 604800,
-            "soa_serial": 202,
-            "soa_minimum": 3600,
-        }
-        data.update(overrides)
-        return data
 
     def test_specifying_all_fields_success(self):
         registrar = DNSRegistrar.objects.create(
@@ -74,7 +70,7 @@ class DNSZoneFormTestCase(TestCase):
             account_number="ACC-100",
         )
         form = forms.DNSZoneForm(
-            data=self._zone_data(
+            data=zone_data(
                 dns_registrar=registrar.id,
                 description="Development Testing",
                 expiration_date="2026-12-31",
@@ -91,13 +87,13 @@ class DNSZoneFormTestCase(TestCase):
         self.assertTrue(form.save())
 
     def test_specifying_only_required_success(self):
-        form = forms.DNSZoneForm(data=self._zone_data())
+        form = forms.DNSZoneForm(data=zone_data())
         self.assertTrue(form.is_valid(), form.errors)
         self.assertTrue(form.save())
 
     def test_soa_rname_accepts_value_without_at_sign(self):
         form = forms.DNSZoneForm(
-            data=self._zone_data(
+            data=zone_data(
                 name="Catalog",
                 filename="catalog.zone",
                 soa_mname="invalid.",
@@ -142,21 +138,29 @@ class DNSZoneFormTestCase(TestCase):
         )
 
     def test_expiration_date_accepts_date_picker_value(self):
-        form = forms.DNSZoneForm(data=self._zone_data(expiration_date="2026-12-31"))
+        form = forms.DNSZoneForm(data=zone_data(expiration_date="2026-12-31"))
         self.assertTrue(form.is_valid(), form.errors)
-
-    def test_can_create_catalog_zone(self):
-        """The form creates a catalog zone."""
-        form = forms.DNSZoneForm(data=self._zone_data(type=DNSZoneTypeChoices.TYPE_CATALOG))
-        self.assertTrue(form.is_valid(), form.errors)
-        zone = form.save()
-        self.assertEqual(zone.type, DNSZoneTypeChoices.TYPE_CATALOG)
 
     def test_zone_type_is_disabled_when_editing(self):
         """The type field is disabled when editing a zone."""
         zone = DNSZone.objects.create(name="existing.example")
         form = forms.DNSZoneForm(instance=zone)
         self.assertTrue(form.fields["type"].disabled)
+
+
+class DNSZoneFormCatalogTestCase(TestCase):
+    """Test the DNSZone form's catalog zone fields."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.catalog_zone = DNSZone.objects.create(name="catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
+
+    def test_can_create_catalog_zone(self):
+        """The form creates a catalog zone."""
+        form = forms.DNSZoneForm(data=zone_data(type=DNSZoneTypeChoices.TYPE_CATALOG))
+        self.assertTrue(form.is_valid(), form.errors)
+        zone = form.save()
+        self.assertEqual(zone.type, DNSZoneTypeChoices.TYPE_CATALOG)
 
     def test_auto_create_ptr_is_disabled_when_editing_catalog_zone(self):
         """The `auto_create_ptr` field is disabled when editing a catalog zone."""
@@ -177,7 +181,7 @@ class DNSZoneFormTestCase(TestCase):
 
     def test_adding_to_a_catalog_publishes_the_zone(self):
         """Saving the form with a catalog zone adds the zone to it and publishes its PTR record."""
-        form = forms.DNSZoneForm(data=self._zone_data(catalog_zone=self.catalog_zone.pk, member_label="chosen"))
+        form = forms.DNSZoneForm(data=zone_data(catalog_zone=self.catalog_zone.pk, member_label="chosen"))
         self.assertTrue(form.is_valid(), form.errors)
         zone = form.save()
 
@@ -194,7 +198,7 @@ class DNSZoneFormTestCase(TestCase):
     def test_a_member_zone_offers_its_own_label_to_the_script(self):
         """A member zone's label is kept for the script, including on a form re-rendered after an error."""
         zone = DNSZone.objects.create(name="member.example", catalog_zone=self.catalog_zone, member_label="kept")
-        bound = self._zone_data(name=zone.name, catalog_zone="", ttl="not-a-number")
+        bound = zone_data(name=zone.name, catalog_zone="", ttl="not-a-number")
         for form in (forms.DNSZoneForm(instance=zone), forms.DNSZoneForm(instance=zone, data=bound)):
             with self.subTest(bound=form.is_bound):
                 self.assertEqual(form.fields["member_label"].widget.attrs["data-default-label"], "kept")
@@ -204,16 +208,16 @@ class DNSZoneFormTestCase(TestCase):
 
     def test_a_member_label_needs_a_catalog_zone(self):
         """A label submitted without a catalog zone is dropped, and a zone in a catalog zone must have one."""
-        form = forms.DNSZoneForm(data=self._zone_data(member_label="stray"))
+        form = forms.DNSZoneForm(data=zone_data(member_label="stray"))
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.save().member_label, "")
 
-        form = forms.DNSZoneForm(data=self._zone_data(name="other", catalog_zone=self.catalog_zone.pk))
+        form = forms.DNSZoneForm(data=zone_data(name="other", catalog_zone=self.catalog_zone.pk))
         self.assertEqual(form.errors, {"member_label": ["A zone in a catalog zone needs a member label."]})
 
     def test_an_over_long_member_label_reports_only_its_length(self):
         """A label longer than a DNS label allows gets the length error alone."""
-        form = forms.DNSZoneForm(data=self._zone_data(catalog_zone=self.catalog_zone.pk, member_label="a" * 64))
+        form = forms.DNSZoneForm(data=zone_data(catalog_zone=self.catalog_zone.pk, member_label="a" * 64))
         self.assertEqual(form.errors, {"member_label": ["Ensure this value has at most 63 characters (it has 64)."]})
 
     def test_member_label_is_disabled_when_editing_a_catalog_zone(self):
@@ -227,7 +231,7 @@ class DNSZoneFormTestCase(TestCase):
         zone = DNSZone.objects.create(name="member.example", catalog_zone=self.catalog_zone)
         ptr_name = zone.ptr_record_name
 
-        form = forms.DNSZoneForm(instance=zone, data=self._zone_data(name=zone.name, catalog_zone=""))
+        form = forms.DNSZoneForm(instance=zone, data=zone_data(name=zone.name, catalog_zone=""))
         self.assertTrue(form.is_valid(), form.errors)
         zone = form.save()
 
