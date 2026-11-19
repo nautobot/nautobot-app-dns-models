@@ -563,13 +563,8 @@ class DNSDelegationViewTest(ViewTestCases.PrimaryObjectViewTestCase):
         self.assertContains(response, glue.get_absolute_url())
         self.assertNotContains(response, "Glue AAAA Records")
 
-    def test_detail_view_links_to_add_missing_glue(self):
-        self.add_permissions(
-            "nautobot_dns_models.view_dnsdelegation",
-            "nautobot_dns_models.view_nsrecord",
-            "nautobot_dns_models.add_arecord",
-            "nautobot_dns_models.add_aaaarecord",
-        )
+    def test_detail_view_reports_missing_glue(self):
+        self.add_permissions("nautobot_dns_models.view_dnsdelegation", "nautobot_dns_models.view_nsrecord")
         delegation = DNSDelegation.objects.get(name="apps")
         NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
 
@@ -577,20 +572,6 @@ class DNSDelegationViewTest(ViewTestCases.PrimaryObjectViewTestCase):
 
         self.assertHttpStatus(response, 200)
         self.assertContains(response, "No glue")
-        for route in ("arecord_add", "aaaarecord_add"):
-            add_url = reverse(f"plugins:nautobot_dns_models:{route}")
-            self.assertContains(response, f"{add_url}?zone={self.zone.pk}&amp;name=ns1.apps&amp;return_url=")
-
-    def test_detail_view_hides_add_glue_links_without_add_permission(self):
-        self.add_permissions("nautobot_dns_models.view_dnsdelegation", "nautobot_dns_models.view_nsrecord")
-        delegation = DNSDelegation.objects.get(name="apps")
-        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
-
-        response = self.client.get(delegation.get_absolute_url())
-
-        self.assertContains(response, "No glue")
-        self.assertNotContains(response, reverse("plugins:nautobot_dns_models:arecord_add"))
-        self.assertNotContains(response, reverse("plugins:nautobot_dns_models:aaaarecord_add"))
 
     def test_detail_view_shows_only_related_data_the_user_may_view(self):
         """A user who may view the delegation but not its records or child zone sees none of them."""

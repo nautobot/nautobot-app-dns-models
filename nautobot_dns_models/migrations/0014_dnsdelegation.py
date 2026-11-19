@@ -4,6 +4,7 @@ import uuid
 
 import django.core.serializers.json
 import django.db.models.deletion
+import django.db.models.functions.text
 import nautobot.core.models.fields
 import nautobot.extras.models.mixins
 from django.db import migrations, models
@@ -45,7 +46,15 @@ class Migration(migrations.Migration):
                 "verbose_name": "DNS Delegation",
                 "verbose_name_plural": "DNS Delegations",
                 "ordering": ["zone__name", "name"],
-                "unique_together": {("zone", "name")},
+                "constraints": [
+                    models.UniqueConstraint(
+                        django.db.models.functions.text.Lower("name"),
+                        models.F("zone"),
+                        name="nautobot_dns_models_dnsdelegation_name_ci_unique",
+                        violation_error_code="dns_delegation_name_not_unique",
+                        violation_error_message="A DNS delegation with this name (ignoring letter case) already exists in this zone.",
+                    )
+                ],
             },
             bases=(
                 nautobot.extras.models.mixins.DataComplianceModelMixin,

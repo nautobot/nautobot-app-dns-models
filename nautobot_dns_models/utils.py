@@ -103,10 +103,6 @@ def dns_name_key(name: str) -> str:
 
 def is_subdomain(name_key: str, ancestor_key: str) -> bool:
     """Return whether `name_key` lies strictly below `ancestor_key`; both are `dns_name_key()` values."""
-    if name_key == ancestor_key:
-        return False
-    if ancestor_key == "":
-        return True
     return name_key.endswith(f".{ancestor_key}")
 
 
@@ -128,6 +124,4 @@ def relative_owner_name(fqdn_key: str, zone_key: str) -> str:
     """
     if fqdn_key == zone_key:
         return "@"
-    if zone_key == "":
-        return fqdn_key
     return fqdn_key[: -(len(zone_key) + 1)]

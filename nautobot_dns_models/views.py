@@ -136,7 +136,6 @@ from nautobot_dns_models.tables import (
     SRVRecordTable,
     TXTRecordTable,
 )
-from nautobot_dns_models.utils import dns_name_key, relative_owner_name
 
 OBJECT_PERMISSION_SAVE_ERROR = "Object save failed due to object-level permissions violation"
 
@@ -835,24 +834,13 @@ class DNSDelegationUIViewSet(views.NautobotUIViewSet):
 
     @staticmethod
     def _name_server_row(delegation, server, user):
-        """Summarize one name server; an in-domain server without glue gets links to add it, if the user may."""
+        """Summarize one name server; an in-domain server without glue shows "No glue"."""
         relationship = delegation.classify_name_server(server)
         addresses = ", ".join(
             str(record.ip_address.host) for record in delegation.get_name_server_addresses(server, user=user)
         )
         if not addresses and relationship == NameServerRelationshipChoices.IN_DOMAIN:
-            query = urlencode(
-                {
-                    "zone": delegation.zone_id,
-                    "name": relative_owner_name(dns_name_key(server), dns_name_key(delegation.zone.name)),
-                    "return_url": delegation.get_absolute_url(),
-                }
-            )
             addresses = "No glue"
-            for label, model_name in (("Add A", "arecord"), ("Add AAAA", "aaaarecord")):
-                if user.has_perm(f"nautobot_dns_models.add_{model_name}"):
-                    url = reverse(f"plugins:nautobot_dns_models:{model_name}_add")
-                    addresses = format_html('{} · <a href="{}?{}">{}</a>', addresses, url, query, label)
         return {
             "server": server,
             "relationship": NameServerRelationshipChoices.as_dict()[relationship],
