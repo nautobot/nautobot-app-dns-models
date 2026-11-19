@@ -815,8 +815,15 @@ class DNSZone(DNSModel):
 
         zones = DNSZone.objects.filter(pk=self.pk)
         if lock:
-            # Locked so that a zone being added to this catalog, which locks this row to read its view, waits
-            # for this save instead of slipping past the view check.
+            # Locked so that concurrent saves touching this row wait for each other and re-read what the
+            # first committed. It closes two races:
+            # - A catalog zone and its members must share a view. A save moving a catalog zone to another
+            #   view checks that it has no members, and a save adding a member locks the catalog's row to
+            #   read its view. Without this lock, the member's save could pass its check before the
+            #   catalog's save looks for members, and the new member would be left in the old view.
+            # - Two saves of the same member could both read its stored catalog and label, and each
+            #   publish its own PTR record, leaving the first one's behind: in another catalog, or under
+            #   a name or label the zone no longer has.
             zones = zones.select_for_update()
 
         return zones.first()
@@ -909,6 +916,7 @@ class DNSZone(DNSModel):
         stored_catalog_zone_id = stored_zone.catalog_zone_id if stored_zone else None
         moving = stored_zone is not None and stored_zone.dns_view_id != self.dns_view_id
 
+        # Catalog Zone checks
         if self.is_catalog_zone:
             if self.catalog_zone_id:
                 raise ValidationError({"catalog_zone": "A catalog zone cannot be a member of another catalog zone."})
@@ -917,6 +925,7 @@ class DNSZone(DNSModel):
                 raise ValidationError({"dns_view": "A catalog zone with members cannot be moved to another view."})
             return
 
+        # Member Zone checks
         if self.catalog_zone_id and (self.catalog_zone_id != stored_catalog_zone_id or moving):
             catalogs = DNSZone.objects.filter(pk=self.catalog_zone_id)
             if lock:
