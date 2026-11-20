@@ -50,6 +50,12 @@ erDiagram
 
     tenancy_TenantModel {}
 
+    DNSDelegation {
+        DNSZone zone FK
+        charfield name
+        textfield description
+    }
+
     DNSZone {
         charfield name UK
         DNSView dns_view FK
@@ -131,6 +137,8 @@ erDiagram
     DNSZone }o--|| DNSView: "belongs to"
     DNSZone }o--o| tenancy_TenantModel: "belongs to"
     DNSZone }o--o| DNSZone: "child of (derived)"
+    DNSZone ||--o{ DNSDelegation: "contains zone cut"
+    DNSDelegation ||..o{ NSRecord: "name servers (same zone and name)"
 
     DNSView ||--o{ DNSViewPrefixAssignment: "assigns"
     ipam_PrefixModel ||--o{ DNSViewPrefixAssignment: "assigned via"
