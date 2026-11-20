@@ -107,14 +107,11 @@ def is_subdomain(name_key: str, ancestor_key: str) -> bool:
 
 
 def owner_fqdn(name: str, zone_name: str) -> str:
-    """Return the fully qualified owner name of a record named `name` in zone `zone_name`, without a trailing dot.
+    """Return the fully qualified owner name of a record named `name` in zone `zone_name`.
 
     `@` and the empty string denote the zone apex.
     """
-    zone = zone_name[:-1] if zone_name.endswith(".") else zone_name
-    if name in ("", "@"):
-        return zone or "."
-    return f"{name}.{zone}" if zone else name
+    return zone_name if name in ("", "@") else f"{name}.{zone_name}"
 
 
 def relative_owner_name(fqdn_key: str, zone_key: str) -> str:

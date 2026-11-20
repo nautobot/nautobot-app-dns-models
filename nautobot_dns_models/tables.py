@@ -205,7 +205,7 @@ class DNSDelegationTable(BaseTable):
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
     zone = tables.Column(linkify=True)
-    fqdn = tables.Column(accessor="get_fqdn", verbose_name="FQDN", orderable=False)
+    fqdn = tables.Column(accessor="fqdn", verbose_name="FQDN", orderable=False)
     actions = ButtonsColumn(
         models.DNSDelegation,
         buttons=("changelog", "edit", "delete"),

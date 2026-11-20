@@ -638,7 +638,7 @@ class DNSDelegationAPITestCase(APIViewTestCases.APIViewTestCase):
 
         self.assertHttpStatus(response, status.HTTP_201_CREATED)
         self.assertEqual(response.data["name"], "corp")
-        self.assertEqual(DNSDelegation.objects.get(pk=response.data["id"]).get_fqdn(), "corp.example.com")
+        self.assertEqual(DNSDelegation.objects.get(pk=response.data["id"]).fqdn, "corp.example.com")
 
 
 class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):

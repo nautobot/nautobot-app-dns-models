@@ -16,7 +16,7 @@ from nautobot_dns_models.models import (
     NSRecord,
     get_address_records,
 )
-from nautobot_dns_models.utils import dns_name_key, is_subdomain, owner_fqdn, relative_owner_name
+from nautobot_dns_models.utils import ancestor_keys, dns_name_key, is_subdomain, owner_fqdn, relative_owner_name
 
 
 class DNSComplianceRule(DataComplianceRule):  # pylint: disable=abstract-method
@@ -169,7 +169,7 @@ class DNSZoneDelegatedRule(DNSComplianceRule):
         owner = relative_owner_name(dns_name_key(zone.name), dns_name_key(parent.name))
         if self._has_cut(parent, owner):
             return
-        if any(self._has_cut(parent, intermediate) for intermediate in self._intermediate_owners(owner)):
+        if any(self._has_cut(parent, intermediate) for intermediate in ancestor_keys(owner)):
             # Delegated by a zone between `parent` and this one that is not in Nautobot, so not checkable here.
             return
         raise ComplianceError(
@@ -190,13 +190,6 @@ class DNSZoneDelegatedRule(DNSComplianceRule):
             or DNSDelegation.objects.filter(zone=parent, name__iexact=owner).exists()
         )
 
-    @staticmethod
-    def _intermediate_owners(owner):
-        """Yield the owner names strictly between the parent zone apex and `owner`; `dev.apps` yields `apps`."""
-        labels = owner.split(".")
-        for index in range(1, len(labels)):
-            yield ".".join(labels[index:])
-
 
 class RecordNotOccludedRule(DNSComplianceRule):  # pylint: disable=abstract-method
     """A record at or below a zone cut is not authoritative data of its zone (RFC 1034 §4.2.1).
@@ -211,7 +204,7 @@ class RecordNotOccludedRule(DNSComplianceRule):  # pylint: disable=abstract-meth
         owner_key = dns_name_key(owner_fqdn(record.name, zone.name))
         delegations = list(DNSDelegation.objects.filter(zone=zone).select_related("zone"))
         for delegation in delegations:
-            cut_key = dns_name_key(delegation.get_fqdn())
+            cut_key = dns_name_key(delegation.fqdn)
             if owner_key != cut_key and not is_subdomain(owner_key, cut_key):
                 continue
             if isinstance(record, NSRecord) and owner_key == cut_key:
@@ -221,7 +214,7 @@ class RecordNotOccludedRule(DNSComplianceRule):  # pylint: disable=abstract-meth
             raise ComplianceError(
                 {
                     "name": (
-                        f"This record is at or below the zone cut at {delegation.get_fqdn()}, so it is not "
+                        f"This record is at or below the zone cut at {delegation.fqdn}, so it is not "
                         f"authoritative data of zone {zone.name}. Move it to the delegated zone or remove it."
                     )
                 }
