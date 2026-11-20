@@ -823,7 +823,7 @@ class DNSDelegationUIViewSet(views.NautobotUIViewSet):
         if self.action == "retrieve" and instance is not None:
             user = request.user
             context["delegated_domain"] = {
-                "FQDN": instance.get_fqdn(),
+                "FQDN": instance.fqdn,
                 "Child zone": instance.get_child_zone(user=user),
             }
             context["name_servers"] = [

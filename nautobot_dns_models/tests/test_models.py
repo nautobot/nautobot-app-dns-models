@@ -1512,7 +1512,7 @@ class DNSDelegationTestCase(TestCase):
 
     def test_fqdn_and_string(self):
         delegation = self._create_delegation()
-        self.assertEqual(delegation.get_fqdn(), "apps.example.com")
+        self.assertEqual(delegation.fqdn, "apps.example.com")
         self.assertEqual(str(delegation), "apps.example.com")
 
     def test_rejects_the_zone_apex(self):
@@ -1540,16 +1540,18 @@ class DNSDelegationTestCase(TestCase):
             DNSDelegation.objects.create(zone=self.zone, name="APPS")
 
     @override_config(nautobot_dns_models__CNAME_RESTRICTION_ENABLED=True)
-    def test_cannot_share_an_owner_name_with_a_cname(self):
-        CNAMERecord.objects.create(name="apps", alias="elsewhere.example.net", zone=self.zone)
-        with self.assertRaises(ValidationError):
-            DNSDelegation(zone=self.zone, name="apps").full_clean()
+    def test_cannot_share_an_owner_name_with_a_cname_ignoring_case(self):
+        CNAMERecord.objects.create(name="Apps", alias="elsewhere.example.net", zone=self.zone)
+        for name in ("Apps", "apps"):
+            with self.subTest(name=name), self.assertRaises(ValidationError):
+                DNSDelegation(zone=self.zone, name=name).full_clean()
 
     @override_config(nautobot_dns_models__CNAME_RESTRICTION_ENABLED=True)
-    def test_cname_cannot_be_added_at_a_delegation(self):
+    def test_cname_cannot_be_added_at_a_delegation_ignoring_case(self):
         self._create_delegation()
-        with self.assertRaises(ValidationError):
-            CNAMERecord(name="apps", alias="elsewhere.example.net", zone=self.zone).full_clean()
+        for name in ("apps", "Apps"):
+            with self.subTest(name=name), self.assertRaises(ValidationError):
+                CNAMERecord(name=name, alias="elsewhere.example.net", zone=self.zone).full_clean()
 
     def test_ns_records_are_the_records_at_the_owner_name(self):
         delegation = self._create_delegation()

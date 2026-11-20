@@ -1100,21 +1100,17 @@ class DNSRecord(DNSModel):
             return
 
         if isinstance(self, CNAMERecord):
-            conflicting_models = (
-                NSRecord,
-                ARecord,
-                AAAARecord,
-                MXRecord,
-                TXTRecord,
-                PTRRecord,
-                SRVRecord,
-                DNSDelegation,
-            )
+            conflicting_models = (NSRecord, ARecord, AAAARecord, MXRecord, TXTRecord, PTRRecord, SRVRecord)
             for model in conflicting_models:
                 if model.objects.filter(name=self.name, zone_id=self.zone_id).exists():
                     raise ValidationError(
                         {"name": "CNAME cannot co-exist with other records of the same name in this zone."}
                     )
+            # Delegation names are unique ignoring letter case, so they are compared the same way here.
+            if DNSDelegation.objects.filter(name__iexact=self.name, zone_id=self.zone_id).exists():
+                raise ValidationError(
+                    {"name": "CNAME cannot co-exist with a delegation of the same name in this zone."}
+                )
         else:
             if CNAMERecord.objects.filter(name=self.name, zone_id=self.zone_id).exists():
                 raise ValidationError({"name": "Record cannot co-exist with a CNAME of the same name in this zone."})
@@ -1538,7 +1534,7 @@ class DNSDelegation(PrimaryModel):
 
     def __str__(self):
         """Stringify instance."""
-        return self.get_fqdn()
+        return self.fqdn
 
     def validate_constraints(self, exclude=None):
         """Report a name that collides with another delegation in the same zone as an error on `name`."""
@@ -1574,7 +1570,7 @@ class DNSDelegation(PrimaryModel):
         if (
             zone is not None
             and getattr(constance_config, "nautobot_dns_models__CNAME_RESTRICTION_ENABLED", True)
-            and CNAMERecord.objects.filter(name=self.name, zone=zone).exists()
+            and CNAMERecord.objects.filter(name__iexact=self.name, zone=zone).exists()
         ):
             raise ValidationError({"name": "A delegation cannot co-exist with a CNAME of the same name in this zone."})
 
@@ -1583,8 +1579,9 @@ class DNSDelegation(PrimaryModel):
         self._normalize_name()
         super().save(*args, **kwargs)
 
-    def get_fqdn(self):
-        """Return the fully qualified name of the delegated domain, e.g. `apps.example.com`."""
+    @property
+    def fqdn(self):
+        """The fully qualified name of the delegated domain, e.g. `apps.example.com`."""
         return owner_fqdn(self.name, self.zone.name)
 
     @property
@@ -1597,7 +1594,7 @@ class DNSDelegation(PrimaryModel):
 
         With `user`, a child zone that user may not view is treated as absent.
         """
-        fqdn = self.get_fqdn()
+        fqdn = self.fqdn
         zones = DNSZone.objects.filter(
             Q(name__iexact=fqdn) | Q(name__iexact=f"{fqdn}."), dns_view_id=self.zone.dns_view_id
         )
@@ -1608,7 +1605,7 @@ class DNSDelegation(PrimaryModel):
     def classify_name_server(self, server):
         """Return where `server` sits relative to this zone cut, as a `NameServerRelationshipChoices` value."""
         server_key = dns_name_key(server)
-        cut_key = dns_name_key(self.get_fqdn())
+        cut_key = dns_name_key(self.fqdn)
         zone_key = dns_name_key(self.zone.name)
         if server_key == cut_key or is_subdomain(server_key, cut_key):
             return NameServerRelationshipChoices.IN_DOMAIN
