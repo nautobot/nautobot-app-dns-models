@@ -14,6 +14,7 @@ router.register("dns-views", views.DNSViewUIViewSet)
 router.register("dns-registrars", views.DNSRegistrarUIViewSet)
 router.register("dns-registrations", views.DNSRegistrationUIViewSet)
 router.register("dns-zones", views.DNSZoneUIViewSet)
+router.register("dns-delegations", views.DNSDelegationUIViewSet)
 router.register("a-records", views.ARecordUIViewSet)
 router.register("aaaa-records", views.AAAARecordUIViewSet)
 router.register("ns-records", views.NSRecordUIViewSet)
@@ -22,6 +23,8 @@ router.register("mx-records", views.MXRecordUIViewSet)
 router.register("txt-records", views.TXTRecordUIViewSet)
 router.register("ptr-records", views.PTRRecordUIViewSet)
 router.register("srv-records", views.SRVRecordUIViewSet)
+router.register("dns-forwarders", views.DNSForwarderUIViewSet)
+router.register("dns-forwarding-rules", views.DNSForwardingRuleUIViewSet)
 
 urlpatterns = [
     path("docs/", RedirectView.as_view(url=static("nautobot_dns_models/docs/index.html")), name="docs"),
@@ -42,6 +45,13 @@ urlpatterns = [
             url="/plugins/dns/cname-records/add/?zone=%(pk)s&return_url=/plugins/dns/dns-zones/%(pk)s"
         ),
         name="zone_cname_records_add",
+    ),
+    path(
+        "dns-zones/<uuid:pk>/dns-delegations/add/",
+        RedirectView.as_view(
+            url="/plugins/dns/dns-delegations/add/?zone=%(pk)s&return_url=/plugins/dns/dns-zones/%(pk)s"
+        ),
+        name="zone_dns_delegations_add",
     ),
     path(
         "dns-zones/<uuid:pk>/mx-records/add/",

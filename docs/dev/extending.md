@@ -26,6 +26,25 @@ erDiagram
         ipam_PrefixModel prefix FK
     }
 
+    DNSForwarder {
+        charfield name UK
+        ipam_IPaddressModel ip_address FK
+        ipaddress address
+        integer port
+        textfield description
+    }
+
+    DNSForwardingRule {
+        charfield name
+        DNSView dns_view FK
+        textfield description
+    }
+
+    DNSForwardingRuleForwarderAssignment {
+        DNSForwardingRule forwarding_rule FK
+        DNSForwarder forwarder FK
+    }
+
     DNSRegistrar {
         charfield name UK
         url url
@@ -49,6 +68,12 @@ erDiagram
     }
 
     tenancy_TenantModel {}
+
+    DNSDelegation {
+        DNSZone zone FK
+        charfield name
+        textfield description
+    }
 
     DNSZone {
         charfield name UK
@@ -131,9 +156,16 @@ erDiagram
     DNSZone }o--|| DNSView: "belongs to"
     DNSZone }o--o| tenancy_TenantModel: "belongs to"
     DNSZone }o--o| DNSZone: "child of (derived)"
+    DNSZone ||--o{ DNSDelegation: "contains zone cut"
+    DNSDelegation ||..o{ NSRecord: "name servers (same zone and name)"
 
     DNSView ||--o{ DNSViewPrefixAssignment: "assigns"
     ipam_PrefixModel ||--o{ DNSViewPrefixAssignment: "assigned via"
+
+    DNSForwardingRule }o--|| DNSView: "belongs to"
+    DNSForwardingRule ||--o{ DNSForwardingRuleForwarderAssignment: "assigns"
+    DNSForwarder ||--o{ DNSForwardingRuleForwarderAssignment: "assigned via"
+    DNSForwarder }o--o| ipam_IPaddressModel: "references"
 
     DNSRegistration }o--|| DNSRegistrar: "registered with"
     DNSRegistration }o--|| DNSZone: "registers"

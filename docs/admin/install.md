@@ -90,4 +90,10 @@ This setting controls the DNS validation level applied to zones and records:
 - **Enabled** - Enforces CNAME exclusivity within a zone per [RFC 1912 §2.4](https://datatracker.ietf.org/doc/html/rfc1912#section-2.4) semantics:
     - A CNAME cannot co-exist with any other record type that has the exact same `name` in the same `zone`.
     - Conversely, a non‑CNAME record cannot co-exist where a CNAME with the exact same `name` exists in the same `zone`.
-    - Name comparison is exact. A zone‑qualified `name` such as `host.example.com` is distinct from the relative `host` under zone `example.com`. A trailing dot is ignored (e.g., `host.example.com.` is treated as `host.example.com`).
+    - A CNAME also cannot co-exist with a [DNS delegation](../models/dnsdelegation.md) of the same `name` in the same `zone`, in either order. This comparison ignores letter case.
+    - Name comparison between records is exact. A zone‑qualified `name` such as `host.example.com` is distinct from the relative `host` under zone `example.com`. A trailing dot is ignored (e.g., `host.example.com.` is treated as `host.example.com`).
+
+`DELEGATION_COMPLIANCE_ENABLED` (default: "False")
+
+- **Disabled** - The DNS delegation [Data Compliance rules](../models/dnsdelegation.md#data-compliance) do not run, and no results are recorded.
+- **Enabled** - The rules run when zones, delegations and records are saved, and when the job **Run Registered Data Compliance Rules** runs. Each checked object keeps one result per rule.

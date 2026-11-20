@@ -7,14 +7,23 @@ from constance import config as constance_config
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, validate_email
 from django.db import models, transaction
+from django.db.models import Q
 from django.db.models.functions import Lower
-from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
+from nautobot.apps.models import BaseModel, ChangeLoggedModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 from nautobot.extras.models import StatusField
 from nautobot.ipam.choices import IPAddressVersionChoices
 from netutils.ip import ipaddress_address
 
-from nautobot_dns_models.utils import compute_zone_parents
+from nautobot_dns_models.choices import NameServerRelationshipChoices
+from nautobot_dns_models.utils import (
+    ancestor_keys,
+    compute_zone_parents,
+    dns_name_key,
+    is_subdomain,
+    owner_fqdn,
+    relative_owner_name,
+)
 
 # Reverse-DNS roots per RFC 1035 §3.5 and RFC 3596 §2.5
 RESERVED_ROOTS = {"in-addr.arpa", "ip6.arpa", "arpa"}
@@ -32,6 +41,7 @@ TXT_RDATA_MAX_OCTETS = 2**16 - 1
 
 # RFC 1035 §2.3.3 and RFC 4343 §2: domain name comparisons are case-insensitive.
 DNS_ZONE_NAME_UNIQUE_ERROR_CODE = "dns_zone_name_not_unique"
+DNS_DELEGATION_NAME_UNIQUE_ERROR_CODE = "dns_delegation_name_not_unique"
 
 
 def dns_wire_label_length(label):
@@ -535,6 +545,23 @@ class DNSZone(DNSModel):
         self.refresh_from_db(fields=["parent"])
 
     @classmethod
+    def get_enclosing_zone(cls, name, dns_view_id, exclude_pk=None):
+        """Return the most specific zone in the DNS View whose name is above `name`, otherwise None.
+
+        Names compare case-insensitively, as zone name uniqueness does. `exclude_pk` leaves out one zone, such as a
+        zone being renamed whose old name is still in the database.
+        """
+        keys = list(ancestor_keys(dns_name_key(name)))
+        if not keys:
+            return None
+        zones = (
+            cls.objects.annotate(name_lower=Lower("name"))
+            .filter(name_lower__in=keys, dns_view_id=dns_view_id)
+            .exclude(pk=exclude_pk)
+        )
+        return max(zones, key=lambda zone: len(zone.name), default=None)
+
+    @classmethod
     def find_reverse_zone_for_ptrdname(cls, ptrdname, dns_view=None):
         """Return the most-specific reverse DNSZone whose name matches a tail of `ptrdname`, otherwise None."""
         labels = ptrdname.split(".")
@@ -724,6 +751,11 @@ class DNSRecord(DNSModel):
                     raise ValidationError(
                         {"name": "CNAME cannot co-exist with other records of the same name in this zone."}
                     )
+            # Delegation names are unique ignoring letter case, so they are compared the same way here.
+            if DNSDelegation.objects.filter(name__iexact=self.name, zone_id=self.zone_id).exists():
+                raise ValidationError(
+                    {"name": "CNAME cannot co-exist with a delegation of the same name in this zone."}
+                )
         else:
             if CNAMERecord.objects.filter(name=self.name, zone_id=self.zone_id).exists():
                 raise ValidationError({"name": "Record cannot co-exist with a CNAME of the same name in this zone."})
@@ -1069,3 +1101,348 @@ class SRVRecord(DNSRecord):
         unique_together = [["name", "target", "port", "zone"]]
         verbose_name = "SRV Record"
         verbose_name_plural = "SRV Records"
+
+
+def get_address_records(zone, fqdn, user=None):
+    """Return the A and AAAA records in `zone` whose owner name is `fqdn`, or an empty list if it is outside the zone.
+
+    With `user`, only records that user may view are returned.
+    """
+    fqdn_key = dns_name_key(fqdn)
+    zone_key = dns_name_key(zone.name)
+    if fqdn_key != zone_key and not is_subdomain(fqdn_key, zone_key):
+        return []
+    owner = relative_owner_name(fqdn_key, zone_key)
+    owner_filter = Q(name__in=["@", ""]) if owner == "@" else Q(name__iexact=owner)
+    records = []
+    for model in (ARecord, AAAARecord):
+        queryset = model.objects.filter(owner_filter, zone=zone).select_related("ip_address")
+        records.extend(queryset.restrict(user, "view") if user is not None else queryset)
+    return records
+
+
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
+class DNSDelegation(PrimaryModel):
+    """A zone cut: the owner name in a parent zone where authority passes to other name servers (RFC 1034 §4.2.1).
+
+    The delegation holds no name server data. Its NS records and glue are the NS, A and AAAA records in the parent
+    zone, so NS records outside a delegation keep their meaning.
+    """
+
+    zone = ForeignKeyWithAutoRelatedName(
+        DNSZone,
+        on_delete=models.PROTECT,
+        help_text="Parent zone that contains the zone cut.",
+    )
+    name = models.CharField(
+        max_length=200,
+        help_text="Owner name of the zone cut, relative to the zone. e.g. apps",
+    )
+    description = models.TextField(help_text="Description of the delegation.", blank=True)
+
+    # The case-insensitive UniqueConstraint has no `fields`, so Nautobot cannot derive the natural key from it.
+    natural_key_field_names = ["zone", "name"]
+
+    class Meta:
+        """Meta attributes for DNSDelegation."""
+
+        ordering = ["zone__name", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                "zone",
+                name="nautobot_dns_models_dnsdelegation_name_ci_unique",
+                violation_error_code=DNS_DELEGATION_NAME_UNIQUE_ERROR_CODE,
+                violation_error_message="A DNS delegation with this name (ignoring letter case) already exists in this zone.",
+            ),
+        ]
+        verbose_name = "DNS Delegation"
+        verbose_name_plural = "DNS Delegations"
+
+    def __str__(self):
+        """Stringify instance."""
+        return self.fqdn
+
+    def validate_constraints(self, exclude=None):
+        """Report a name that collides with another delegation in the same zone as an error on `name`."""
+        try:
+            super().validate_constraints(exclude=exclude)
+        except ValidationError as error:
+            errors = error.update_error_dict({})
+            for non_field_error in errors.pop(NON_FIELD_ERRORS, []):
+                field = "name" if non_field_error.code == DNS_DELEGATION_NAME_UNIQUE_ERROR_CODE else NON_FIELD_ERRORS
+                errors.setdefault(field, []).append(non_field_error)
+            raise ValidationError(errors) from error
+
+    def _normalize_name(self):
+        """Store an absolute name entered as `apps.example.com.` relative to the zone, as `apps`."""
+        zone = getattr(self, "zone", None)
+        if zone is not None and self.name.lower().endswith(f".{zone.name.lower().rstrip('.')}."):
+            self.name = self.name[: -(len(zone.name.rstrip(".")) + 2)]
+
+    def clean(self):
+        """Validate the owner name: below the zone apex, well formed, and not shared with a CNAME."""
+        super().clean()
+
+        self._normalize_name()
+        zone = getattr(self, "zone", None)
+
+        if self.name in ("", "@"):
+            raise ValidationError({"name": "A delegation must be below the zone apex, e.g. `apps`."})
+
+        if getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL") == "wire-format":
+            for label in self.name.split("."):
+                DNSModel._validate_dns_label(label, field="name")  # pylint: disable=protected-access
+
+        if (
+            zone is not None
+            and getattr(constance_config, "nautobot_dns_models__CNAME_RESTRICTION_ENABLED", True)
+            and CNAMERecord.objects.filter(name__iexact=self.name, zone=zone).exists()
+        ):
+            raise ValidationError({"name": "A delegation cannot co-exist with a CNAME of the same name in this zone."})
+
+    def save(self, *args, **kwargs):
+        """Normalize the owner name, also for writes that validate a copy of the object, such as the REST API."""
+        self._normalize_name()
+        super().save(*args, **kwargs)
+
+    @property
+    def fqdn(self):
+        """The fully qualified name of the delegated domain, e.g. `apps.example.com`."""
+        return owner_fqdn(self.name, self.zone.name)
+
+    @property
+    def ns_records(self):
+        """Return a lazy queryset of the NS records in the parent zone at this delegation's owner name."""
+        return NSRecord.objects.filter(zone_id=self.zone_id, name__iexact=self.name)
+
+    def get_child_zone(self, user=None):
+        """Return the zone in the same DNS View whose name is the delegated domain, otherwise None.
+
+        With `user`, a child zone that user may not view is treated as absent.
+        """
+        fqdn = self.fqdn
+        zones = DNSZone.objects.filter(
+            Q(name__iexact=fqdn) | Q(name__iexact=f"{fqdn}."), dns_view_id=self.zone.dns_view_id
+        )
+        if user is not None:
+            zones = zones.restrict(user, "view")
+        return zones.first()
+
+    def classify_name_server(self, server):
+        """Return where `server` sits relative to this zone cut, as a `NameServerRelationshipChoices` value."""
+        server_key = dns_name_key(server)
+        cut_key = dns_name_key(self.fqdn)
+        zone_key = dns_name_key(self.zone.name)
+        if server_key == cut_key or is_subdomain(server_key, cut_key):
+            return NameServerRelationshipChoices.IN_DOMAIN
+        if server_key == zone_key or is_subdomain(server_key, zone_key):
+            return NameServerRelationshipChoices.SIBLING_DOMAIN
+        return NameServerRelationshipChoices.UNRELATED
+
+    def _glue_owner_filter(self):
+        """Return a filter matching the parent-zone owner names of this delegation's in-domain and sibling domain servers."""
+        zone_key = dns_name_key(self.zone.name)
+        query = Q(pk=None)
+        for server in self.ns_records.values_list("server", flat=True):
+            if self.classify_name_server(server) == NameServerRelationshipChoices.UNRELATED:
+                continue
+            owner = relative_owner_name(dns_name_key(server), zone_key)
+            query |= Q(name__in=["@", ""]) if owner == "@" else Q(name__iexact=owner)
+        return query
+
+    @property
+    def glue_a_records(self):
+        """Return the parent zone's A records at this delegation's name server names.
+
+        Building the queryset reads the delegation's NS records once.
+        """
+        return ARecord.objects.filter(self._glue_owner_filter(), zone_id=self.zone_id)
+
+    @property
+    def glue_aaaa_records(self):
+        """Return the parent zone's AAAA records at this delegation's name server names.
+
+        Building the queryset reads the delegation's NS records once.
+        """
+        return AAAARecord.objects.filter(self._glue_owner_filter(), zone_id=self.zone_id)
+
+    def get_name_server_addresses(self, server, user=None):
+        """Return the address records known for `server`, limited to those `user` may view if given.
+
+        In-domain and sibling domain name servers resolve through the parent zone's own records. An unrelated name
+        server resolves through whichever zone in the same DNS View contains it, if any.
+        """
+        if self.classify_name_server(server) != NameServerRelationshipChoices.UNRELATED:
+            # The glue: the A and AAAA records in the parent zone at the name server's name.
+            return get_address_records(self.zone, server, user=user)
+        server_key = dns_name_key(server)
+        zone = DNSZone.objects.filter(
+            Q(name__iexact=server_key) | Q(name__iexact=f"{server_key}."), dns_view_id=self.zone.dns_view_id
+        ).first() or DNSZone.get_enclosing_zone(server_key, self.zone.dns_view_id)
+        return get_address_records(zone, server, user=user) if zone else []
+
+
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
+class DNSForwarder(PrimaryModel):
+    """A name server that resolves queries forwarded to it (RFC 9499 §6).
+
+    The address is either an IPAM IP Address or a literal address, for resolvers that are not tracked in IPAM.
+    """
+
+    name = models.CharField(max_length=200, unique=True, help_text="Name of the forwarder.")
+    ip_address = models.ForeignKey(
+        to="ipam.IPAddress",
+        on_delete=models.PROTECT,
+        related_name="dns_forwarders",
+        blank=True,
+        null=True,
+        help_text="IPAM IP Address of the forwarder. Leave empty to enter a literal address instead.",
+        verbose_name="IP Address",
+    )
+    address = models.GenericIPAddressField(
+        blank=True,
+        null=True,
+        help_text="Literal IP address of the forwarder, for addresses not tracked in IPAM.",
+    )
+    port = models.PositiveIntegerField(
+        default=53,
+        validators=[MinValueValidator(1), MaxValueValidator(65535)],
+        help_text="Port the forwarder listens on.",
+    )
+    description = models.TextField(help_text="Description of the forwarder.", blank=True)
+
+    natural_key_field_names = ["name"]
+
+    class Meta:
+        """Meta attributes for DNSForwarder."""
+
+        ordering = ["name"]
+        verbose_name = "DNS Forwarder"
+        verbose_name_plural = "DNS Forwarders"
+
+    def __str__(self):
+        """Stringify instance."""
+        return self.name
+
+    def _normalize_address(self):
+        """Store an empty literal address as NULL; forms and the REST API submit `""` for an empty field."""
+        self.address = self.address or None
+
+    def clean(self):
+        """Require exactly one address source.
+
+        Forwarders are unique only by name: the same address and port may appear more than once, for example the
+        same private IP in two IPAM namespaces.
+        """
+        super().clean()
+
+        self._normalize_address()
+        if (self.ip_address_id is None) == (self.address is None):
+            raise ValidationError({"address": "Set exactly one of IP Address (from IPAM) or Address (literal)."})
+
+    def save(self, *args, **kwargs):
+        """Normalize the address, also for writes that validate a copy of the object, such as the REST API."""
+        self._normalize_address()
+        super().save(*args, **kwargs)
+
+    def get_address(self):
+        """Return the forwarder's IP address as a string, from IPAM or from the literal address."""
+        if self.ip_address_id is not None:
+            return str(self.ip_address.host)
+        return self.address
+
+
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
+class DNSForwardingRule(PrimaryModel):
+    """Queries for a domain, in a DNS View, are resolved by sending them to the rule's forwarders."""
+
+    name = models.CharField(
+        max_length=200,
+        help_text="Domain whose queries are forwarded, e.g. corp.example.com. Use `.` to forward all queries.",
+    )
+    dns_view = ForeignKeyWithAutoRelatedName(
+        DNSView,
+        on_delete=models.PROTECT,
+        help_text="The DNS View this forwarding rule belongs to.",
+        verbose_name="View",
+        default=get_default_view_pk,
+    )
+    forwarders = models.ManyToManyField(
+        to=DNSForwarder,
+        related_name="forwarding_rules",
+        through="DNSForwardingRuleForwarderAssignment",
+        through_fields=("forwarding_rule", "forwarder"),
+        blank=True,
+        help_text="Forwarders that resolve the queries.",
+    )
+    description = models.TextField(help_text="Description of the forwarding rule.", blank=True)
+
+    natural_key_field_names = ["name", "dns_view"]
+
+    class Meta:
+        """Meta attributes for DNSForwardingRule."""
+
+        ordering = ["dns_view__name", "name"]
+        unique_together = [["name", "dns_view"]]
+        verbose_name = "DNS Forwarding Rule"
+        verbose_name_plural = "DNS Forwarding Rules"
+
+    def __str__(self):
+        """Stringify instance."""
+        return f"{self.name} ({self.dns_view})"
+
+    def clean(self):
+        """Validate the domain's labels per RFC 1035 §3.1; the root domain `.` is allowed."""
+        super().clean()
+        if self.name == ".":
+            return
+        if getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL") == "wire-format":
+            for label in self.name.split("."):
+                DNSModel._validate_dns_label(label, field="name")  # pylint: disable=protected-access
+
+
+@extras_features("graphql")
+class DNSForwardingRuleForwarderAssignment(ChangeLoggedModel, BaseModel):
+    """Through model for the DNSForwardingRule and DNSForwarder many-to-many relationship.
+
+    Change-logged, so assignments made through its REST API endpoint appear in the change log.
+    """
+
+    forwarding_rule = ForeignKeyWithAutoRelatedName(DNSForwardingRule, on_delete=models.CASCADE)
+    forwarder = ForeignKeyWithAutoRelatedName(DNSForwarder, on_delete=models.CASCADE)
+
+    class Meta:
+        """Meta attributes for DNSForwardingRuleForwarderAssignment."""
+
+        unique_together = [["forwarding_rule", "forwarder"]]
+        verbose_name = "DNS Forwarding Rule Forwarder Assignment"
+        verbose_name_plural = "DNS Forwarding Rule Forwarder Assignments"
+
+    def __str__(self):
+        """Stringify instance."""
+        return f"{self.forwarding_rule}: {self.forwarder}"

@@ -12,6 +12,7 @@ from nautobot.extras.models import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from netutils.ip import ipaddress_address
 
+from nautobot_dns_models.choices import NameServerRelationshipChoices
 from nautobot_dns_models.models import (
     TXT_CHARACTER_STRING_MAX_OCTETS,
     TXT_RDATA_MAX_OCTETS,
@@ -19,6 +20,9 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
+    DNSForwarder,
+    DNSForwardingRule,
     DNSRegistrar,
     DNSView,
     DNSViewPrefixAssignment,
@@ -29,6 +33,7 @@ from nautobot_dns_models.models import (
     SRVRecord,
     TXTRecord,
     dns_wire_label_length,
+    get_address_records,
     rebuild_zone_hierarchy,
     split_txt_character_strings,
     txt_wire_rdata_length,
@@ -1274,6 +1279,139 @@ class DNSZoneHierarchyTestCase(TestCase):
         self._assert_parent(apps, example)
 
 
+class DNSDelegationTestCase(TestCase):
+    """Test the DNSDelegation model and the data it derives from records."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.zone = DNSZone.objects.create(name="example.com")
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, type="Pool", status=status)
+        cls.glue_ip = IPAddress.objects.create(address="192.0.2.10/32", namespace=namespace, status=status)
+        cls.sibling_ip = IPAddress.objects.create(address="192.0.2.20/32", namespace=namespace, status=status)
+        cls.external_ip = IPAddress.objects.create(address="192.0.2.30/32", namespace=namespace, status=status)
+
+    def _create_delegation(self, name="apps"):
+        delegation = DNSDelegation(zone=self.zone, name=name)
+        delegation.validated_save()
+        return delegation
+
+    def test_get_enclosing_zone_can_exclude_a_zone(self):
+        com = DNSZone.objects.create(name="com")
+        view_id = self.zone.dns_view_id
+
+        self.assertEqual(DNSZone.get_enclosing_zone("x.example.com", view_id), self.zone)
+        self.assertEqual(DNSZone.get_enclosing_zone("x.example.com", view_id, exclude_pk=self.zone.pk), com)
+
+    def test_fqdn_and_string(self):
+        delegation = self._create_delegation()
+        self.assertEqual(delegation.fqdn, "apps.example.com")
+        self.assertEqual(str(delegation), "apps.example.com")
+
+    def test_rejects_the_zone_apex(self):
+        for name in ("@", ""):
+            with self.subTest(name=name), self.assertRaises(ValidationError):
+                DNSDelegation(zone=self.zone, name=name).full_clean()
+
+    def test_absolute_name_is_stored_relative_to_the_zone(self):
+        delegation = self._create_delegation(name="apps.Example.com.")
+        self.assertEqual(delegation.name, "apps")
+
+    def test_absolute_name_is_normalized_by_save_without_clean(self):
+        delegation = DNSDelegation.objects.create(zone=self.zone, name="apps.example.com.")
+        self.assertEqual(delegation.name, "apps")
+
+    def test_rejects_a_name_differing_only_by_case(self):
+        self._create_delegation(name="apps")
+        with self.assertRaises(ValidationError) as context:
+            DNSDelegation(zone=self.zone, name="Apps").full_clean()
+        self.assertIn("ignoring letter case", str(context.exception.message_dict["name"]))
+
+    def test_database_rejects_a_name_differing_only_by_case(self):
+        self._create_delegation(name="apps")
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            DNSDelegation.objects.create(zone=self.zone, name="APPS")
+
+    @override_config(nautobot_dns_models__CNAME_RESTRICTION_ENABLED=True)
+    def test_cannot_share_an_owner_name_with_a_cname_ignoring_case(self):
+        CNAMERecord.objects.create(name="Apps", alias="elsewhere.example.net", zone=self.zone)
+        for name in ("Apps", "apps"):
+            with self.subTest(name=name), self.assertRaises(ValidationError):
+                DNSDelegation(zone=self.zone, name=name).full_clean()
+
+    @override_config(nautobot_dns_models__CNAME_RESTRICTION_ENABLED=True)
+    def test_cname_cannot_be_added_at_a_delegation_ignoring_case(self):
+        self._create_delegation()
+        for name in ("apps", "Apps"):
+            with self.subTest(name=name), self.assertRaises(ValidationError):
+                CNAMERecord(name=name, alias="elsewhere.example.net", zone=self.zone).full_clean()
+
+    def test_ns_records_are_the_records_at_the_owner_name(self):
+        delegation = self._create_delegation()
+        at_cut = NSRecord.objects.create(name="Apps", server="ns1.apps.example.com", zone=self.zone)
+        NSRecord.objects.create(name="@", server="ns1.example.net", zone=self.zone)
+        NSRecord.objects.create(name="mail", server="ns1.example.net", zone=self.zone)
+        self.assertQuerySetEqual(delegation.ns_records, [at_cut])
+
+    def test_child_zone_is_the_zone_named_after_the_delegated_domain(self):
+        delegation = self._create_delegation()
+        self.assertIsNone(delegation.get_child_zone())
+        child = DNSZone.objects.create(name="apps.example.com")
+        DNSZone.objects.create(name="apps.example.com", dns_view=DNSView.objects.create(name="Other"))
+        self.assertEqual(delegation.get_child_zone(), child)
+
+    def test_classify_name_server(self):
+        delegation = self._create_delegation()
+        cases = (
+            ("ns1.apps.example.com", NameServerRelationshipChoices.IN_DOMAIN),
+            ("NS1.Apps.Example.com.", NameServerRelationshipChoices.IN_DOMAIN),
+            ("apps.example.com", NameServerRelationshipChoices.IN_DOMAIN),
+            ("ns.example.com", NameServerRelationshipChoices.SIBLING_DOMAIN),
+            ("ns.mail.example.com", NameServerRelationshipChoices.SIBLING_DOMAIN),
+            ("example.com", NameServerRelationshipChoices.SIBLING_DOMAIN),
+            ("ns2.other.net", NameServerRelationshipChoices.UNRELATED),
+            ("ns.notexample.com", NameServerRelationshipChoices.UNRELATED),
+        )
+        for server, expected in cases:
+            with self.subTest(server=server):
+                self.assertEqual(delegation.classify_name_server(server), expected)
+
+    def test_glue_records_are_address_records_in_the_parent_zone(self):
+        delegation = self._create_delegation()
+        glue = ARecord.objects.create(name="ns1.apps", ip_address=self.glue_ip, zone=self.zone)
+        self.assertEqual(get_address_records(delegation.zone, "ns1.apps.example.com."), [glue])
+        self.assertEqual(get_address_records(delegation.zone, "ns2.apps.example.com"), [])
+        self.assertEqual(get_address_records(delegation.zone, "ns1.other.net"), [])
+
+    def test_glue_querysets_hold_the_address_records_of_in_zone_name_servers(self):
+        delegation = self._create_delegation()
+        NSRecord.objects.create(name="apps", server="ns1.apps.example.com", zone=self.zone)
+        NSRecord.objects.create(name="apps", server="NS.Example.com.", zone=self.zone)
+        NSRecord.objects.create(name="apps", server="ns2.other.net", zone=self.zone)
+        in_domain = ARecord.objects.create(name="ns1.apps", ip_address=self.glue_ip, zone=self.zone)
+        sibling = ARecord.objects.create(name="ns", ip_address=self.sibling_ip, zone=self.zone)
+        ARecord.objects.create(name="www", ip_address=self.external_ip, zone=self.zone)
+
+        self.assertQuerySetEqual(delegation.glue_a_records.order_by("name"), [sibling, in_domain])
+        self.assertFalse(delegation.glue_aaaa_records.exists())
+
+    def test_glue_querysets_are_empty_without_ns_records(self):
+        delegation = self._create_delegation()
+        ARecord.objects.create(name="ns1.apps", ip_address=self.glue_ip, zone=self.zone)
+        self.assertFalse(delegation.glue_a_records.exists())
+
+    def test_name_server_addresses_come_from_the_zone_that_holds_the_name(self):
+        delegation = self._create_delegation()
+        sibling = ARecord.objects.create(name="ns", ip_address=self.sibling_ip, zone=self.zone)
+        other_zone = DNSZone.objects.create(name="other.net")
+        external = ARecord.objects.create(name="ns2", ip_address=self.external_ip, zone=other_zone)
+
+        self.assertEqual(delegation.get_name_server_addresses("ns.example.com"), [sibling])
+        self.assertEqual(delegation.get_name_server_addresses("ns2.other.net"), [external])
+        self.assertEqual(delegation.get_name_server_addresses("ns.unknown.org"), [])
+
+
 class DNSZoneIntegerFieldBoundaryTest(TestCase):
     """Boundary tests for integer fields on DNSZone.
 
@@ -1435,3 +1573,88 @@ class DNSModelEnabledFieldTest(TestCase):
 
         record.refresh_from_db()
         self.assertTrue(record.enabled)
+
+
+class DNSForwarderTestCase(TestCase):
+    """Test the DNSForwarder model."""
+
+    @classmethod
+    def setUpTestData(cls):
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, type="Pool", status=status)
+        cls.ip_address = IPAddress.objects.create(address="192.0.2.53/32", namespace=namespace, status=status)
+
+    def test_address_from_ipam(self):
+        forwarder = DNSForwarder(name="Corp resolver", ip_address=self.ip_address)
+        forwarder.validated_save()
+        self.assertEqual(forwarder.get_address(), "192.0.2.53")
+        self.assertEqual(forwarder.port, 53)
+        self.assertEqual(str(forwarder), "Corp resolver")
+
+    def test_literal_address(self):
+        forwarder = DNSForwarder(name="Quad9", address="2620:fe::fe", port=853)
+        forwarder.validated_save()
+        self.assertEqual(forwarder.get_address(), "2620:fe::fe")
+
+    def test_empty_literal_address_counts_as_no_address(self):
+        """Regression test: forms and the REST API submit `""` for an empty Address field."""
+        forwarder = DNSForwarder(name="Corp resolver", ip_address=self.ip_address, address="")
+        forwarder.validated_save()
+        self.assertIsNone(DNSForwarder.objects.get(pk=forwarder.pk).address)
+        with self.assertRaises(ValidationError):
+            DNSForwarder(name="Nothing", address="").full_clean()
+
+    def test_requires_exactly_one_address(self):
+        for kwargs in ({}, {"ip_address": self.ip_address, "address": "192.0.2.53"}):
+            with self.subTest(fields=sorted(kwargs)), self.assertRaises(ValidationError):
+                DNSForwarder(name="Invalid", **kwargs).full_clean()
+
+    def test_address_and_port_may_repeat_but_name_may_not(self):
+        DNSForwarder(name="IPAM", ip_address=self.ip_address).validated_save()
+        DNSForwarder(name="Literal", address="192.0.2.53").validated_save()
+        DNSForwarder(name="Literal again", address="192.0.2.53").validated_save()
+        other_namespace = Namespace.objects.create(name="Other")
+        Prefix.objects.create(
+            prefix="192.0.2.0/24", namespace=other_namespace, type="Pool", status=Status.objects.get(name="Active")
+        )
+        overlapping = IPAddress.objects.create(
+            address="192.0.2.53/32", namespace=other_namespace, status=Status.objects.get(name="Active")
+        )
+        DNSForwarder(name="Other namespace", ip_address=overlapping).validated_save()
+        self.assertEqual(DNSForwarder.objects.filter(port=53).count(), 4)
+
+        with self.assertRaises(ValidationError):
+            DNSForwarder(name="Literal", address="192.0.2.99").full_clean()
+
+    def test_port_range(self):
+        for port in (0, 65536):
+            with self.subTest(port=port), self.assertRaises(ValidationError):
+                DNSForwarder(name="Invalid", address="192.0.2.1", port=port).full_clean()
+
+
+class DNSForwardingRuleTestCase(TestCase):
+    """Test the DNSForwardingRule model."""
+
+    def test_rule_with_forwarders(self):
+        forwarder = DNSForwarder.objects.create(name="Corp resolver", address="192.0.2.53")
+        rule = DNSForwardingRule(name="corp.example.com")
+        rule.validated_save()
+        rule.forwarders.add(forwarder)
+
+        self.assertEqual(rule.dns_view, DNSView.objects.get(name="Default"))
+        self.assertEqual(str(rule), "corp.example.com (Default)")
+        self.assertQuerySetEqual(forwarder.forwarding_rules.all(), [rule])
+
+    def test_root_forwards_all_queries(self):
+        DNSForwardingRule(name=".").validated_save()
+
+    def test_rejects_empty_labels(self):
+        with self.assertRaises(ValidationError):
+            DNSForwardingRule(name="corp..example.com").full_clean()
+
+    def test_name_is_unique_per_view(self):
+        DNSForwardingRule(name="corp.example.com").validated_save()
+        with self.assertRaises(ValidationError):
+            DNSForwardingRule(name="corp.example.com").validated_save()
+        DNSForwardingRule(name="corp.example.com", dns_view=DNSView.objects.create(name="Other")).validated_save()

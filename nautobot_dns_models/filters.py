@@ -127,6 +127,29 @@ class DNSZoneFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
         fields = "__all__"
 
 
+class DNSDelegationFilterSet(NautobotFilterSet):
+    """Filter for DNSDelegation."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "zone__name": "icontains",
+            "description": "icontains",
+        }
+    )
+    zone = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=models.DNSZone.objects.all(),
+        to_field_name="name",
+        label="Zone (name or ID)",
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSDelegation
+        fields = "__all__"
+
+
 # pylint: disable=nb-no-model-found, nb-warn-dunder-filter-field
 class DNSRecordFilterSet(NautobotFilterSet):
     """Base filter for all DNSRecord models, with support for effective TTL."""
@@ -318,4 +341,71 @@ class SRVRecordFilterSet(DNSRecordFilterSet):
         """Meta attributes for filter."""
 
         model = models.SRVRecord
+        fields = "__all__"
+
+
+class DNSForwarderFilterSet(NautobotFilterSet):
+    """Filter for DNSForwarder."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "address": "icontains",
+            "description": "icontains",
+        }
+    )
+    forwarding_rules = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=models.DNSForwardingRule.objects.all(),
+        to_field_name="name",
+        label="Forwarding rule (name or ID)",
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSForwarder
+        fields = "__all__"
+
+
+class DNSForwardingRuleFilterSet(NautobotFilterSet):
+    """Filter for DNSForwardingRule."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "description": "icontains",
+        }
+    )
+    dns_view = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=models.DNSView.objects.all(),
+        to_field_name="name",
+        label="View (name or ID)",
+    )
+    forwarders = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=models.DNSForwarder.objects.all(),
+        to_field_name="name",
+        label="Forwarder (name or ID)",
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSForwardingRule
+        fields = "__all__"
+
+
+class DNSForwardingRuleForwarderAssignmentFilterSet(NautobotFilterSet):
+    """Filter for DNSForwardingRuleForwarderAssignment."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "forwarding_rule__name": "icontains",
+            "forwarder__name": "icontains",
+        }
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSForwardingRuleForwarderAssignment
         fields = "__all__"

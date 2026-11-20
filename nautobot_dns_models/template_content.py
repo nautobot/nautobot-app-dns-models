@@ -11,12 +11,14 @@ from netutils.ip import ipaddress_address
 from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
+    DNSForwarder,
     DNSZone,
     PTRRecord,
 )
 from nautobot_dns_models.tables import (
     AAAARecordTable,
     ARecordTable,
+    DNSForwarderTable,
     PTRRecordTable,
 )
 
@@ -122,6 +124,17 @@ class ReverseDNSRecordsTablePanel(ObjectsTablePanel):
         return ctx
 
 
+class DNSForwardersTablePanel(ObjectsTablePanel):
+    """List the DNS forwarders that use an IP Address, on that IP Address's page."""
+
+    def should_render(self, context):
+        """Render only when a forwarder that the user may view uses this IP Address."""
+        if not super().should_render(context):
+            return False
+        forwarders = DNSForwarder.objects.restrict(context["request"].user, "view")
+        return forwarders.filter(ip_address=get_obj_from_context(context)).exists()
+
+
 class IPAddressDNSRecords(TemplateExtension):  # pylint: disable=abstract-method
     """Add DNS Records to the right side of the IP Address page."""
 
@@ -141,6 +154,14 @@ class IPAddressDNSRecords(TemplateExtension):  # pylint: disable=abstract-method
             table_class=PTRRecordTable,
             table_filter="ptrdname",
             include_columns=["name", "zone", "ttl", "actions"],
+        ),
+        DNSForwardersTablePanel(
+            weight=120,
+            section=SectionChoices.RIGHT_HALF,
+            table_class=DNSForwarderTable,
+            table_filter="ip_address",
+            table_title="DNS Forwarders",
+            include_columns=["name", "port", "description", "actions"],
         ),
     ]
 

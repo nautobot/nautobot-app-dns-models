@@ -68,6 +68,18 @@ class DNSZoneSerializer(NautobotModelSerializer):
         extra_kwargs = {"dns_view": {"default": models.get_default_view}}
 
 
+class DNSDelegationSerializer(NautobotModelSerializer):
+    """DNSDelegation Serializer."""
+
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnsdelegation-detail")
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSDelegation
+        fields = "__all__"
+
+
 class DNSRecordSerializer(NautobotModelSerializer):
     """DNSRecord Serializer."""
 
@@ -188,4 +200,38 @@ class SRVRecordSerializer(DNSRecordSerializer):
         """Meta attributes."""
 
         model = models.SRVRecord
+        fields = "__all__"
+
+
+class DNSForwarderSerializer(NautobotModelSerializer):
+    """DNSForwarder Serializer."""
+
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnsforwarder-detail")
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSForwarder
+        fields = "__all__"
+
+
+class DNSForwardingRuleSerializer(NautobotModelSerializer):
+    """DNSForwardingRule Serializer."""
+
+    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnsforwardingrule-detail")
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSForwardingRule
+        fields = "__all__"
+
+
+class DNSForwardingRuleForwarderAssignmentSerializer(ValidatedModelSerializer):
+    """DNSForwardingRuleForwarderAssignment Serializer."""
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.DNSForwardingRuleForwarderAssignment
         fields = "__all__"
