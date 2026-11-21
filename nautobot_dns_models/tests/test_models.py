@@ -36,12 +36,12 @@ from nautobot_dns_models.models import (
     SRVRecord,
     TXTRecord,
     catalog_member_label,
-    dns_record_models,
     dns_wire_label_length,
     rebuild_zone_hierarchy,
     split_txt_character_strings,
     txt_wire_rdata_length,
 )
+from nautobot_dns_models.querysets import dns_record_models
 from nautobot_dns_models.system_writes import system_write
 from nautobot_dns_models.tests.fixtures import create_zone
 
