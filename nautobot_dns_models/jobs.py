@@ -102,7 +102,6 @@ class CheckDNSZoneNameCollisions(Job):
         zones = DNSZone.objects.annotate(name_lower=Lower("name"))
         collision_keys = (
             zones.values("dns_view", "name_lower")
-            .order_by()
             .annotate(count=Count("pk"))
             .filter(count__gt=1)
             .values_list("dns_view", "name_lower")

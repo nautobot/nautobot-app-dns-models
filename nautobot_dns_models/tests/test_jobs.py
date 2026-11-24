@@ -130,7 +130,7 @@ class TestCheckDNSZoneNameCollisionsJob(TestCase):
 
     def test_same_name_in_different_views_is_not_a_collision(self):
         """Check same name in different views doesn't cause an issue."""
-        DNSZone.objects.create(name="example.com", dns_view=self.other_view)
+        DNSZone.objects.create(name="Example.com", dns_view=self.other_view)
 
         job = CheckDNSZoneNameCollisions()
         with self.assertLogs(job.logger, level="INFO") as logs:
