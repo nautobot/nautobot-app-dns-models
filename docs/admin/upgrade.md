@@ -10,7 +10,20 @@ When a new release comes out it may be necessary to run a migration of the datab
 
 DNS zone names must be unique within a DNS view regardless of letter case (see [Zone Name Uniqueness](../models/dnszone.md#zone-name-uniqueness)). If two zones in the same view have names that differ only by case, such as `Example.com` and `example.com`, the migration that adds this rule stops and lists the colliding zones. That migration makes no changes to the database, and it can be run again once the collisions are resolved.
 
-To find collisions before migrating, install the new version of the package, then run the following command before running `nautobot-server post_upgrade`. The command does not require the new migration to be applied:
+### Before Upgrading to 3.x
+
+Upgrade to version 2.3.1 first, then run the **Check DNS Zone Name Collisions** job from **Jobs > Jobs**, in the **DNS** group. The job doesn't change any data, it just logs a warning for each DNS view with colliding zones:
+
+```no-highlight
+View "Default": "Example.com" (12 record(s)), "example.com" (0 record(s))
+Rename, merge, or delete the colliding zones before upgrading.
+```
+
+Resolve the collisions (see below) and run the job again until it reports `No DNS zone name collisions found.`, then upgrade to 3.0.
+
+### After Installing 3.0
+
+To find collisions after installing the new version of the package, run the following command before running `nautobot-server post_upgrade`. The command does not require the new migration to be applied:
 
 ```no-highlight
 nautobot-server check_dns_zone_name_collisions
