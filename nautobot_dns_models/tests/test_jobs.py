@@ -1,13 +1,15 @@
 """Tests for DNS jobs."""
 
 from datetime import timedelta
+from unittest import skipIf
 
 from django.contrib.contenttypes.models import ContentType
+from django.db import connection
 from django.utils import timezone
 from nautobot.apps.testing import TestCase
 from nautobot.extras.models import Status
 
-from nautobot_dns_models.jobs import AutoRenewDomains
+from nautobot_dns_models.jobs import AutoRenewDomains, CheckDNSZoneNameCollisions
 from nautobot_dns_models.models import DNSRegistrar, DNSRegistration, DNSView, DNSZone
 
 
@@ -113,3 +115,42 @@ class TestAutoRenewDomainsJob(TestCase):
 
         registration.refresh_from_db()
         self.assertEqual(registration.status, expired_status)
+
+
+class TestCheckDNSZoneNameCollisionsJob(TestCase):
+    """Tests for CheckDNSZoneNameCollisions job behavior."""
+
+    @classmethod
+    def setUpTestData(cls):
+        """Create a zone and two views for collision tests."""
+        super().setUpTestData()
+        cls.view = DNSView.objects.create(name="Collision View")
+        cls.other_view = DNSView.objects.create(name="Other Collision View")
+        cls.zone = DNSZone.objects.create(name="Example.com", dns_view=cls.view)
+
+    def test_same_name_in_different_views_is_not_a_collision(self):
+        """Check same name in different views doesn't cause an issue."""
+        DNSZone.objects.create(name="Example.com", dns_view=self.other_view)
+
+        job = CheckDNSZoneNameCollisions()
+        with self.assertLogs(job.logger, level="INFO") as logs:
+            job.run()
+
+        self.assertEqual(len(logs.records), 1)
+        self.assertEqual(logs.records[0].levelname, "INFO")
+        self.assertIn("No DNS zone name collisions found.", logs.output[0])
+
+    @skipIf(connection.vendor == "mysql", "MySQL rejects case only duplicates with built-in mechanism.")
+    def test_case_only_collision_in_same_view_logs_warning(self):
+        """Check that collisions produce warning logs."""
+        DNSZone.objects.create(name="example.com", dns_view=self.view)
+
+        job = CheckDNSZoneNameCollisions()
+        with self.assertLogs(job.logger, level="INFO") as logs:
+            job.run()
+
+        self.assertTrue(all(record.levelname == "WARNING" for record in logs.records))
+        self.assertIn('View "Collision View"', logs.output[0])
+        self.assertIn('"Example.com" (0 record(s))', logs.output[0])
+        self.assertIn('"example.com" (0 record(s))', logs.output[0])
+        self.assertIn("Rename, merge, or delete the colliding zones before upgrading.", logs.output[-1])
