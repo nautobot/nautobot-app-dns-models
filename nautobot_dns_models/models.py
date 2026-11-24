@@ -18,7 +18,12 @@ from nautobot.ipam.choices import IPAddressVersionChoices
 from netutils.ip import ipaddress_address
 
 from nautobot_dns_models.choices import DNSZoneTypeChoices
-from nautobot_dns_models.querysets import SYSTEM_MANAGED_DELETE_ERROR, DNSRecordQuerySet, DNSZoneQuerySet
+from nautobot_dns_models.querysets import (
+    SYSTEM_MANAGED_DELETE_ERROR,
+    SYSTEM_MANAGED_WRITE_ERROR,
+    DNSRecordQuerySet,
+    DNSZoneQuerySet,
+)
 from nautobot_dns_models.system_writes import system_write, system_write_in_progress
 from nautobot_dns_models.utils import compute_zone_parents
 
@@ -843,10 +848,9 @@ class DNSZone(DNSModel):
                 raise ValidationError({"catalog_zone": "The catalog zone must be in the same view as this zone."})
 
     def _reconcile_required_catalog_records(self):
-        """Hold this catalog zone's apex NS and `version` TXT records at what RFC 9432 requires.
+        """Create this catalog zone's apex NS and `version` TXT records, if missing, as RFC 9432 requires.
 
-        Idempotent, so saving the zone repairs those two records rather than only populating a
-        brand-new catalog.
+        Idempotent, so saving the zone again adds no second copy of either record.
         """
         if not self.is_catalog_zone:
             return
@@ -856,19 +860,14 @@ class DNSZone(DNSModel):
             self._reconcile_version_record()
 
     def _reconcile_apex_ns_record(self):
-        """Hold the apex NS RRset RFC 9432 §4 requires at the single `invalid.` RR it recommends."""
-        ns_records = NSRecord.objects.filter(zone=self)
-        ns_records.exclude(name=APEX_RECORD_NAME, server=CATALOG_APEX_NS_SERVER).delete()
-        if not ns_records.exists():
+        """Create the single `invalid.` apex NS RR RFC 9432 §4 recommends, if the apex has no NS records."""
+        if not NSRecord.objects.filter(name=APEX_RECORD_NAME, zone=self).exists():
             NSRecord(name=APEX_RECORD_NAME, server=CATALOG_APEX_NS_SERVER, zone=self).validated_save()
 
     def _reconcile_version_record(self):
-        """Hold the schema version TXT at the single RR RFC 9432 §4.2.1 requires."""
-        version_records = TXTRecord.objects.filter(name="version", zone=self)
-        # "2" is the only version the RFC defines. A second RR in the version RRset makes the whole
-        # catalog broken.
-        version_records.exclude(text="2").delete()
-        if not version_records.filter(text="2").exists():
+        """Create the schema version TXT RFC 9432 §4.2.1 requires, if the zone has none."""
+        if not TXTRecord.objects.filter(name="version", zone=self).exists():
+            # "2" is the only version the RFC defines.
             TXTRecord(name="version", text="2", zone=self).validated_save()
 
     def _sync_member_ptr_record(self, stored_zone):
@@ -881,16 +880,11 @@ class DNSZone(DNSModel):
             self._publish_member_ptr_record()
 
     def _publish_member_ptr_record(self):
-        """Publish the PTR record naming this member zone in its catalog zone.
-
-        RFC 9432 §4.1 allows only a single RR at that owner name, so anything else standing there gives way.
-        """
+        """Publish the PTR record naming this member zone in its catalog zone, if not already published."""
         owner_name = self.ptr_record_name
-        member_ptr_records = PTRRecord.objects.filter(name=owner_name, zone_id=self.catalog_zone_id)
 
         with system_write():
-            delete_member_ptr_records(member_ptr_records.exclude(ptrdname=self.name))
-            if not member_ptr_records.filter(ptrdname=self.name).exists():
+            if not PTRRecord.objects.filter(name=owner_name, zone_id=self.catalog_zone_id).exists():
                 PTRRecord(name=owner_name, ptrdname=self.name, zone_id=self.catalog_zone_id).validated_save()
 
 
@@ -1041,13 +1035,18 @@ class DNSRecord(DNSModel):
 
         self._validate_total_wire_length_if_enabled()
         self._enforce_cname_exclusivity_if_enabled()
-        self._enforce_zone_type_allows_record()
+        self._refuse_catalog_zone_write()
 
     def delete(self, *args, **kwargs):
         """Refuse to delete a system-managed record."""
         if not system_write_in_progress() and self.zone.is_catalog_zone:
             raise ProtectedError(SYSTEM_MANAGED_DELETE_ERROR, [self])
         return super().delete(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        """Refuse to write a system-managed record, for callers that bypass `clean()`."""
+        self._refuse_catalog_zone_write()
+        super().save(*args, **kwargs)
 
     def _validate_total_wire_length_if_enabled(self) -> None:
         """Validate full DNS name (record + zone) total wire-format length if wire-format validation is enabled."""
@@ -1086,19 +1085,15 @@ class DNSRecord(DNSModel):
             if CNAMERecord.objects.filter(name=self.name, zone_id=self.zone_id).exists():
                 raise ValidationError({"name": "Record cannot co-exist with a CNAME of the same name in this zone."})
 
-    def _enforce_zone_type_allows_record(self) -> None:
-        """Reject a user write of a record type the zone's type does not make available to users."""
-        if system_write_in_progress() or not self.zone.is_catalog_zone:  # pylint: disable=no-member
+    def _refuse_catalog_zone_write(self) -> None:
+        """Refuse a user write of a record in a catalog zone, or of one moving into or out of a catalog zone."""
+        if system_write_in_progress() or self.zone_id is None:
             return
 
-        zone_type_label = self.zone.get_type_display().lower()  # pylint: disable=no-member
-        raise ValidationError(
-            {
-                "zone": (
-                    f"Records in a {zone_type_label} zone are system-managed and cannot be created or edited directly."
-                )
-            }
-        )
+        if self.zone.is_catalog_zone:  # pylint: disable=no-member
+            raise ValidationError({"zone": SYSTEM_MANAGED_WRITE_ERROR})
+        if self.present_in_database:
+            type(self).objects.filter(pk=self.pk).refuse_catalog_zone_writes()
 
     class Meta:
         """Meta attributes for DnsRecord."""

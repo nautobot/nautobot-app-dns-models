@@ -14,7 +14,7 @@ Every record in a catalog zone is system-managed: none can be created, edited, o
 - a `version` TXT record holding `2`, the only schema version RFC 9432 defines
 - one PTR record per member, at `<member_label>.zones`, naming the member zone
 
-Saving a catalog zone writes the NS and TXT records. If code that bypasses validation, or a direct database change, has altered or removed them, the next save of the catalog zone restores them. Each PTR record is written when a zone is added to the catalog and deleted when it is removed.
+Saving a catalog zone writes the NS and TXT records. Each PTR record is written when a zone is added to the catalog and deleted when it is removed. If a direct database change removes one of these records, the next save of the catalog zone, or of the member zone for its PTR record, writes it again.
 
 !!! note
     The apex NS record is named `@`, which denotes the zone origin per [RFC 1035 §5.1](https://datatracker.ietf.org/doc/html/rfc1035#section-5.1), and its `server` omits the trailing dot the RFC writes, since that dot is zone file syntax rather than part of the name.
