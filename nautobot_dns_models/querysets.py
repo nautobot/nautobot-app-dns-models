@@ -71,13 +71,16 @@ class DNSZoneQuerySet(RestrictedQuerySet):
         """Raise if `fields` names a catalog membership field."""
         if refused := sorted(set(fields) & CATALOG_MEMBERSHIP_FIELDS):
             raise ValidationError(
-                f"These fields cannot be written through a queryset; save each zone instead: {', '.join(refused)}."
+                "These fields cannot be written through update() or bulk_update(); save each zone instead: "
+                f"{', '.join(refused)}."
             )
 
     def _refuse_member_renames(self):
         """Raise if this holds a catalog member, whose PTR record names it and which a rename gives a new label."""
         if self.filter(catalog_zone__isnull=False).exists():
-            raise ValidationError("Catalog member zones cannot be renamed through a queryset; save each zone instead.")
+            raise ValidationError(
+                "Catalog member zones cannot be renamed through update() or bulk_update(); save each zone instead."
+            )
 
     def _withdraw_member_ptr_records(self):
         """Withdraw the PTR records of the catalog members among these zones.

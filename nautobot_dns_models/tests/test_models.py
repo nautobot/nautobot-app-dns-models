@@ -2374,7 +2374,7 @@ class CatalogMembershipTest(TestCase):
 
         self.assertEqual(
             context.exception.messages[0],
-            "These fields cannot be written through a queryset; save each zone instead: catalog_zone.",
+            "These fields cannot be written through update() or bulk_update(); save each zone instead: catalog_zone.",
         )
 
     def test_bulk_update_refuses_the_membership_fields(self):
