@@ -4,16 +4,19 @@ This module contains jobs that can be run to manage domain tracking functionalit
 
 Jobs:
     AutoRenewDomains: Job to automatically renew domains that are set to auto-renew
+    CheckDNSZoneNameCollisions: Job to report DNS zones whose names differ only by letter case
 
 """
 
 from dateutil.relativedelta import relativedelta
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Count
+from django.db.models.functions import Lower
 from django.utils import timezone
 from nautobot.apps.jobs import BooleanVar, Job, register_jobs
 from nautobot.extras.models import Status
 
-from nautobot_dns_models.models import DNSRegistration
+from nautobot_dns_models.models import DNSRecord, DNSRegistration, DNSZone
 
 name = "DNS"  # pylint: disable=invalid-name
 
@@ -82,4 +85,41 @@ class AutoRenewDomains(Job):
             registration.validated_save()
 
 
-register_jobs(AutoRenewDomains)
+class CheckDNSZoneNameCollisions(Job):
+    """Report DNS zones whose names differ only by letter case within the same DNS view."""
+
+    class Meta:
+        """Meta attributes."""
+
+        name = "Check DNS Zone Name Collisions"
+        description = (
+            "Report DNS zones whose names differ only by letter case within the same DNS view. "
+            "Resolve them before upgrading to version 3.0."
+        )
+
+    def run(self, *args, **kwargs):
+        """Run the job."""
+        zones = DNSZone.objects.annotate(name_lower=Lower("name"))
+        collision_keys = (
+            zones.values("dns_view", "name_lower")
+            .order_by()
+            .annotate(count=Count("pk"))
+            .filter(count__gt=1)
+            .values_list("dns_view", "name_lower")
+        )
+        if not collision_keys:
+            self.logger.info("No DNS zone name collisions found.")
+            return
+
+        for dns_view, name_lower in collision_keys:
+            group = zones.filter(dns_view=dns_view, name_lower=name_lower).select_related("dns_view").order_by("name")
+            descriptions = []
+            for zone in group:
+                record_count = sum(model.objects.filter(zone=zone).count() for model in DNSRecord.__subclasses__())
+                descriptions.append(f'"{zone.name}" ({record_count} record(s))')
+            self.logger.warning('View "%s": %s', group[0].dns_view.name, ", ".join(descriptions))
+
+        self.logger.warning("Rename, merge, or delete the colliding zones before upgrading.")
+
+
+register_jobs(AutoRenewDomains, CheckDNSZoneNameCollisions)
