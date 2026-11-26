@@ -52,8 +52,11 @@ erDiagram
 
     DNSZone {
         charfield name UK
+        charfield type
         DNSView dns_view FK
         DNSZone parent FK
+        DNSZone catalog_zone FK
+        charfield member_label
         boolean enabled
         integer ttl
         charfield filename
@@ -123,7 +126,11 @@ erDiagram
     DNSRecord ||--o{ CNAMERecord: implements
     DNSRecord ||--o{ MXRecord: implements
     DNSRecord ||--o{ TXTRecord: implements
+    %% Must precede the PTRRecord implements edge, which it otherwise crosses.
+    DNSZone ||..o{ PTRRecord: "publishes member PTR (when catalog_zone is set)"
     DNSRecord ||--o{ PTRRecord: implements
+    %% Must precede the NSRecord implements edge, which it otherwise crosses.
+    DNSZone ||..o| NSRecord: "auto-creates apex NS (when type is catalog)"
     DNSRecord ||--o{ NSRecord: implements
     DNSRecord ||--o{ SRVRecord: implements
 
@@ -131,6 +138,9 @@ erDiagram
     DNSZone }o--|| DNSView: "belongs to"
     DNSZone }o--o| tenancy_TenantModel: "belongs to"
     DNSZone }o--o| DNSZone: "child of (derived)"
+
+    DNSZone |o--o{ DNSZone: "catalog_zone"
+    DNSZone ||..o| TXTRecord: "auto-creates version TXT (when type is catalog)"
 
     DNSView ||--o{ DNSViewPrefixAssignment: "assigns"
     ipam_PrefixModel ||--o{ DNSViewPrefixAssignment: "assigned via"

@@ -15,6 +15,7 @@ from nautobot.core.filters import MultiValueCharFilter, NaturalKeyOrPKMultipleCh
 from netaddr import IPAddress as NetIPAddress
 
 from nautobot_dns_models import models
+from nautobot_dns_models.choices import DNSZoneTypeChoices
 
 EXPIRATION_DATE_INPUT_FORMATS = ("%Y-%m-%d",)
 
@@ -94,6 +95,13 @@ class DNSRegistrationFilterSet(NautobotFilterSet):
         }
     )
 
+    dns_zone = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=models.DNSZone.objects.all(),
+        query_params={"type__n": DNSZoneTypeChoices.TYPE_CATALOG},
+        to_field_name="name",
+        label="Zone (name or ID)",
+    )
+
     class Meta:
         """Meta attributes for filter."""
 
@@ -119,12 +127,39 @@ class DNSZoneFilterSet(TenancyModelFilterSetMixin, NautobotFilterSet):
     )
     has_parent = RelatedMembershipBooleanFilter(field_name="parent", label="Has parent zone")
     has_children = RelatedMembershipBooleanFilter(field_name="children", label="Has child zones")
+    catalog_zone = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=models.DNSZone.objects.all(),
+        query_params={"type": DNSZoneTypeChoices.TYPE_CATALOG},
+        to_field_name="name",
+        label="Catalog zone (name or ID)",
+    )
+    is_catalog_member = RelatedMembershipBooleanFilter(
+        field_name="catalog_zone",
+        label="Is a catalog member",
+    )
+    has_members = RelatedMembershipBooleanFilter(
+        field_name="members",
+        label="Has members",
+    )
+    can_change = django_filters.BooleanFilter(method="_can_change", label="User can change this zone")
 
     class Meta:
         """Meta attributes for filter."""
 
         model = models.DNSZone
         fields = "__all__"
+
+    def _can_change(self, queryset, name, value):  # pylint: disable=unused-argument
+        """Keep the zones the requesting user may change, or with `False` those they may not."""
+        user = getattr(self.request, "user", None)
+        if user is None:
+            return queryset.none() if value else queryset
+
+        changeable = queryset.restrict(user, "change")
+        if value:
+            return changeable
+
+        return queryset.exclude(pk__in=changeable.values("pk"))
 
 
 # pylint: disable=nb-no-model-found, nb-warn-dunder-filter-field

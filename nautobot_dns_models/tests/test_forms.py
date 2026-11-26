@@ -1,12 +1,14 @@
 """Tests for nautobot_dns_models Form Classes."""
 
 from django.core.exceptions import ValidationError
+from django.http import QueryDict
 from django.test import TestCase
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 
 from nautobot_dns_models import forms
-from nautobot_dns_models.models import DNSRegistrar, DNSView, DNSZone
+from nautobot_dns_models.choices import DNSZoneTypeChoices
+from nautobot_dns_models.models import DNSRegistrar, DNSView, DNSZone, PTRRecord
 
 
 class DNSViewFormTestCase(TestCase):
@@ -38,7 +40,27 @@ class DNSViewFormTestCase(TestCase):
         self.assertIn("This field is required.", form.errors["name"])
 
 
-class DNSZoneTest(TestCase):
+def zone_data(**overrides):
+    """Return a valid DNSZoneForm payload, with any supplied overrides applied."""
+    data = {
+        "name": "Development",
+        "type": DNSZoneTypeChoices.TYPE_PRIMARY,
+        "dns_view": DNSView.objects.get(name="Default").id,
+        "ttl": 1010101,
+        "filename": "development.zone",
+        "soa_mname": "ns1.example.com",
+        "soa_rname": "admin@example.com",
+        "soa_refresh": 10800,
+        "soa_retry": 3600,
+        "soa_expire": 604800,
+        "soa_serial": 202,
+        "soa_minimum": 3600,
+    }
+    data.update(overrides)
+    return data
+
+
+class DNSZoneFormTestCase(TestCase):
     """Test DNSZone forms."""
 
     def test_specifying_all_fields_success(self):
@@ -48,67 +70,35 @@ class DNSZoneTest(TestCase):
             account_number="ACC-100",
         )
         form = forms.DNSZoneForm(
-            data={
-                "name": "Development",
-                "dns_view": DNSView.objects.get(name="Default").id,
-                "dns_registrar": registrar.id,
-                "description": "Development Testing",
-                "ttl": 1010101,
-                "filename": "development.zone",
-                "expiration_date": "2026-12-31",
-                "auto_renewal": True,
-                "registry_locked": True,
-                "transfer_locked": True,
-                "privacy_enabled": True,
-                "website_forwarding_enabled": True,
-                "renewal_term_months": 24,
-                "dnssec_enabled": True,
-                "soa_mname": "ns1.example.com",
-                "soa_rname": "admin@example.com",
-                "soa_refresh": 10800,
-                "soa_retry": 3600,
-                "soa_expire": 604800,
-                "soa_serial": 202,
-                "soa_minimum": 3600,
-            }
+            data=zone_data(
+                dns_registrar=registrar.id,
+                description="Development Testing",
+                expiration_date="2026-12-31",
+                auto_renewal=True,
+                registry_locked=True,
+                transfer_locked=True,
+                privacy_enabled=True,
+                website_forwarding_enabled=True,
+                renewal_term_months=24,
+                dnssec_enabled=True,
+            )
         )
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertTrue(form.save())
 
     def test_specifying_only_required_success(self):
-        form = forms.DNSZoneForm(
-            data={
-                "name": "Development",
-                "dns_view": DNSView.objects.get(name="Default").id,
-                "ttl": 1010101,
-                "filename": "development.zone",
-                "soa_mname": "ns1.example.com",
-                "soa_rname": "admin@example.com",
-                "soa_refresh": 10800,
-                "soa_retry": 3600,
-                "soa_expire": 604800,
-                "soa_serial": 202,
-                "soa_minimum": 3600,
-            }
-        )
-        self.assertTrue(form.is_valid())
+        form = forms.DNSZoneForm(data=zone_data())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertTrue(form.save())
 
     def test_soa_rname_accepts_value_without_at_sign(self):
         form = forms.DNSZoneForm(
-            data={
-                "name": "Catalog",
-                "dns_view": DNSView.objects.get(name="Default").id,
-                "ttl": 3600,
-                "filename": "catalog.zone",
-                "soa_mname": "invalid.",
-                "soa_rname": "invalid.",
-                "soa_refresh": 10800,
-                "soa_retry": 3600,
-                "soa_expire": 604800,
-                "soa_serial": 202,
-                "soa_minimum": 3600,
-            }
+            data=zone_data(
+                name="Catalog",
+                filename="catalog.zone",
+                soa_mname="invalid.",
+                soa_rname="invalid.",
+            )
         )
 
         self.assertTrue(form.is_valid(), form.errors)
@@ -148,29 +138,139 @@ class DNSZoneTest(TestCase):
         )
 
     def test_expiration_date_accepts_date_picker_value(self):
-        form = forms.DNSZoneForm(
-            data={
-                "name": "Development",
-                "dns_view": DNSView.objects.get(name="Default").id,
-                "ttl": 1010101,
-                "filename": "development.zone",
-                "expiration_date": "2026-12-31",
-                "soa_mname": "ns1.example.com",
-                "soa_rname": "admin@example.com",
-                "soa_refresh": 10800,
-                "soa_retry": 3600,
-                "soa_expire": 604800,
-                "soa_serial": 202,
-                "soa_minimum": 3600,
-            }
-        )
-        self.assertTrue(form.is_valid())
+        form = forms.DNSZoneForm(data=zone_data(expiration_date="2026-12-31"))
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_zone_type_is_disabled_when_editing(self):
+        """The type field is disabled when editing a zone."""
+        zone = DNSZone.objects.create(name="existing.example")
+        form = forms.DNSZoneForm(instance=zone)
+        self.assertTrue(form.fields["type"].disabled)
+
+
+class DNSZoneFormCatalogTestCase(TestCase):
+    """Test the DNSZone form's catalog zone fields."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.catalog_zone = DNSZone.objects.create(name="catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
+
+    def test_can_create_catalog_zone(self):
+        """The form creates a catalog zone."""
+        form = forms.DNSZoneForm(data=zone_data(type=DNSZoneTypeChoices.TYPE_CATALOG))
+        self.assertTrue(form.is_valid(), form.errors)
+        zone = form.save()
+        self.assertEqual(zone.type, DNSZoneTypeChoices.TYPE_CATALOG)
+
+    def test_auto_create_ptr_is_disabled_when_editing_catalog_zone(self):
+        """The `auto_create_ptr` field is disabled when editing a catalog zone."""
+        form = forms.DNSZoneForm(instance=self.catalog_zone)
+        self.assertTrue(form.fields["auto_create_ptr"].disabled)
+
+    def test_auto_create_ptr_is_enabled_when_editing_primary_zone(self):
+        """The `auto_create_ptr` field is enabled when editing a primary zone."""
+        zone = DNSZone.objects.create(name="primary.example")
+        form = forms.DNSZoneForm(instance=zone)
+        self.assertFalse(form.fields["auto_create_ptr"].disabled)
+
+    def test_the_catalog_field_offers_catalogs_in_the_chosen_view(self):
+        """The catalog field offers catalog zones in the view chosen on the form."""
+        query_params = forms.DNSZoneForm().fields["catalog_zone"].query_params
+        self.assertEqual(query_params["type"], DNSZoneTypeChoices.TYPE_CATALOG)
+        self.assertEqual(query_params["dns_view"], "$dns_view")
+
+    def test_adding_to_a_catalog_publishes_the_zone(self):
+        """Saving the form with a catalog zone adds the zone to it and publishes its PTR record."""
+        form = forms.DNSZoneForm(data=zone_data(catalog_zone=self.catalog_zone.pk, member_label="chosen"))
+        self.assertTrue(form.is_valid(), form.errors)
+        zone = form.save()
+
+        self.assertEqual(zone.catalog_zone, self.catalog_zone)
+        self.assertEqual(zone.member_label, "chosen")
+        self.assertTrue(PTRRecord.objects.filter(zone=self.catalog_zone, name="chosen.zones").exists())
+
+    def test_the_member_label_is_filled_in_with_a_generated_label(self):
+        """A zone in no catalog is offered a generated label, for use should a catalog zone be chosen."""
+        for instance in (None, DNSZone.objects.create(name="no-catalog.example")):
+            with self.subTest(instance=instance):
+                self.assertRegex(forms.DNSZoneForm(instance=instance).initial["member_label"], r"^[a-z2-7]{26}$")
+
+    def test_a_member_zone_offers_its_own_label_to_the_script(self):
+        """A member zone's label is kept for the script, including on a form re-rendered after an error."""
+        zone = DNSZone.objects.create(name="member.example", catalog_zone=self.catalog_zone, member_label="kept")
+        bound = zone_data(name=zone.name, catalog_zone="", ttl="not-a-number")
+        for form in (forms.DNSZoneForm(instance=zone), forms.DNSZoneForm(instance=zone, data=bound)):
+            with self.subTest(bound=form.is_bound):
+                self.assertEqual(form.fields["member_label"].widget.attrs["data-default-label"], "kept")
+
+        form = forms.DNSZoneForm(instance=self.catalog_zone)
+        self.assertNotIn("data-default-label", form.fields["member_label"].widget.attrs)
+
+    def test_a_member_label_needs_a_catalog_zone(self):
+        """A label submitted without a catalog zone is dropped, and a zone in a catalog zone must have one."""
+        form = forms.DNSZoneForm(data=zone_data(member_label="stray"))
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.save().member_label, "")
+
+        form = forms.DNSZoneForm(data=zone_data(name="other", catalog_zone=self.catalog_zone.pk))
+        self.assertEqual(form.errors, {"member_label": ["A zone in a catalog zone needs a member label."]})
+
+    def test_an_over_long_member_label_reports_only_its_length(self):
+        """A label longer than a DNS label allows gets the length error alone."""
+        form = forms.DNSZoneForm(data=zone_data(catalog_zone=self.catalog_zone.pk, member_label="a" * 64))
+        self.assertEqual(form.errors, {"member_label": ["Ensure this value has at most 63 characters (it has 64)."]})
+
+    def test_member_label_is_disabled_when_editing_a_catalog_zone(self):
+        """The member label field is disabled and empty when editing a catalog zone."""
+        form = forms.DNSZoneForm(instance=self.catalog_zone)
+        self.assertTrue(form.fields["member_label"].disabled)
+        self.assertEqual(form.initial["member_label"], "")
+
+    def test_removing_from_a_catalog_withdraws_the_zone(self):
+        """Clearing the catalog field removes the zone from its catalog and withdraws its PTR record."""
+        zone = DNSZone.objects.create(name="member.example", catalog_zone=self.catalog_zone)
+        ptr_name = zone.ptr_record_name
+
+        form = forms.DNSZoneForm(instance=zone, data=zone_data(name=zone.name, catalog_zone=""))
+        self.assertTrue(form.is_valid(), form.errors)
+        zone = form.save()
+
+        self.assertIsNone(zone.catalog_zone)
+        self.assertEqual(zone.member_label, "")
+        self.assertFalse(PTRRecord.objects.filter(zone=self.catalog_zone, name=ptr_name).exists())
+
+    def test_catalog_zone_is_disabled_when_editing_a_catalog_zone(self):
+        """The catalog field is disabled when editing a catalog zone."""
+        form = forms.DNSZoneForm(instance=self.catalog_zone)
+        self.assertTrue(form.fields["catalog_zone"].disabled)
+
+    def test_catalog_zone_is_enabled_when_editing_a_primary_zone(self):
+        """The catalog field is enabled when editing a primary zone."""
+        zone = DNSZone.objects.create(name="primary.example")
+        form = forms.DNSZoneForm(instance=zone)
+        self.assertFalse(form.fields["catalog_zone"].disabled)
+
+
+def bulk_edit_form(zones, nullify=(), **data):
+    """Return a bulk edit form posted for `zones`, with `zones` as its selection."""
+    pks = [str(zone.pk) for zone in zones]
+    posted = QueryDict(mutable=True)
+    posted.setlist("pk", pks)
+    posted.setlist("_nullify", list(nullify))
+    for key, value in data.items():
+        posted[key] = str(value)
+    return forms.DNSZoneBulkEditForm(DNSZone, data=posted, selection=DNSZone.objects.filter(pk__in=pks))
 
 
 class DNSZoneBulkEditFormTest(TestCase):
-    """Test DNSZone bulk edit form SOA RNAME handling."""
+    """Test the DNSZone bulk edit form.
+
+    Its catalog and PTR fields are judged against the zones the edit will reach.
+    """
 
     form_class = forms.DNSZoneBulkEditForm
+
+    VIEW_MISMATCH = "The selected zones must be in the same view as the catalog zone."
 
     @classmethod
     def setUpTestData(cls):
@@ -180,6 +280,10 @@ class DNSZoneBulkEditFormTest(TestCase):
             soa_mname="ns1.bulk-rname.example.",
             soa_rname="admin@example.com",
         )
+        cls.catalog_zone = DNSZone.objects.create(name="catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
+        cls.zones = [DNSZone.objects.create(name=f"zone-{index}.example") for index in range(2)]
+        cls.other_view = DNSView.objects.create(name="Other View")
+        cls.other_view_zone = DNSZone.objects.create(name="other-view-zone.example", dns_view=cls.other_view)
 
     def test_soa_rname_accepts_dns_style_mailbox(self):
         form = self.form_class(
@@ -221,6 +325,97 @@ class DNSZoneBulkEditFormTest(TestCase):
             "or a single-label placeholder.",
             context.exception.message_dict["soa_rname"],
         )
+
+    def test_the_catalog_can_be_nulled(self):
+        """The catalog field can be set to null."""
+        self.assertIn("catalog_zone", forms.DNSZoneBulkEditForm.Meta.nullable_fields)
+
+    def test_a_selection_in_the_catalog_view_is_accepted(self):
+        """A selection in the catalog zone's view is accepted."""
+        form = bulk_edit_form(self.zones, catalog_zone=self.catalog_zone.pk)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_a_selection_in_one_view_narrows_the_catalog_field_to_it(self):
+        """For a selection in one view, the catalog field offers only catalog zones in that view."""
+        form = bulk_edit_form(self.zones)
+        self.assertIn(
+            str(self.catalog_zone.dns_view_id), form.fields["catalog_zone"].widget.attrs["data-query-param-dns_view"]
+        )
+
+    def test_a_zone_cannot_be_added_to_a_catalog_zone_in_a_different_view(self):
+        """Zones cannot be added to a catalog zone in a different view."""
+        other_view_catalog = DNSZone.objects.create(
+            name="other-view-catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG, dns_view=self.other_view
+        )
+        form = bulk_edit_form(self.zones, catalog_zone=other_view_catalog.pk)
+        self.assertFalse(form.is_valid())
+        self.assertIn(self.VIEW_MISMATCH, form.errors["catalog_zone"])
+
+    def test_a_selection_spanning_views_disables_the_field_but_keeps_set_null(self):
+        """A selection spanning views disables the catalog field but still allows set null.
+
+        No catalog zone can hold zones from two views, but removing them from their catalogs still works.
+        """
+        form = bulk_edit_form([*self.zones, self.other_view_zone], catalog_zone=self.catalog_zone.pk)
+        self.assertTrue(form.fields["catalog_zone"].disabled)
+        self.assertIn("catalog_zone", form.nullable_fields)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertIsNone(form.cleaned_data["catalog_zone"])
+
+    def test_moving_the_selection_into_the_catalog_view_is_accepted(self):
+        """Moving the selection into the catalog zone's view is accepted.
+
+        The view submitted with the edit is the one the zones will be in, so it is checked instead of
+        their current views.
+        """
+        form = bulk_edit_form(
+            [self.other_view_zone],
+            catalog_zone=self.catalog_zone.pk,
+            dns_view=self.catalog_zone.dns_view_id,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_moving_the_selection_out_of_the_catalog_view_is_refused(self):
+        """Moving the selection out of the catalog zone's view is refused."""
+        form = bulk_edit_form(self.zones, catalog_zone=self.catalog_zone.pk, dns_view=self.other_view.pk)
+        self.assertFalse(form.is_valid())
+        self.assertIn(self.VIEW_MISMATCH, form.errors["catalog_zone"])
+
+    def test_a_selection_holding_a_catalog_zone_disables_the_field(self):
+        """A selection that includes a catalog zone disables the catalog field.
+
+        A catalog zone cannot be added to a catalog, and one refusal would roll back the whole batch.
+        """
+        form = bulk_edit_form([self.zones[0], self.catalog_zone], catalog_zone=self.catalog_zone.pk)
+        self.assertTrue(form.fields["catalog_zone"].disabled)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertIsNone(form.cleaned_data["catalog_zone"])
+
+    def test_a_selection_holding_a_catalog_zone_disables_auto_create_ptr(self):
+        """A selection that includes a catalog zone disables `auto_create_ptr`, so a submitted value is ignored.
+
+        A catalog zone cannot enable automatic PTR creation, and one refusal would roll back the whole batch.
+        """
+        form = bulk_edit_form([self.zones[0], self.catalog_zone], auto_create_ptr=True)
+        self.assertTrue(form.fields["auto_create_ptr"].disabled)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertIsNone(form.cleaned_data["auto_create_ptr"])
+
+    def test_a_selection_without_a_catalog_zone_keeps_auto_create_ptr(self):
+        """A selection without a catalog zone keeps `auto_create_ptr` editable."""
+        form = bulk_edit_form(self.zones, auto_create_ptr=True)
+        self.assertFalse(form.fields["auto_create_ptr"].disabled)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.cleaned_data["auto_create_ptr"])
+
+    def test_a_selection_holding_a_catalog_zone_withdraws_set_null(self):
+        """A selection that includes a catalog zone cannot set the catalog field to null.
+
+        Set null on a disabled field would still be applied, so it is withdrawn with the field.
+        """
+        form = bulk_edit_form([self.zones[0], self.catalog_zone])
+        self.assertNotIn("catalog_zone", form.nullable_fields)
+        self.assertIn("catalog_zone", forms.DNSZoneBulkEditForm.Meta.nullable_fields)
 
 
 class DNSRegistrarFormTestCase(TestCase):

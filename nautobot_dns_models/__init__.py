@@ -2,6 +2,7 @@
 
 from importlib import metadata
 
+from django.conf import settings as django_settings
 from nautobot.apps import ConstanceConfigItem, NautobotAppConfig
 
 __version__ = metadata.version(__name__)
@@ -94,11 +95,16 @@ class NautobotDnsModelsConfig(NautobotAppConfig):
     }
 
     def ready(self):
-        """Connect the app's signal handlers."""
+        """Connect the app's signal handlers and name the app's OpenAPI choice enums."""
         super().ready()
         # Deferred for app-registry timing: `signals` imports `models`, which cannot load while this module is
         # imported during settings setup.
         from nautobot_dns_models import signals  # noqa: F401  pylint: disable=import-outside-toplevel,unused-import
+
+        # Quells drf_spectacular.W001 enum naming warning.
+        django_settings.SPECTACULAR_SETTINGS["ENUM_NAME_OVERRIDES"]["DNSZoneTypeChoices"] = (
+            "nautobot_dns_models.choices.DNSZoneTypeChoices"
+        )
 
 
 config = NautobotDnsModelsConfig  # pylint:disable=invalid-name

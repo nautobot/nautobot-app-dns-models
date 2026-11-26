@@ -1,13 +1,18 @@
 """Test DNSZone Filter."""
+# pylint: disable=too-many-lines
 
 from datetime import date
+from types import SimpleNamespace
 
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from nautobot.apps.testing import FilterTestCases, TestCase
 from nautobot.extras.models.statuses import Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from nautobot.tenancy.models import Tenant, TenantGroup
+from nautobot.users.models import ObjectPermission
 
+from nautobot_dns_models.choices import DNSZoneTypeChoices
 from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
@@ -38,6 +43,8 @@ from nautobot_dns_models.models import (
     SRVRecord,
     TXTRecord,
 )
+
+User = get_user_model()
 
 
 class DNSViewFilterTestCase(FilterTestCases.FilterTestCase):
@@ -300,6 +307,8 @@ class DNSRegistrationFilterTestCase(FilterTestCases.FilterTestCase):
 class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.TenancyFilterTestCaseMixin):
     """DNSZone Filter Test Case."""
 
+    # Ordered because `DNSZone` has no default ordering, and core's generic boolean filter test
+    # compares a result of more than one zone as an ordered list.
     queryset = DNSZone.objects.order_by("name")
     filterset = DNSZoneFilterSet
     tenancy_related_name = "dns_zones"
@@ -368,6 +377,21 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
         )
         cls.parent_zone = DNSZone.objects.create(name="example.com", filename="example.conf")
         cls.child_zone = DNSZone.objects.create(name="apps.example.com", filename="apps.conf")
+        # Named so it stays out of the "Test"/"zone" search assertions below.
+        cls.catalog_zone = DNSZone.objects.create(
+            name="Catalog One",
+            filename="catalog1.conf",
+            type=DNSZoneTypeChoices.TYPE_CATALOG,
+            tenant=cls.tenant2,
+            description="Catalog one",
+            soa_mname="ns1.catalog.example",
+            soa_rname="admin.catalog.example",
+        )
+        # Core's generic boolean filter tests need `is_catalog_member` and `has_members` to match
+        # some zones and not others.
+        cls.member_zone = DNSZone.objects.get(name="Test One")
+        cls.member_zone.catalog_zone = cls.catalog_zone
+        cls.member_zone.validated_save()
 
     def test_single_name(self):
         """Test using Q search with name of DNSZone."""
@@ -384,6 +408,26 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
         params = {"name": "wrong-name"}
         self.assertEqual(self.filterset(params, self.queryset).qs.count(), 0)
 
+    def test_zone_type(self):
+        """The type filter returns only zones of the given type.
+
+        `type` is not covered by `generic_filter_tests` because those require at least three
+        distinct values and only two zone types exist.
+        """
+        for zone_type in (DNSZoneTypeChoices.TYPE_CATALOG, DNSZoneTypeChoices.TYPE_PRIMARY):
+            with self.subTest(type=zone_type):
+                self.assertQuerySetEqualAndNotEmpty(
+                    self.filterset({"type": [zone_type]}, self.queryset).qs, self.queryset.filter(type=zone_type)
+                )
+
+    def test_catalog_zone(self):
+        """The catalog zone filter accepts the catalog zone's name or ID."""
+        for value in (self.catalog_zone.name, str(self.catalog_zone.pk)):
+            with self.subTest(value=value):
+                self.assertQuerySetEqual(
+                    self.filterset({"catalog_zone": [value]}, self.queryset).qs, [self.member_zone]
+                )
+
     def test_search(self):
         """Test filtering by Q search value."""
         self.assertEqual(self.filterset({"q": "Test One"}, self.queryset).qs.count(), 1)
@@ -393,7 +437,7 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
 
     def test_enabled_filter(self):
         """enabled filter should match only zones with the given enabled value."""
-        self.assertEqual(self.filterset({"enabled": "true"}, self.queryset).qs.count(), 4)
+        self.assertEqual(self.filterset({"enabled": "true"}, self.queryset).qs.count(), 5)
         self.assertEqual(self.filterset({"enabled": "false"}, self.queryset).qs.count(), 1)
 
     def test_hierarchy_filters(self):
@@ -403,6 +447,29 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
                 self.assertQuerySetEqual(self.filterset({"parent": [value]}, self.queryset).qs, [self.child_zone])
         self.assertQuerySetEqual(self.filterset({"has_parent": True}, self.queryset).qs, [self.child_zone])
         self.assertQuerySetEqual(self.filterset({"has_children": True}, self.queryset).qs, [self.parent_zone])
+
+    def test_can_change(self):
+        """The can_change filter splits the zones by whether the requesting user may change them."""
+        user = User.objects.create_user(username="zone-filter-user")
+        permission = ObjectPermission.objects.create(
+            name="change the catalog", actions=["change"], constraints={"pk": str(self.catalog_zone.pk)}
+        )
+        permission.object_types.set([ContentType.objects.get_for_model(DNSZone)])
+        permission.users.add(user)
+        request = SimpleNamespace(user=user)
+
+        self.assertQuerySetEqual(
+            self.filterset({"can_change": True}, self.queryset, request=request).qs, [self.catalog_zone]
+        )
+        self.assertQuerySetEqualAndNotEmpty(
+            self.filterset({"can_change": False}, self.queryset, request=request).qs,
+            self.queryset.exclude(pk=self.catalog_zone.pk),
+        )
+
+    def test_can_change_without_a_user(self):
+        """Without a requesting user, can_change matches no zone, and its negation every zone."""
+        self.assertFalse(self.filterset({"can_change": True}, self.queryset).qs.exists())
+        self.assertQuerySetEqualAndNotEmpty(self.filterset({"can_change": False}, self.queryset).qs, self.queryset)
 
 
 class NSRecordFilterTestCase(TestCase):

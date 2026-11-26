@@ -1,19 +1,30 @@
 """Models for Nautobot DNS Models."""
 # pylint: disable=too-many-lines
 
+import base64
 import hashlib
+import uuid
 
 from constance import config as constance_config
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, validate_email
 from django.db import models, transaction
+from django.db.models import ProtectedError, Q
 from django.db.models.functions import Lower
-from nautobot.apps.models import BaseModel, PrimaryModel, extras_features
+from nautobot.apps.models import BaseManager, BaseModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 from nautobot.extras.models import StatusField
 from nautobot.ipam.choices import IPAddressVersionChoices
 from netutils.ip import ipaddress_address
 
+from nautobot_dns_models.choices import DNSZoneTypeChoices
+from nautobot_dns_models.querysets import (
+    SYSTEM_MANAGED_DELETE_ERROR,
+    SYSTEM_MANAGED_WRITE_ERROR,
+    DNSRecordQuerySet,
+    DNSZoneQuerySet,
+)
+from nautobot_dns_models.system_writes import system_write, system_write_in_progress
 from nautobot_dns_models.utils import compute_zone_parents
 
 # Reverse-DNS roots per RFC 1035 §3.5 and RFC 3596 §2.5
@@ -25,6 +36,14 @@ RESERVED_ROOTS = {"in-addr.arpa", "ip6.arpa", "arpa"}
 # RFC 1982 §7 specifies SERIAL's uint32 range and arithmetic.
 UINT32_MAX = 2**32 - 1
 
+# Zone apex per RFC 1035 §5.1.
+APEX_RECORD_NAME = "@"
+
+# RFC 9432 §4 requires an NS RRset in a catalog zone so that it is a syntactically valid zone, and
+# recommends a single RR naming "invalid.". Stored without the trailing dot the RFC writes: a name
+# server is an absolute domain name here, and the dot is presentation syntax rather than data.
+CATALOG_APEX_NS_SERVER = "invalid"
+
 # RFC 1035 §3.3 defines a <character-string> as a length octet followed by up to 255 octets.
 TXT_CHARACTER_STRING_MAX_OCTETS = 255
 # RFC 1035 §3.3.14, §4.1.3: TXT RDATA, including each length octet, has a limit of 16-bit RDLENGTH.
@@ -32,6 +51,7 @@ TXT_RDATA_MAX_OCTETS = 2**16 - 1
 
 # RFC 1035 §2.3.3 and RFC 4343 §2: domain name comparisons are case-insensitive.
 DNS_ZONE_NAME_UNIQUE_ERROR_CODE = "dns_zone_name_not_unique"
+MEMBER_LABEL_UNIQUE_ERROR_CODE = "member_label_not_unique"
 
 
 def dns_wire_label_length(label):
@@ -183,6 +203,16 @@ def normalize_soa_rname(value):
     return f"{local_part}@{domain}"
 
 
+def catalog_member_label():
+    """Return a new opaque DNS label for a catalog zone member.
+
+    RFC 9432 §4.1 lets a producer pick any unique label and treats it as the member's identity
+    for consumer state. A fresh UUID encoded as unpadded lowercase base32 yields 26 DNS-safe
+    characters (a-z, 2-7), well inside the 63-octet label limit.
+    """
+    return base64.b32encode(uuid.uuid4().bytes).decode("ascii").rstrip("=").lower()
+
+
 def prior_checks_ptr_record_creation(record):
     """Check if there is a matching reverse zone for this A/AAAA record's PTR record before creating it.
 
@@ -227,6 +257,22 @@ def create_auto_ptr_record(record):
         return
 
     PTRRecord(name=relative_name, ptrdname=forward_fqdn, zone=reverse_zone).validated_save()
+
+
+def delete_member_ptr_records(member_ptr_records):
+    """Delete each record in `member_ptr_records`, keeping its primary key on the deleted instance.
+
+    The bulk edit job defers change logging and serializes each deleted instance only when the batch
+    ends. Django clears a deleted instance's primary key, and a tagged model without one cannot be
+    serialized, so the whole batch would fail.
+    """
+    # TODO: once the minimum Nautobot version is 3.2.10 or later, which includes the core fix
+    # (https://github.com/nautobot/nautobot/issues/9788), remove this function and have its
+    # callers delete the queryset directly.
+    for record in member_ptr_records:
+        pk = record.pk
+        record.delete()
+        record.pk = pk
 
 
 class DNSModel(PrimaryModel):
@@ -375,6 +421,12 @@ class DNSZone(DNSModel):
     """Model for DNS SOA Records. An SOA Record defines a DNS Zone."""
 
     name = models.CharField(max_length=200, help_text="FQDN of the Zone, w/ TLD. e.g example.com")
+    type = models.CharField(
+        max_length=50,
+        choices=DNSZoneTypeChoices,
+        default=DNSZoneTypeChoices.TYPE_PRIMARY,
+        help_text="Type of the zone. Cannot be changed after creation.",
+    )
     dns_view = ForeignKeyWithAutoRelatedName(
         DNSView,
         on_delete=models.PROTECT,
@@ -391,6 +443,23 @@ class DNSZone(DNSModel):
         editable=False,
         help_text=("Closest enclosing zone (ancestor) in the same DNS View. Set automatically (RFC 9499)."),
         verbose_name="Parent Zone",
+    )
+    catalog_zone = models.ForeignKey(
+        to="self",
+        on_delete=models.PROTECT,
+        related_name="members",
+        blank=True,
+        null=True,
+        limit_choices_to={"type": DNSZoneTypeChoices.TYPE_CATALOG},
+        help_text="The catalog zone this zone is a member of.",
+        verbose_name="Catalog Zone",
+    )
+    member_label = models.CharField(
+        max_length=63,
+        blank=True,
+        default="",
+        help_text="DNS label identifying this zone within its catalog zone.",
+        verbose_name="Member Label",
     )
     ttl = models.PositiveBigIntegerField(
         validators=[MaxValueValidator(UINT32_MAX)],
@@ -455,6 +524,8 @@ class DNSZone(DNSModel):
         verbose_name="Auto-create PTR Records",
     )
 
+    objects = BaseManager.from_queryset(DNSZoneQuerySet)()
+
     # The case-insensitive UniqueConstraint has no `fields`, so Nautobot cannot derive the natural key from it.
     natural_key_field_names = ["name", "dns_view"]
 
@@ -469,6 +540,34 @@ class DNSZone(DNSModel):
                 violation_error_code=DNS_ZONE_NAME_UNIQUE_ERROR_CODE,
                 violation_error_message="A DNS zone with this name (ignoring letter case) already exists in this view.",
             ),
+            models.CheckConstraint(
+                condition=~Q(type=DNSZoneTypeChoices.TYPE_CATALOG) | Q(auto_create_ptr=False),
+                name="nautobot_dns_models_dnszone_catalog_zone_no_auto_create_ptr",
+                violation_error_message="Catalog zones cannot enable automatic PTR creation.",
+                violation_error_code="catalog_zone_auto_create_ptr",
+            ),
+            # RFC 9432 says nothing about nested catalog zones, and most consumers do not support them.
+            models.CheckConstraint(
+                condition=Q(catalog_zone__isnull=True) | ~Q(type=DNSZoneTypeChoices.TYPE_CATALOG),
+                name="nautobot_dns_models_dnszone_catalog_zone_not_nested",
+                violation_error_message="A catalog zone cannot be a member of another catalog zone.",
+            ),
+            models.CheckConstraint(
+                condition=(Q(catalog_zone__isnull=True) & Q(member_label=""))
+                | (Q(catalog_zone__isnull=False) & ~Q(member_label="")),
+                name="nautobot_dns_models_dnszone_member_label_only_in_a_catalog",
+                violation_error_message="A zone has a member label exactly when it is in a catalog zone.",
+            ),
+            # RFC 4343 §3 compares labels without regard to case, so labels differing only in case would
+            # publish two PTR records at one owner name, where RFC 9432 §4.1 allows only one. Zones outside
+            # a catalog all have a blank label, but a NULL `catalog_zone` keeps them apart.
+            models.UniqueConstraint(
+                "catalog_zone",
+                Lower("member_label"),
+                name="nautobot_dns_models_dnszone_member_label_ci_unique",
+                violation_error_code=MEMBER_LABEL_UNIQUE_ERROR_CODE,
+                violation_error_message="This label is already used by another member of the catalog zone.",
+            ),
         ]
         verbose_name = "DNS Zone"
         verbose_name_plural = "DNS Zones"
@@ -478,18 +577,22 @@ class DNSZone(DNSModel):
         return f"{self.name} ({self.dns_view})"
 
     def validate_constraints(self, exclude=None):
-        """Report a zone name that collides with another zone in the same view as an error on `name`."""
+        """Report a name or member label already in use as an error on `name` or `member_label`."""
         try:
             super().validate_constraints(exclude=exclude)
         except ValidationError as error:
+            fields_by_code = {
+                DNS_ZONE_NAME_UNIQUE_ERROR_CODE: "name",
+                MEMBER_LABEL_UNIQUE_ERROR_CODE: "member_label",
+            }
             errors = error.update_error_dict({})
             for non_field_error in errors.pop(NON_FIELD_ERRORS, []):
-                field = "name" if non_field_error.code == DNS_ZONE_NAME_UNIQUE_ERROR_CODE else NON_FIELD_ERRORS
+                field = fields_by_code.get(non_field_error.code, NON_FIELD_ERRORS)
                 errors.setdefault(field, []).append(non_field_error)
             raise ValidationError(errors) from error
 
     def clean(self):
-        """Normalize plain DNS-style RNAME mailboxes to email form."""
+        """Normalize the SOA RNAME, keep type immutable, bar catalog PTR, and validate catalog membership."""
         super().clean()
 
         invalid_rname_message = (
@@ -507,32 +610,84 @@ class DNSZone(DNSModel):
                 raise ValidationError({"soa_rname": invalid_rname_message})
             self._validate_dns_label(normalized_soa_rname, field="soa_rname")
 
-        # Keep the in-memory instance canonical for callers of clean() or full_clean()
-        # that do not immediately save it.
         self.soa_rname = normalized_soa_rname
 
+        stored_zone = self._stored_zone()
+        if stored_zone is not None:
+            self._validate_type_unchanged(stored_zone.type)
+
+        if self.is_catalog_zone and self.auto_create_ptr:
+            raise ValidationError({"auto_create_ptr": "Catalog zones cannot enable automatic PTR creation."})
+
+        # Before the constraints are validated, which hold the label to the catalog.
+        self._enforce_membership_rules(stored_zone)
+
+    def delete(self, *args, **kwargs):
+        """Withdraw the member PTR record and clear system-managed records, then delete the zone."""
+        with transaction.atomic():
+            # Nothing protects the records in the purge, but if the zone delete fails (e.g. due to
+            # PROTECT from a member zone), the records are restored.
+            DNSZone.objects.filter(pk=self.pk).prepare_for_delete()
+            return super().delete(*args, **kwargs)
+
     def save(self, *args, **kwargs):
-        """Normalize the RNAME, save, and recompute the parent of every zone in this zone's DNS View.
+        """Normalize the RNAME, write the records the zone's type and catalog membership require, and set parents.
+
+        Adding a zone to a catalog, removing it, moving it to another catalog, and renaming a member
+        publish the member PTR under a new label and withdraw the old one, which a consumer sees as a
+        removal and an addition (RFC 9432 §5.4). If those records cannot be written, the zone is not
+        saved either.
+
+        The name, view and catalog left out of `update_fields` take their stored values, so that the member
+        label and PTR record follow what is stored.
 
         A new, renamed or moved zone can change the parent of other zones, so the whole view is recomputed. If the
         zone moved to another view, its former view is recomputed too. A save that keeps the name and DNS View
         changes no parent, so it skips the recompute and keeps the stored parent.
         """
         self.soa_rname = normalize_soa_rname(self.soa_rname)
-        former = DNSZone.objects.filter(pk=self.pk).values_list("name", "dns_view_id").first()
-
-        if former == (self.name, self.dns_view_id):
-            self.refresh_from_db(fields=["parent"])
-            super().save(*args, **kwargs)
-            return
+        update_fields = kwargs.get("update_fields")
 
         with transaction.atomic():
-            super().save(*args, **kwargs)
-            rebuild_zone_hierarchy(dns_view=self.dns_view_id)
-            if former is not None and former[1] != self.dns_view_id:
-                rebuild_zone_hierarchy(dns_view=former[1])
+            stored_zone = self._stored_zone(lock=True)
+            if stored_zone is not None:
+                self._validate_type_unchanged(stored_zone.type)
+                if update_fields is not None:
+                    self._keep_unwritten_fields(stored_zone, update_fields)
 
-        self.refresh_from_db(fields=["parent"])
+            self._enforce_membership_rules(stored_zone, lock=True)
+            if update_fields is not None and stored_zone is not None and self.member_label != stored_zone.member_label:
+                kwargs["update_fields"] = {*update_fields, "member_label"}
+
+            placement_changed = stored_zone is None or (stored_zone.name, stored_zone.dns_view_id) != (
+                self.name,
+                self.dns_view_id,
+            )
+            if not placement_changed:
+                self.refresh_from_db(fields=["parent"])
+
+            super().save(*args, **kwargs)
+            self._reconcile_required_catalog_records()
+            self._sync_member_ptr_record(stored_zone)
+
+            if placement_changed:
+                rebuild_zone_hierarchy(dns_view=self.dns_view_id)
+                if stored_zone is not None and stored_zone.dns_view_id != self.dns_view_id:
+                    rebuild_zone_hierarchy(dns_view=stored_zone.dns_view_id)
+
+        if placement_changed:
+            self.refresh_from_db(fields=["parent"])
+
+    @property
+    def ptr_record_name(self):
+        """Return the owner name this zone is published at in its catalog zone, or None outside a catalog."""
+        # Relative to the catalog apex (RFC 9432 §4.1).
+        return f"{self.member_label}.zones" if self.catalog_zone_id else None
+
+    @property
+    def is_catalog_zone(self):
+        """Return whether this zone is an RFC 9432 catalog zone."""
+        return self.type == DNSZoneTypeChoices.TYPE_CATALOG
 
     @classmethod
     def find_reverse_zone_for_ptrdname(cls, ptrdname, dns_view=None):
@@ -544,13 +699,193 @@ class DNSZone(DNSModel):
             if zone_name in RESERVED_ROOTS:
                 break
 
-            zones = cls.objects.filter(name=zone_name)
+            zones = cls.objects.filter(name=zone_name).exclude(type=DNSZoneTypeChoices.TYPE_CATALOG)
             if dns_view is not None:
                 zones = zones.filter(dns_view=dns_view)
             zone = zones.first()
             if zone:
                 return zone
         return None
+
+    def withdraw_member_ptr_record(self):
+        """Withdraw the PTR record naming this member zone in its catalog zone."""
+        with system_write():
+            delete_member_ptr_records(PTRRecord.objects.filter(name=self.ptr_record_name, zone_id=self.catalog_zone_id))
+
+    def _stored_zone(self, *, lock=False):
+        """Return this zone as stored, or None for a new zone.
+
+        Keyword Args:
+            lock (bool): Hold the row until the transaction ends. Defaults to False.
+        """
+        if not self.present_in_database:
+            return None
+
+        zones = DNSZone.objects.filter(pk=self.pk)
+        if lock:
+            # Locked so that concurrent saves touching this row wait for each other and re-read what the
+            # first committed. It closes two races:
+            # - A catalog zone and its members must share a view. A save moving a catalog zone to another
+            #   view checks that it has no members, and a save adding a member locks the catalog's row to
+            #   read its view. Without this lock, the member's save could pass its check before the
+            #   catalog's save looks for members, and the new member would be left in the old view.
+            # - Two saves of the same member could both read its stored catalog and label, and each
+            #   publish its own PTR record, leaving the first one's behind: in another catalog, or under
+            #   a name or label the zone no longer has.
+            zones = zones.select_for_update()
+
+        return zones.first()
+
+    def _validate_type_unchanged(self, stored_type):
+        """Refuse a type that differs from the one already stored."""
+        if stored_type != self.type:
+            raise ValidationError({"type": "Zone type cannot be changed after creation."})
+
+    def _keep_unwritten_fields(self, stored_zone, update_fields):
+        """Reset the name, view and catalog to their stored values when `update_fields` leaves them out.
+
+        Django doesn't write a field left out of `update_fields`, but the rest of `save()` reads these three
+        from the instance to assign the member label, check the membership and publish the member PTR record.
+        Without the reset, a save like this:
+
+            # zone.name is "zone.example"
+
+            zone.name = "renamed.example"
+            zone.save(update_fields=["description"])
+
+        ...would keep the stored name but give the zone a new label and a PTR record for "renamed.example".
+        Likewise, a catalog change left out of `update_fields` would move the zone's PTR record to the new
+        catalog while the zone stays a member of the old one.
+        """
+        for attribute_name, names in (
+            ("name", {"name"}),
+            ("dns_view_id", {"dns_view", "dns_view_id"}),
+            ("catalog_zone_id", {"catalog_zone", "catalog_zone_id"}),
+        ):
+            if names.isdisjoint(update_fields):
+                setattr(self, attribute_name, getattr(stored_zone, attribute_name))
+
+    def _enforce_membership_rules(self, stored_zone, *, lock=False):
+        """Assign the member label, then refuse a label or catalog membership this zone cannot have.
+
+        `save()` runs this as well as `clean()`, since code using the ORM can save without cleaning, and
+        the member PTR record `save()` publishes must match what is stored.
+
+        Args:
+            stored_zone (DNSZone): This zone as stored, or None for a new zone.
+
+        Keyword Args:
+            lock (bool): Lock the catalog zone's row while reading it. Defaults to False.
+        """
+        self._assign_member_label(stored_zone)
+        self._validate_member_label()
+        self._validate_membership(stored_zone, lock=lock)
+
+    def _assign_member_label(self, stored_zone):
+        """Set the member label this save requires, refusing a supplied label it cannot keep."""
+        stored_label = stored_zone.member_label if stored_zone else ""
+        if not self.catalog_zone_id:
+            if self.member_label not in ("", stored_label):
+                raise ValidationError({"member_label": "Only a zone in a catalog zone can have a member label."})
+            self.member_label = ""
+            return
+
+        catalog_changed = stored_zone is None or stored_zone.catalog_zone_id != self.catalog_zone_id
+        name_changed = stored_zone is not None and stored_zone.name != self.name
+        # Consumers identify the member by its label (RFC 9432 §4.1), so joining, moving or renaming
+        # gives it a new one unless one is supplied. A supplied label is kept, so that `save()` keeps
+        # the label an earlier `clean()` generated, and so that an imported catalog keeps its labels.
+        # A new label on an unchanged membership resets the member's consumer state (§5.6).
+        if catalog_changed or name_changed:
+            if not self.member_label or self.member_label == stored_label:
+                self.member_label = catalog_member_label()
+        elif not self.member_label:
+            self.member_label = catalog_member_label()
+
+    def _validate_member_label(self):
+        """Require the label to be exactly one DNS label, since it names a single node in the catalog."""
+        if "." in self.member_label:
+            raise ValidationError({"member_label": "The member label must be a single DNS label, without dots."})
+
+        if dns_wire_label_length(self.member_label) > 63:
+            raise ValidationError(
+                {"member_label": "The member label exceeds the maximum length of 63 bytes (octets) in wire format."}
+            )
+
+    def _validate_membership(self, stored_zone, *, lock=False):
+        """Refuse a catalog membership RFC 9432 or this app cannot represent.
+
+        Args:
+            stored_zone (DNSZone): This zone as stored, or None for a new zone.
+
+        Keyword Args:
+            lock (bool): Lock the catalog zone's row while reading its type and view. Defaults to False.
+        """
+        stored_catalog_zone_id = stored_zone.catalog_zone_id if stored_zone else None
+        moving = stored_zone is not None and stored_zone.dns_view_id != self.dns_view_id
+
+        # Catalog Zone checks
+        if self.is_catalog_zone:
+            if self.catalog_zone_id:
+                raise ValidationError({"catalog_zone": "A catalog zone cannot be a member of another catalog zone."})
+            # Queried, not read from `members`, which answers from any prefetch.
+            if moving and DNSZone.objects.filter(catalog_zone_id=self.pk).exists():
+                raise ValidationError({"dns_view": "A catalog zone with members cannot be moved to another view."})
+            return
+
+        # Member Zone checks
+        if self.catalog_zone_id and (self.catalog_zone_id != stored_catalog_zone_id or moving):
+            catalogs = DNSZone.objects.filter(pk=self.catalog_zone_id)
+            if lock:
+                catalogs = catalogs.select_for_update()
+            catalog = catalogs.values("type", "dns_view_id").first()
+
+            if catalog is None:
+                raise ValidationError({"catalog_zone": "The catalog zone no longer exists."})
+            if catalog["type"] != DNSZoneTypeChoices.TYPE_CATALOG:
+                raise ValidationError({"catalog_zone": "Zones can only be members of a catalog zone."})
+            if catalog["dns_view_id"] != self.dns_view_id:
+                raise ValidationError({"catalog_zone": "The catalog zone must be in the same view as this zone."})
+
+    def _reconcile_required_catalog_records(self):
+        """Create this catalog zone's apex NS and `version` TXT records, if missing, as RFC 9432 requires.
+
+        Idempotent, so saving the zone again adds no second copy of either record.
+        """
+        if not self.is_catalog_zone:
+            return
+
+        with system_write():
+            self._reconcile_apex_ns_record()
+            self._reconcile_version_record()
+
+    def _reconcile_apex_ns_record(self):
+        """Create the single `invalid.` apex NS RR RFC 9432 §4 recommends, if the apex has no NS records."""
+        if not NSRecord.objects.filter(name=APEX_RECORD_NAME, zone=self).exists():
+            NSRecord(name=APEX_RECORD_NAME, server=CATALOG_APEX_NS_SERVER, zone=self).validated_save()
+
+    def _reconcile_version_record(self):
+        """Create the schema version TXT RFC 9432 §4.2.1 requires, if the zone has none."""
+        if not TXTRecord.objects.filter(name="version", zone=self).exists():
+            # "2" is the only version the RFC defines.
+            TXTRecord(name="version", text="2", zone=self).validated_save()
+
+    def _sync_member_ptr_record(self, stored_zone):
+        """Withdraw the PTR this zone was published under if its catalog or label changed, then publish the current one."""
+        if stored_zone is not None and stored_zone.catalog_zone_id:
+            if (stored_zone.catalog_zone_id, stored_zone.member_label) != (self.catalog_zone_id, self.member_label):
+                stored_zone.withdraw_member_ptr_record()
+
+        if self.catalog_zone_id:
+            self._publish_member_ptr_record()
+
+    def _publish_member_ptr_record(self):
+        """Publish the PTR record naming this member zone in its catalog zone, if not already published."""
+        owner_name = self.ptr_record_name
+
+        with system_write():
+            if not PTRRecord.objects.filter(name=owner_name, zone_id=self.catalog_zone_id).exists():
+                PTRRecord(name=owner_name, ptrdname=self.name, zone_id=self.catalog_zone_id).validated_save()
 
 
 def rebuild_zone_hierarchy(dns_view=None):
@@ -630,6 +965,13 @@ class DNSRegistration(PrimaryModel):
         """Stringify instance."""
         return f"{self.dns_zone} @ {self.dns_registrar}"
 
+    def clean(self):
+        """Ensure registration is not against a catalog zone."""
+        super().clean()
+
+        if self.dns_zone_id and self.dns_zone.is_catalog_zone:
+            raise ValidationError({"dns_zone": "Catalog zones cannot be registered."})
+
 
 @extras_features("graphql")
 class DNSViewPrefixAssignment(BaseModel):
@@ -668,6 +1010,8 @@ class DNSRecord(DNSModel):
     description = models.TextField(help_text="Description of the Record.", blank=True)
     comment = models.CharField(max_length=200, help_text="Comment for the Record.", blank=True)
 
+    objects = BaseManager.from_queryset(DNSRecordQuerySet)()
+
     def clean(self):
         """
         Extend base validation to check total DNS name wire format length per RFC 1035 §3.1 using punycode for wire-format length.
@@ -691,6 +1035,18 @@ class DNSRecord(DNSModel):
 
         self._validate_total_wire_length_if_enabled()
         self._enforce_cname_exclusivity_if_enabled()
+        self._refuse_catalog_zone_write()
+
+    def delete(self, *args, **kwargs):
+        """Refuse to delete a system-managed record."""
+        if not system_write_in_progress() and self.zone.is_catalog_zone:
+            raise ProtectedError(SYSTEM_MANAGED_DELETE_ERROR, [self])
+        return super().delete(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        """Refuse to write a system-managed record, for callers that bypass `clean()`."""
+        self._refuse_catalog_zone_write()
+        super().save(*args, **kwargs)
 
     def _validate_total_wire_length_if_enabled(self) -> None:
         """Validate full DNS name (record + zone) total wire-format length if wire-format validation is enabled."""
@@ -698,7 +1054,8 @@ class DNSRecord(DNSModel):
         if validation_level != "wire-format":
             return
 
-        record_label_list = [] if self.name == "" else self.name.split(".")
+        # An apex record contributes no labels of its own; the name is the zone's.
+        record_label_list = [] if self.name in ("", APEX_RECORD_NAME) else self.name.split(".")
         zone_label_list = self.zone.name.split(".")
 
         wire_length = 0
@@ -727,6 +1084,16 @@ class DNSRecord(DNSModel):
         else:
             if CNAMERecord.objects.filter(name=self.name, zone_id=self.zone_id).exists():
                 raise ValidationError({"name": "Record cannot co-exist with a CNAME of the same name in this zone."})
+
+    def _refuse_catalog_zone_write(self) -> None:
+        """Refuse a user write of a record in a catalog zone, or of one moving into or out of a catalog zone."""
+        if system_write_in_progress() or self.zone_id is None:
+            return
+
+        if self.zone.is_catalog_zone:  # pylint: disable=no-member
+            raise ValidationError({"zone": SYSTEM_MANAGED_WRITE_ERROR})
+        if self.present_in_database:
+            type(self).objects.filter(pk=self.pk).refuse_catalog_zone_writes()
 
     class Meta:
         """Meta attributes for DnsRecord."""

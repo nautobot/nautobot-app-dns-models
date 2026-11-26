@@ -1,18 +1,26 @@
 """Test DNSZone."""
 # pylint: disable=too-many-lines
 
+import itertools
 from io import StringIO
 
 from constance.test import override_config
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
+from django.db.models import ProtectedError, QuerySet
+from django.test.utils import CaptureQueriesContext
+from nautobot.apps.change_logging import web_request_context
 from nautobot.apps.testing import ModelTestCases, TestCase
-from nautobot.extras.models import Status
+from nautobot.extras.models import ObjectChange, Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 from netutils.ip import ipaddress_address
 
+from nautobot_dns_models.choices import DNSZoneTypeChoices
 from nautobot_dns_models.models import (
+    APEX_RECORD_NAME,
+    CATALOG_APEX_NS_SERVER,
     TXT_CHARACTER_STRING_MAX_OCTETS,
     TXT_RDATA_MAX_OCTETS,
     UINT32_MAX,
@@ -20,6 +28,7 @@ from nautobot_dns_models.models import (
     ARecord,
     CNAMERecord,
     DNSRegistrar,
+    DNSRegistration,
     DNSView,
     DNSViewPrefixAssignment,
     DNSZone,
@@ -28,11 +37,15 @@ from nautobot_dns_models.models import (
     PTRRecord,
     SRVRecord,
     TXTRecord,
+    catalog_member_label,
     dns_wire_label_length,
     rebuild_zone_hierarchy,
     split_txt_character_strings,
     txt_wire_rdata_length,
 )
+from nautobot_dns_models.querysets import dns_record_models
+from nautobot_dns_models.system_writes import system_write
+from nautobot_dns_models.tests.fixtures import create_zone
 
 
 # Helper for generating unicode labels of a specific IDNA-encoded length
@@ -155,8 +168,56 @@ class TestDNSRegistrar(ModelTestCases.BaseModelTestCase):
         self.assertEqual(registrar.get_absolute_url(), f"/plugins/dns/dns-registrars/{registrar.id}/")
 
 
-class TestDnsZone(ModelTestCases.BaseModelTestCase):
-    """Test DnsZone model."""
+class TestDNSRegistration(ModelTestCases.BaseModelTestCase):
+    """Test DNSRegistration model."""
+
+    model = DNSRegistration
+
+    @classmethod
+    def setUpTestData(cls):
+        """Create test data for DNSRegistration Model."""
+        super().setUpTestData()
+        for i in range(3):
+            DNSZone.objects.create(name=f"Test Zone {i}", type=DNSZoneTypeChoices.TYPE_PRIMARY)
+
+        cls.registrar = DNSRegistrar.objects.create(name="Test Registrar")
+        status = Status.objects.get(name="Active")
+        status.content_types.add(ContentType.objects.get_for_model(DNSRegistration))
+        cls.status = status
+
+        DNSRegistration.objects.create(
+            dns_registrar=cls.registrar,
+            status=cls.status,
+            dns_zone=DNSZone.objects.get(name="Test Zone 0"),
+        )
+
+    def test_registration_accepts_primary_zone(self):
+        """Registration accepts a primary zone."""
+        primary_zone = DNSZone.objects.create(name="Test Primary", type=DNSZoneTypeChoices.TYPE_PRIMARY)
+        registration = DNSRegistration(
+            dns_registrar=self.registrar,
+            status=self.status,
+            dns_zone=primary_zone,
+        )
+        registration.validated_save()
+
+        self.assertEqual(registration.dns_zone, primary_zone)
+
+    def test_registration_rejects_catalog_zone(self):
+        """Registration rejects a catalog zone."""
+        catalog_zone = DNSZone.objects.create(name="Test Catalog", type=DNSZoneTypeChoices.TYPE_CATALOG)
+        with self.assertRaises(ValidationError) as context:
+            DNSRegistration(
+                dns_registrar=self.registrar,
+                status=self.status,
+                dns_zone=catalog_zone,
+            ).validated_save()
+
+        self.assertEqual(context.exception.message_dict["dns_zone"], ["Catalog zones cannot be registered."])
+
+
+class TestDNSZone(ModelTestCases.BaseModelTestCase):
+    """Test DNSZone model."""
 
     model = DNSZone
 
@@ -169,6 +230,18 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
         DNSZone.objects.create(name="Test Two")
         DNSZone.objects.create(name="Test Three")
 
+    @staticmethod
+    def _make_zone(name, **kwargs):
+        """Build an unsaved DNSZone populated with every field full_clean() requires."""
+        defaults = {
+            "name": name,
+            "filename": f"{name}.zone",
+            "soa_mname": f"ns1.{name}.",
+            "soa_rname": f"admin@{name}",
+        }
+        defaults.update(kwargs)
+        return DNSZone(**defaults)
+
     def test_create_dnszone_only_required(self):
         """Create with only required fields, and validate null description and __str__."""
         dnszone = DNSZone.objects.create(name="Development")
@@ -178,7 +251,7 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
         self.assertEqual(str(dnszone), "Development (Default)")
 
     def test_create_dnszone_all_fields_success(self):
-        """Create DnsZoneModel with all fields."""
+        """Create DNSZone with all fields."""
         dnszone = DNSZone.objects.create(
             name="Development",
             description="Development Test",
@@ -253,6 +326,118 @@ class TestDnsZone(ModelTestCases.BaseModelTestCase):
     def test_natural_key_field_lookups(self):
         """The natural key is unchanged by the switch to a case-insensitive constraint."""
         self.assertEqual(DNSZone.natural_key_field_lookups, ["name", "dns_view__name"])
+
+    def test_default_zone_type_is_primary(self):
+        """A zone created without an explicit type is a primary zone."""
+        zone = DNSZone.objects.create(name="default-type.example")
+        self.assertEqual(zone.type, DNSZoneTypeChoices.TYPE_PRIMARY)
+
+    def test_rejects_zone_type_change(self):
+        """Changing `type` on an existing zone is rejected."""
+        zone = self._make_zone("immutable.example")
+        zone.validated_save()
+        zone.type = DNSZoneTypeChoices.TYPE_CATALOG
+
+        with self.assertRaises(ValidationError) as context:
+            zone.full_clean()
+
+        self.assertEqual(
+            context.exception.message_dict["type"][0],
+            "Zone type cannot be changed after creation.",
+        )
+
+    def test_rejects_zone_type_change_on_bare_save(self):
+        """A type change is refused on a bare save, which skips validation."""
+        zone = self._make_zone("immutable-save.example")
+        zone.validated_save()
+        zone.type = DNSZoneTypeChoices.TYPE_CATALOG
+
+        with self.assertRaises(ValidationError) as context:
+            zone.save()
+
+        self.assertEqual(
+            context.exception.message_dict["type"][0],
+            "Zone type cannot be changed after creation.",
+        )
+
+    def test_rejects_zone_type_change_through_a_queryset(self):
+        """`update()` and `bulk_update()` refuse to change `type`, and store nothing."""
+        zone = self._make_zone("immutable-queryset.example")
+        zone.validated_save()
+        zone.type = DNSZoneTypeChoices.TYPE_CATALOG
+
+        test_cases = [
+            ("update", lambda: DNSZone.objects.filter(pk=zone.pk).update(type=DNSZoneTypeChoices.TYPE_CATALOG)),
+            ("bulk_update", lambda: DNSZone.objects.bulk_update([zone], ["type"])),
+        ]
+
+        for method, change_fn in test_cases:
+            with self.subTest(method=method):
+                with self.assertRaises(ValidationError) as context:
+                    change_fn()
+
+                self.assertEqual(
+                    context.exception.message_dict["type"][0],
+                    "Zone type cannot be changed after creation.",
+                )
+                self.assertEqual(DNSZone.objects.get(pk=zone.pk).type, DNSZoneTypeChoices.TYPE_PRIMARY)
+
+    def test_rejected_zone_type_change_writes_no_catalog_records(self):
+        """A refused type change writes none of a catalog zone's records."""
+        zone = self._make_zone("immutable-records.example")
+        zone.validated_save()
+        zone.type = DNSZoneTypeChoices.TYPE_CATALOG
+        with self.assertRaises(ValidationError):
+            zone.save(update_fields={"description"})
+
+        zone.refresh_from_db()
+        self.assertEqual(zone.type, DNSZoneTypeChoices.TYPE_PRIMARY)
+        self.assertFalse(NSRecord.objects.filter(zone=zone).exists())
+        self.assertFalse(TXTRecord.objects.filter(zone=zone).exists())
+
+    def test_primary_zone_allows_auto_create_ptr(self):
+        """A primary zone accepts `auto_create_ptr`."""
+        zone = self._make_zone("ptr-ok.example", auto_create_ptr=True)
+        zone.validated_save()
+        self.assertTrue(zone.auto_create_ptr)
+
+    def test_catalog_zone_rejects_auto_create_ptr(self):
+        """Validation rejects `auto_create_ptr` on a catalog zone rather than ignoring it."""
+        zone = self._make_zone("catalog-ptr.example", type=DNSZoneTypeChoices.TYPE_CATALOG, auto_create_ptr=True)
+        with self.assertRaises(ValidationError) as context:
+            zone.full_clean()
+        self.assertEqual(
+            context.exception.message_dict["auto_create_ptr"][0],
+            "Catalog zones cannot enable automatic PTR creation.",
+        )
+
+    def test_catalog_zone_auto_create_ptr_blocked_at_database(self):
+        """The database refuses `auto_create_ptr` on a catalog zone when validation is skipped."""
+        zone = DNSZone.objects.create(name="catalog-db.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
+        with self.assertRaises(IntegrityError):
+            DNSZone.objects.filter(pk=zone.pk).update(auto_create_ptr=True)
+
+    def test_is_a_single_dns_safe_label(self):
+        """A generated member label is 26 characters from [a-z2-7], a single DNS-safe label.
+
+        It is the unpadded lowercase base32 of a UUID, inside RFC 1035 §3.1.
+        """
+        label = catalog_member_label()
+        self.assertEqual(len(label), 26)
+        self.assertRegex(label, r"^[a-z2-7]+$")
+
+    def test_primary_zone_with_records_is_protected(self):
+        """Deleting a primary zone that has records is refused."""
+        zone = create_zone("primary.example")
+        record = NSRecord.objects.create(name="ns1", server="ns1.primary.example.", zone=zone)
+        for path, delete_fn in (
+            ("instance", zone.delete),
+            ("queryset", DNSZone.objects.filter(pk=zone.pk).delete),
+        ):
+            with self.subTest(path=path):
+                with self.assertRaises(ProtectedError):
+                    delete_fn()
+                self.assertTrue(NSRecord.objects.filter(pk=record.pk).exists())
 
 
 class NSRecordTestCase(TestCase):
@@ -1051,6 +1236,18 @@ class AutoCreatePTRRecordTestCase(TestCase):
         self.assertFalse(ARecord.objects.filter(name="host3").exists())
         self.assertFalse(PTRRecord.objects.exists())
 
+    def test_auto_ptr_does_not_use_catalog_reverse_zone(self):
+        """A reverse-named catalog zone is not eligible to receive an automatically created PTR."""
+        catalog_zone = DNSZone.objects.create(
+            name="1.168.192.in-addr.arpa",
+            dns_view=self.view,
+            type=DNSZoneTypeChoices.TYPE_CATALOG,
+        )
+        with self.assertRaises(ValidationError):
+            ARecord.objects.create(name="host4", ip_address=self.ipv4_unmatched, zone=self.fwd_on)
+        self.assertFalse(ARecord.objects.filter(name="host4").exists())
+        self.assertFalse(PTRRecord.objects.filter(zone=catalog_zone).exists())
+
     def test_auto_ptr_idempotent_when_ptr_already_exists(self):
         """If a PTR with the same owner name already exists in the reverse zone, no duplicate is created."""
         existing = PTRRecord.objects.create(name="1", ptrdname="host1.auto.example.com", zone=self.reverse_zone)
@@ -1083,6 +1280,18 @@ class TestDNSZoneFindForPtrdname(TestCase):
         self.assertEqual(DNSZone.find_reverse_zone_for_ptrdname("1.0.0.10.in-addr.arpa"), specific)
 
     def test_falls_back_to_less_specific_match(self):
+        broad = DNSZone.objects.create(name="10.in-addr.arpa", dns_view=self.view_a)
+        self.assertEqual(DNSZone.find_reverse_zone_for_ptrdname("1.0.0.10.in-addr.arpa"), broad)
+
+    def test_does_not_use_catalog_zone(self):
+        """The reverse zone lookup skips a catalog zone, falling back to a broader zone if there is one."""
+        DNSZone.objects.create(
+            name="0.0.10.in-addr.arpa",
+            dns_view=self.view_a,
+            type=DNSZoneTypeChoices.TYPE_CATALOG,
+        )
+        self.assertIsNone(DNSZone.find_reverse_zone_for_ptrdname("1.0.0.10.in-addr.arpa"))
+
         broad = DNSZone.objects.create(name="10.in-addr.arpa", dns_view=self.view_a)
         self.assertEqual(DNSZone.find_reverse_zone_for_ptrdname("1.0.0.10.in-addr.arpa"), broad)
 
@@ -1435,3 +1644,1097 @@ class DNSModelEnabledFieldTest(TestCase):
 
         record.refresh_from_db()
         self.assertTrue(record.enabled)
+
+
+class DNSZoneCatalogZoneTest(TestCase):
+    """Tests for the records a catalog zone carries.
+
+    A catalog zone holds the apex NS RRset RFC 9432 §4 requires and the version TXT record §4.2.1
+    requires, both written by the app, and accepts no user-managed records.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.catalog_zone = create_zone("catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
+        cls.primary_zone = create_zone("primary.example")
+
+    def _version_record(self):
+        """Return the version TXT the zone created for itself, the one record a user may not touch."""
+        return TXTRecord.objects.get(name="version", zone=self.catalog_zone)
+
+    @staticmethod
+    def _unsaved_records(zone):
+        """Return one unsaved instance of every record type, all owned by `zone`.
+
+        Since the A/AAAA records do not have IPs, they are not suitable for saving.
+        """
+        return [
+            AAAARecord(name="v6", zone=zone),
+            ARecord(name="v4", zone=zone),
+            CNAMERecord(name="alias", alias="target.example.", zone=zone),
+            MXRecord(name="mail", mail_server="mx1.example.", zone=zone),
+            NSRecord(name="sub", server="ns1.example.", zone=zone),
+            PTRRecord(name="ptr", ptrdname="host.example.", zone=zone),
+            SRVRecord(name="_sip._tcp", target="sip.example.", port=5060, zone=zone),
+            TXTRecord(name="txt", text="value", zone=zone),
+        ]
+
+    def test_creating_catalog_zone_writes_the_apex_ns_record(self):
+        """A new catalog zone gets the apex NS record `$CATZ IN NS invalid.`, whose TTL follows the zone's.
+
+        It is the RRset that makes the catalog a valid zone (RFC 9432 §4).
+        """
+        record = NSRecord.objects.get(zone=self.catalog_zone)
+        self.assertEqual(record.name, APEX_RECORD_NAME)
+        self.assertEqual(record.server, CATALOG_APEX_NS_SERVER)
+        # A TTL copied onto the record would also match the zone's at first; changing the zone's
+        # TTL shows the record follows it.
+        self.catalog_zone.ttl = 0
+        self.catalog_zone.save()
+        self.assertEqual(NSRecord.objects.get(zone=self.catalog_zone).ttl, 0)
+
+    def test_resaving_catalog_zone_does_not_duplicate_the_apex_ns_record(self):
+        """Saving a catalog zone again adds no second apex NS record.
+
+        The RRset holds the single RR the RFC recommends.
+        """
+        self.catalog_zone.description = "Edited"
+        self.catalog_zone.save()
+        self.assertEqual(NSRecord.objects.filter(zone=self.catalog_zone).count(), 1)
+
+    def test_saving_catalog_zone_restores_a_missing_apex_ns_record(self):
+        """Saving a catalog zone restores a missing apex NS record.
+
+        A server would refuse to load the zone without it.
+        """
+        with system_write():
+            NSRecord.objects.filter(zone=self.catalog_zone).delete()
+
+        self.catalog_zone.save()
+
+        self.assertEqual(NSRecord.objects.get(zone=self.catalog_zone).server, CATALOG_APEX_NS_SERVER)
+
+    def test_creating_catalog_zone_writes_the_version_record(self):
+        """A new catalog zone gets the version record `version.$CATZ IN TXT "2"`, whose TTL follows the zone's."""
+        record = TXTRecord.objects.get(zone=self.catalog_zone)
+        self.assertEqual(record.name, "version")
+        self.assertEqual(record.text, "2")
+        # A TTL copied onto the record would also match the zone's at first; changing the zone's
+        # TTL shows the record follows it.
+        self.catalog_zone.ttl = 0
+        self.catalog_zone.save()
+        self.assertEqual(TXTRecord.objects.get(zone=self.catalog_zone).ttl, 0)
+
+    def test_creating_primary_zone_writes_no_records(self):
+        """A new primary zone gets no records."""
+        for record_model in dns_record_models():
+            with self.subTest(record_model=record_model.__name__):
+                self.assertFalse(record_model.objects.filter(zone=self.primary_zone).exists())
+
+    def test_resaving_catalog_zone_does_not_duplicate_the_version_record(self):
+        """Saving a catalog zone again adds no second version record.
+
+        RFC 9432 §4.2.1 allows exactly one RR in the version RRset.
+        """
+        self.catalog_zone.description = "Edited"
+        self.catalog_zone.save()
+        self.assertEqual(TXTRecord.objects.filter(name="version", zone=self.catalog_zone).count(), 1)
+
+    def test_saving_catalog_zone_restores_a_missing_version_record(self):
+        """Saving a catalog zone restores a missing version record.
+
+        A consumer would reject the catalog without it.
+        """
+        with system_write():
+            TXTRecord.objects.filter(zone=self.catalog_zone).delete()
+
+        self.catalog_zone.save()
+
+        self.assertEqual(TXTRecord.objects.get(name="version", zone=self.catalog_zone).text, "2")
+
+    def test_rejects_user_created_record_in_catalog_zone(self):
+        """Validation refuses every record type a user could try to add to a catalog zone."""
+        records = self._unsaved_records(self.catalog_zone)
+        # Only the records `_unsaved_records` builds are checked below, so a record model missing
+        # from it would go untested.
+        self.assertEqual({type(record) for record in records}, set(dns_record_models()))
+
+        for record in records:
+            with self.subTest(record_model=type(record).__name__):
+                with self.assertRaises(ValidationError) as context:
+                    record.full_clean()
+                self.assertEqual(
+                    context.exception.message_dict["zone"][0],
+                    "Records in a catalog zone are system-managed and cannot be created or edited directly.",
+                )
+
+    def test_system_write_allows_record_in_catalog_zone(self):
+        """The app's own sync code can write the records a user is forbidden to create."""
+        with system_write():
+            record = TXTRecord(name="group.nj2xg5b.zones", text="operators", zone=self.catalog_zone)
+            record.validated_save()
+        self.assertTrue(TXTRecord.objects.filter(pk=record.pk).exists())
+
+    def test_rejects_edit_of_catalog_record(self):
+        """An existing catalog record cannot be edited through ordinary record validation."""
+        record = self._version_record()
+        record.text = "1"
+        with self.assertRaises(ValidationError) as context:
+            record.full_clean()
+        self.assertEqual(
+            context.exception.message_dict["zone"][0],
+            "Records in a catalog zone are system-managed and cannot be created or edited directly.",
+        )
+
+    def test_rejects_delete_of_catalog_record(self):
+        """Deleting a catalog record one at a time is refused."""
+        record = self._version_record()
+        with self.assertRaises(ProtectedError):
+            record.delete()
+        self.assertTrue(TXTRecord.objects.filter(pk=record.pk).exists())
+
+    def test_rejects_bulk_delete_of_catalog_record(self):
+        """Bulk deleting a catalog record is refused.
+
+        Bulk delete goes through `QuerySet.delete()`, which never reaches `Model.delete()`.
+        """
+        record = self._version_record()
+        with self.assertRaises(ProtectedError):
+            TXTRecord.objects.filter(pk=record.pk).delete()
+        self.assertTrue(TXTRecord.objects.filter(pk=record.pk).exists())
+
+    def test_rejects_bare_save_of_new_catalog_record(self):
+        """A bare `save()`, which skips validation, refuses to create a catalog record."""
+        record = TXTRecord(name="txt", text="value", zone=self.catalog_zone)
+
+        with self.assertRaises(ValidationError) as context:
+            record.save()
+
+        self.assertEqual(
+            context.exception.message_dict["zone"][0],
+            "Records in a catalog zone are system-managed and cannot be created or edited directly.",
+        )
+        self.assertFalse(TXTRecord.objects.filter(pk=record.pk).exists())
+
+    def test_rejects_bare_save_of_edited_catalog_record(self):
+        """A bare `save()`, which skips validation, refuses to edit a catalog record."""
+        record = self._version_record()
+        record.text = "1"
+
+        with self.assertRaises(ValidationError):
+            record.save()
+
+        self.assertEqual(self._version_record().text, "2")
+
+    def test_rejects_queryset_writes_of_catalog_records(self):
+        """`update()`, `bulk_update()` and `bulk_create()` refuse catalog records, and store nothing."""
+        record = self._version_record()
+        record.text = "1"
+
+        test_cases = [
+            ("update", lambda: TXTRecord.objects.filter(pk=record.pk).update(text="1")),
+            ("bulk_update", lambda: TXTRecord.objects.bulk_update([record], ["text"])),
+            (
+                "bulk_create",
+                lambda: TXTRecord.objects.bulk_create([TXTRecord(name="txt", text="value", zone=self.catalog_zone)]),
+            ),
+        ]
+
+        for method, write_fn in test_cases:
+            with self.subTest(method=method):
+                with self.assertRaises(ValidationError) as context:
+                    write_fn()
+
+                self.assertEqual(
+                    context.exception.message_dict["zone"][0],
+                    "Records in a catalog zone are system-managed and cannot be created or edited directly.",
+                )
+                self.assertEqual(
+                    list(TXTRecord.objects.filter(zone=self.catalog_zone).values_list("text", flat=True)), ["2"]
+                )
+
+    def test_rejects_moving_a_record_out_of_a_catalog_zone(self):
+        """A catalog record cannot be moved to another zone, whichever way it is written."""
+        record = self._version_record()
+        record.zone = self.primary_zone
+
+        test_cases = [
+            ("full_clean", record.full_clean),
+            ("save", record.save),
+            ("update", lambda: TXTRecord.objects.filter(pk=record.pk).update(zone=self.primary_zone)),
+            ("bulk_update", lambda: TXTRecord.objects.bulk_update([record], ["zone"])),
+        ]
+
+        for method, move_fn in test_cases:
+            with self.subTest(method=method):
+                with self.assertRaises(ValidationError):
+                    move_fn()
+
+                self.assertEqual(TXTRecord.objects.get(pk=record.pk).zone_id, self.catalog_zone.pk)
+
+    def test_rejects_moving_a_record_into_a_catalog_zone(self):
+        """A record cannot be moved into a catalog zone, whichever way it is written."""
+        record = NSRecord(name="sub", server="ns1.example.", zone=self.primary_zone)
+        record.validated_save()
+        record.zone = self.catalog_zone
+
+        test_cases = [
+            ("full_clean", record.full_clean),
+            ("save", record.save),
+            ("update", lambda: NSRecord.objects.filter(pk=record.pk).update(zone=self.catalog_zone)),
+            ("update by id", lambda: NSRecord.objects.filter(pk=record.pk).update(zone_id=self.catalog_zone.pk)),
+            ("bulk_update", lambda: NSRecord.objects.bulk_update([record], ["zone"])),
+        ]
+
+        for method, move_fn in test_cases:
+            with self.subTest(method=method):
+                with self.assertRaises(ValidationError):
+                    move_fn()
+
+                self.assertEqual(NSRecord.objects.get(pk=record.pk).zone_id, self.primary_zone.pk)
+
+    def test_system_write_allows_queryset_writes_of_catalog_records(self):
+        """The app's own sync code can write catalog records through a queryset."""
+        record = self._version_record()
+
+        with system_write():
+            TXTRecord.objects.filter(pk=record.pk).update(description="Edited")
+
+        self.assertEqual(self._version_record().description, "Edited")
+
+    def test_system_write_allows_delete_of_catalog_record(self):
+        """The app's own sync code can remove the records a user is forbidden to delete."""
+        record = self._version_record()
+        with system_write():
+            record.delete()
+        self.assertFalse(TXTRecord.objects.filter(pk=record.pk).exists())
+
+    def test_deleting_catalog_zone_removes_its_records(self):
+        """Deleting a catalog zone removes its records.
+
+        The records refuse user deletes, but the zone stays deletable.
+        """
+        record = self._version_record()
+        self.catalog_zone.delete()
+        self.assertFalse(DNSZone.objects.filter(pk=self.catalog_zone.pk).exists())
+        self.assertFalse(TXTRecord.objects.filter(pk=record.pk).exists())
+
+    def test_bulk_deleting_catalog_zone_removes_its_records(self):
+        """Bulk deleting a catalog zone removes its records.
+
+        This is the `QuerySet.delete()` path Nautobot's bulk delete job uses.
+        """
+        record = self._version_record()
+        DNSZone.objects.filter(pk=self.catalog_zone.pk).delete()
+        self.assertFalse(DNSZone.objects.filter(pk=self.catalog_zone.pk).exists())
+        self.assertFalse(TXTRecord.objects.filter(pk=record.pk).exists())
+
+
+class CatalogZoneWriteGuardQueryTest(TestCase):
+    """Tests for the queries the catalog zone write guard adds to record writes outside a catalog zone."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.primary_zone = create_zone("primary.example")
+        cls.other_primary_zone = create_zone("other.example")
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="10.0.0.0/24", namespace=namespace, type="Pool", status=status)
+        cls.ip_address = IPAddress.objects.create(address="10.0.0.1/32", namespace=namespace, status=status)
+
+    def setUp(self):
+        # A generator which yields unique record names for each test
+        self.unused_record_names = (f"host{index}" for index in itertools.count())
+
+    def _num_queries_added_by_guard(self, write_fn):
+        """Return how many more queries `write_fn` issues than under `system_write()`, which skips the guard."""
+        with system_write():
+            write_fn()
+        with CaptureQueriesContext(connection) as guarded:
+            write_fn()
+        with system_write(), CaptureQueriesContext(connection) as unguarded:
+            write_fn()
+
+        return len(guarded) - len(unguarded)
+
+    def test_creating_a_record_adds_no_query(self):
+        """Creating a record checks its zone in memory, and has no stored row to check."""
+        test_cases = [
+            (
+                "TXTRecord",
+                lambda: TXTRecord(
+                    name=next(self.unused_record_names), text="value", zone=self.primary_zone
+                ).validated_save(),
+            ),
+            (
+                "ARecord",
+                lambda: ARecord(
+                    name=next(self.unused_record_names), ip_address=self.ip_address, zone=self.primary_zone
+                ).validated_save(),
+            ),
+        ]
+
+        for model, write_fn in test_cases:
+            with self.subTest(model=model):
+                self.assertEqual(self._num_queries_added_by_guard(write_fn), 0)
+
+    def test_editing_a_record_adds_one_query_per_check(self):
+        """Each check of an edit reads the stored row: `clean()` and `save()`, and `clean()` again in `ARecord.save()`."""
+        txt_record = TXTRecord(name="txt", text="value", zone=self.primary_zone)
+        txt_record.validated_save()
+        a_record = ARecord(name="a", ip_address=self.ip_address, zone=self.primary_zone)
+        a_record.validated_save()
+
+        test_cases = [
+            ("TXTRecord", txt_record.validated_save, 2),
+            ("ARecord", a_record.validated_save, 3),
+        ]
+
+        for model, write_fn, num_expected_queries in test_cases:
+            with self.subTest(model=model):
+                self.assertEqual(self._num_queries_added_by_guard(write_fn), num_expected_queries)
+
+    def test_queryset_write_checks_do_not_grow_with_the_record_count(self):
+        """`bulk_create()` and `update()` check once; `bulk_update()` checks up front and again in its `update()`.
+
+        The records span two zones, so a check per record or per zone would show. Each write succeeds,
+        since the records are outside a catalog.
+        """
+        zones = [self.primary_zone, self.other_primary_zone, self.primary_zone]
+        records = NSRecord.objects.bulk_create(
+            [NSRecord(name=next(self.unused_record_names), server="ns1.example.", zone=zone) for zone in zones]
+        )
+        pks = [record.pk for record in records]
+
+        test_cases = [
+            (
+                "bulk_create",
+                lambda: NSRecord.objects.bulk_create(
+                    [NSRecord(name=next(self.unused_record_names), server="ns1.example.", zone=zone) for zone in zones]
+                ),
+                1,
+            ),
+            ("update", lambda: NSRecord.objects.filter(pk__in=pks).update(zone=self.primary_zone), 1),
+            ("bulk_update", lambda: NSRecord.objects.bulk_update(records, ["zone"]), 2),
+        ]
+
+        for method, write_fn, num_expected_queries in test_cases:
+            with self.subTest(method=method):
+                self.assertEqual(self._num_queries_added_by_guard(write_fn), num_expected_queries)
+
+
+def member_ptr_records(catalog_zone):
+    """Return the `(owner name, PTRDNAME)` pairs of the member PTR records published in `catalog_zone`."""
+    return set(PTRRecord.objects.filter(zone=catalog_zone).values_list("name", "ptrdname"))
+
+
+def write_bypassing_guards(zone_pk, **fields):
+    """Write `fields` to a zone row with nothing but the database to refuse them."""
+    QuerySet.update(DNSZone.objects.filter(pk=zone_pk), **fields)
+
+
+class CatalogMembershipTest(TestCase):
+    """Tests for membership of a catalog zone through `DNSZone.catalog_zone`.
+
+    Covers adding, removing, moving and renaming a member, the view a catalog shares with its members,
+    deletion, the queryset paths that write zones without saving each one, and where a membership
+    change is recorded.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.catalog_zone = create_zone("catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
+        cls.other_catalog = create_zone("other-catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
+        cls.other_view = DNSView.objects.create(name="Other")
+
+    def test_a_zone_outside_a_catalog_has_no_label(self):
+        """A zone outside a catalog has no member label."""
+        zone = create_zone("member.example")
+
+        self.assertEqual(zone.member_label, "")
+        self.assertIsNone(zone.ptr_record_name)
+
+    def test_adding_a_zone_generates_a_label_and_publishes_the_member(self):
+        """Adding a zone to a catalog gives it a label and publishes its PTR record.
+
+        RFC 9432 §4.1 publishes each member as a PTR at `<label>.zones`. Its TTL follows the
+        catalog zone's.
+        """
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+
+        self.assertEqual(len(zone.member_label), 26)
+        self.assertEqual(zone.ptr_record_name, f"{zone.member_label}.zones")
+        record = PTRRecord.objects.get(zone=self.catalog_zone)
+        self.assertEqual((record.name, record.ptrdname), (zone.ptr_record_name, "member.example"))
+        # A TTL copied onto the record would also match the zone's at first; changing the zone's
+        # TTL shows the record follows it.
+        self.catalog_zone.ttl = 0
+        self.catalog_zone.save()
+        self.assertEqual(PTRRecord.objects.get(zone=self.catalog_zone).ttl, 0)
+
+    def test_adding_through_validation_keeps_the_label_clean_assigned(self):
+        """`save()` stores the label that `clean()` assigned and validated."""
+        zone = DNSZone(
+            name="member.example",
+            filename="member.zone",
+            soa_mname="ns1.member.example.",
+            soa_rname="admin@member.example",
+            catalog_zone=self.catalog_zone,
+        )
+        zone.full_clean()
+        original_label = zone.member_label
+
+        zone.save()
+
+        zone.refresh_from_db()
+        self.assertEqual(zone.member_label, original_label)
+
+    def test_the_member_ptr_is_system_managed(self):
+        """A user cannot delete a member's PTR record on its own."""
+        create_zone("member.example", catalog_zone=self.catalog_zone)
+
+        with self.assertRaises(ProtectedError):
+            PTRRecord.objects.get(zone=self.catalog_zone).delete()
+
+    def test_a_supplied_label_is_kept_when_the_zone_is_added(self):
+        """A label supplied by code is kept when the zone is added to a catalog.
+
+        RFC 9432 lets the producer choose labels.
+        """
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone, member_label="chosen")
+
+        self.assertEqual(zone.member_label, "chosen")
+        self.assertEqual(member_ptr_records(self.catalog_zone), {("chosen.zones", "member.example")})
+
+    def test_an_edited_label_republishes_the_member(self):
+        """An edited label on a member that stays in its catalog moves its PTR record to the new label.
+
+        RFC 9432 §5.6 resets a member by giving it a new label.
+        """
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+
+        for method, label in (("validated_save", "edited"), ("save", "edited-again")):
+            with self.subTest(method=method):
+                zone.member_label = label
+                getattr(zone, method)()
+
+                zone.refresh_from_db()
+                self.assertEqual(zone.member_label, label)
+                self.assertEqual(member_ptr_records(self.catalog_zone), {(f"{label}.zones", "member.example")})
+
+    def test_a_cleared_label_is_replaced_by_a_generated_one(self):
+        """Clearing a member's label gives it a new generated label rather than none."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone, member_label="chosen")
+
+        zone.member_label = ""
+        zone.validated_save()
+
+        zone.refresh_from_db()
+        self.assertNotIn(zone.member_label, ("", "chosen"))
+        self.assertEqual(member_ptr_records(self.catalog_zone), {(f"{zone.member_label}.zones", "member.example")})
+
+    def test_a_label_is_refused_outside_a_catalog(self):
+        """A label supplied on a zone outside any catalog is refused."""
+        outsider = create_zone("outsider.example")
+        new_zone = DNSZone(
+            name="new.example",
+            filename="new.example.zone",
+            soa_mname="ns1.new.example.",
+            soa_rname="admin@new.example",
+            member_label="chosen",
+        )
+        outsider.member_label = "chosen"
+
+        for zone in (new_zone, outsider):
+            for method in ("validated_save", "save"):
+                with self.subTest(zone=zone.name, method=method):
+                    with self.assertRaises(ValidationError):
+                        getattr(zone, method)()
+
+        self.assertFalse(DNSZone.objects.filter(name="new.example").exists())
+        self.assertEqual(DNSZone.objects.get(pk=outsider.pk).member_label, "")
+
+    def test_resaving_a_member_publishes_no_duplicate(self):
+        """Saving a member again publishes no second PTR record."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+
+        zone.validated_save()
+
+        self.assertEqual(PTRRecord.objects.filter(zone=self.catalog_zone).count(), 1)
+
+    def test_resaving_a_member_restores_a_lost_ptr(self):
+        """Saving a member restores a lost PTR record."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+        with system_write():
+            PTRRecord.objects.filter(zone=self.catalog_zone).delete()
+
+        zone.validated_save()
+
+        self.assertEqual(member_ptr_records(self.catalog_zone), {(zone.ptr_record_name, "member.example")})
+
+    def test_rejects_a_member_label_with_a_dot(self):
+        """A member label containing a dot is refused."""
+        zone = DNSZone(name="member.example", catalog_zone=self.catalog_zone, member_label="two.labels")
+
+        with self.assertRaises(ValidationError) as context:
+            zone.save()
+
+        self.assertEqual(
+            context.exception.message_dict["member_label"][0],
+            "The member label must be a single DNS label, without dots.",
+        )
+
+    def test_a_zone_cannot_be_added_to_a_non_catalog_zone(self):
+        """A zone cannot be added to a zone that is not a catalog zone."""
+        primary_zone = create_zone("primary.example")
+        zone = DNSZone(name="member.example", catalog_zone=primary_zone)
+
+        with self.assertRaises(ValidationError) as context:
+            zone.full_clean()
+        self.assertIn("catalog_zone", context.exception.message_dict)
+
+        with self.assertRaises(ValidationError) as context:
+            zone.save()
+        self.assertEqual(
+            context.exception.message_dict["catalog_zone"][0],
+            "Zones can only be members of a catalog zone.",
+        )
+
+    def test_a_catalog_zone_cannot_be_added_to_a_catalog_zone(self):
+        """A catalog zone cannot be added to another catalog zone.
+
+        RFC 9432 says nothing about nesting, but few consumers support it and we forbid it.
+        """
+        zone = DNSZone(name="nested.example", type=DNSZoneTypeChoices.TYPE_CATALOG, catalog_zone=self.catalog_zone)
+
+        with self.assertRaises(ValidationError) as context:
+            zone.save()
+
+        self.assertEqual(
+            context.exception.message_dict["catalog_zone"][0],
+            "A catalog zone cannot be a member of another catalog zone.",
+        )
+
+    def test_a_zone_cannot_be_added_to_a_catalog_zone_in_a_different_view(self):
+        """A zone cannot be added to a catalog zone in a different view.
+
+        A catalog and its members share a view, which is what a consumer of the catalog serves.
+        """
+        zone = DNSZone(
+            name="member.example",
+            dns_view=self.other_view,
+            catalog_zone=self.catalog_zone,
+        )
+
+        with self.assertRaises(ValidationError) as context:
+            zone.save()
+
+        self.assertEqual(
+            context.exception.message_dict["catalog_zone"][0],
+            "The catalog zone must be in the same view as this zone.",
+        )
+
+    def test_a_catalog_moved_after_validation_is_refused_on_save(self):
+        """A catalog moved to another view after validation is refused on save.
+
+        `save()` reads the catalog's view again under a lock.
+        """
+        zone = create_zone("member.example")
+        zone.catalog_zone = self.catalog_zone
+        zone.full_clean()
+        DNSZone.objects.filter(pk=self.catalog_zone.pk).update(dns_view=self.other_view)
+
+        with self.assertRaises(ValidationError) as context:
+            zone.save()
+
+        self.assertEqual(
+            context.exception.message_dict["catalog_zone"][0],
+            "The catalog zone must be in the same view as this zone.",
+        )
+        self.assertFalse(PTRRecord.objects.filter(zone=self.catalog_zone).exists())
+
+    def test_a_catalog_deleted_after_validation_is_refused_on_save(self):
+        """A catalog deleted after validation is refused on save as a validation error.
+
+        Without the check, the write would fail with an `IntegrityError` at commit.
+        """
+        empty_catalog = create_zone("empty.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
+        zone = create_zone("member.example")
+        zone.catalog_zone = empty_catalog
+        zone.full_clean()
+        DNSZone.objects.filter(pk=empty_catalog.pk).delete()
+
+        with self.assertRaises(ValidationError) as context:
+            zone.save()
+
+        self.assertEqual(context.exception.message_dict["catalog_zone"][0], "The catalog zone no longer exists.")
+
+    def test_rejects_a_label_reused_in_another_case_within_one_catalog(self):
+        """A label reused in another case within one catalog is refused.
+
+        RFC 4343 §3 compares labels without regard to case, so both name one node.
+        """
+        create_zone("first.example", catalog_zone=self.catalog_zone, member_label="shared")
+        zone = DNSZone(
+            name="second.example",
+            filename="second.zone",
+            soa_mname="ns1.second.example.",
+            soa_rname="admin@second.example",
+            catalog_zone=self.catalog_zone,
+            member_label="Shared",
+        )
+
+        with self.assertRaises(ValidationError) as context:
+            zone.full_clean()
+
+        self.assertEqual(
+            context.exception.message_dict,
+            {"member_label": ["This label is already used by another member of the catalog zone."]},
+        )
+
+    def test_the_database_refuses_a_label_reused_in_another_case(self):
+        """The database refuses a label reused in another case on a bare save."""
+        create_zone("first.example", catalog_zone=self.catalog_zone, member_label="shared")
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            create_zone("second.example", catalog_zone=self.catalog_zone, member_label="Shared")
+
+        self.assertEqual(PTRRecord.objects.filter(zone=self.catalog_zone).count(), 1)
+
+    def test_allows_the_same_label_in_a_different_catalog(self):
+        """The same label is allowed in a different catalog."""
+        create_zone("first.example", catalog_zone=self.catalog_zone, member_label="shared")
+
+        create_zone("second.example", catalog_zone=self.other_catalog, member_label="shared")
+
+        self.assertEqual(DNSZone.objects.filter(member_label="shared").count(), 2)
+
+    def test_the_database_refuses_adding_a_catalog_zone_to_a_catalog_zone(self):
+        """The database refuses adding a catalog zone to a catalog zone when validation is skipped."""
+        nested_catalog = create_zone("nested.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            write_bypassing_guards(nested_catalog.pk, catalog_zone=self.catalog_zone, member_label="nested")
+
+    def test_the_database_refuses_a_member_without_a_label(self):
+        """The database refuses a member with a blank label."""
+        zone = create_zone("member.example")
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            write_bypassing_guards(zone.pk, catalog_zone=self.catalog_zone)
+
+    def test_the_natural_key_is_the_name_and_view(self):
+        """A zone's natural key stays its name and view despite the membership constraints."""
+        self.assertEqual(DNSZone.natural_key_field_lookups, ["name", "dns_view__name"])
+
+    def test_removing_withdraws_the_member_and_clears_the_label(self):
+        """Removing a zone from a catalog withdraws its PTR record and clears its label.
+
+        RFC 9432 §5.2 removes a member by withdrawing its PTR.
+        """
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+
+        zone.catalog_zone = None
+        zone.validated_save()
+
+        zone.refresh_from_db()
+        self.assertEqual(zone.member_label, "")
+        self.assertEqual(member_ptr_records(self.catalog_zone), set())
+
+    def test_moving_between_catalogs_publishes_under_a_new_label(self):
+        """Moving to another catalog publishes the zone under a new label."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+        original_label = zone.member_label
+
+        zone.catalog_zone = self.other_catalog
+        zone.validated_save()
+
+        self.assertNotEqual(zone.member_label, original_label)
+        self.assertEqual(member_ptr_records(self.catalog_zone), set())
+        self.assertEqual(member_ptr_records(self.other_catalog), {(zone.ptr_record_name, "member.example")})
+
+    def test_removing_zone_and_adding_it_back_gives_it_a_new_label(self):
+        """A zone removed from a catalog and added again gets a new label.
+
+        It does not resume the consumer state it had.
+        """
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+        original_label = zone.member_label
+
+        zone.catalog_zone = None
+        zone.validated_save()
+        zone.catalog_zone = self.catalog_zone
+        zone.validated_save()
+
+        self.assertNotEqual(zone.member_label, original_label)
+
+    def test_renaming_a_member_republishes_it_under_a_new_label(self):
+        """Renaming a member republishes it under a new label."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+        original_label = zone.member_label
+
+        zone.name = "renamed.example"
+        zone.validated_save()
+
+        self.assertNotEqual(zone.member_label, original_label)
+        self.assertEqual(member_ptr_records(self.catalog_zone), {(zone.ptr_record_name, "renamed.example")})
+
+    def test_renaming_one_member_leaves_the_other_members_alone(self):
+        """Renaming one member leaves the other members' PTR records alone."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+
+        other_zone = create_zone("other.example", catalog_zone=self.catalog_zone)
+
+        zone.name = "renamed.example"
+        zone.validated_save()
+
+        self.assertIn((other_zone.ptr_record_name, "other.example"), member_ptr_records(self.catalog_zone))
+
+    def test_renaming_through_update_fields_republishes_it(self):
+        """Renaming with `update_fields=["name"]` also stores the new label."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+        original_label = zone.member_label
+
+        zone.name = "renamed.example"
+        zone.save(update_fields=["name"])
+
+        zone.refresh_from_db()
+        self.assertNotEqual(zone.member_label, original_label)
+        self.assertEqual(member_ptr_records(self.catalog_zone), {(zone.ptr_record_name, "renamed.example")})
+
+    def test_saving_without_the_name_keeps_the_membership(self):
+        """A name left out of `update_fields` is not stored, so the member is not republished."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+        original_label = zone.member_label
+
+        zone.name = "renamed.example"
+        zone.description = "changed"
+        zone.save(update_fields=["description"])
+
+        zone.refresh_from_db()
+        self.assertEqual((zone.name, zone.member_label), ("member.example", original_label))
+        self.assertEqual(member_ptr_records(self.catalog_zone), {(f"{original_label}.zones", "member.example")})
+
+    def test_saving_without_the_catalog_keeps_the_stored_catalog(self):
+        """A catalog left out of `update_fields` is not stored, so the zone stays where it was."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+        original_label = zone.member_label
+
+        zone.catalog_zone = self.other_catalog
+        zone.save(update_fields=["description"])
+
+        zone.refresh_from_db()
+        self.assertEqual((zone.catalog_zone, zone.member_label), (self.catalog_zone, original_label))
+        self.assertEqual(member_ptr_records(self.other_catalog), set())
+
+    def test_saving_without_the_view_keeps_the_stored_view(self):
+        """A view left out of `update_fields` is not stored or checked against the catalog's."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+
+        zone.dns_view = self.other_view
+        zone.description = "changed"
+        zone.save(update_fields=["description"])
+
+        zone.refresh_from_db()
+        self.assertEqual((zone.dns_view, zone.description), (self.catalog_zone.dns_view, "changed"))
+
+    def test_saving_the_catalog_zone_leaves_its_members_alone(self):
+        """Saving a catalog zone maintains its apex records and leaves its members alone."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+        original_label = zone.member_label
+
+        self.catalog_zone.description = "changed"
+        self.catalog_zone.validated_save()
+
+        self.assertEqual(member_ptr_records(self.catalog_zone), {(f"{original_label}.zones", "member.example")})
+
+    def test_a_member_cannot_move_to_another_view(self):
+        """A member cannot move to another view.
+
+        Its catalog stays behind, so the pair would span views.
+        """
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+        zone.dns_view = self.other_view
+
+        with self.assertRaises(ValidationError) as context:
+            zone.validated_save()
+
+        self.assertEqual(
+            context.exception.message_dict["catalog_zone"][0],
+            "The catalog zone must be in the same view as this zone.",
+        )
+
+    def test_a_member_cannot_move_to_another_view_on_a_bare_save(self):
+        """A member cannot move to another view on a bare save either."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+        zone.dns_view = self.other_view
+
+        with self.assertRaises(ValidationError):
+            zone.save()
+
+        zone.refresh_from_db()
+        self.assertNotEqual(zone.dns_view, self.other_view)
+
+    def test_a_member_can_move_while_being_removed_from_its_catalog(self):
+        """A member can move to another view in the save that clears its catalog."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+        zone.catalog_zone = None
+        zone.dns_view = self.other_view
+
+        zone.validated_save()
+
+        self.assertEqual(member_ptr_records(self.catalog_zone), set())
+
+    def test_a_catalog_with_members_cannot_move_to_another_view(self):
+        """A catalog with members cannot move to another view."""
+        create_zone("member.example", catalog_zone=self.catalog_zone)
+        self.catalog_zone.dns_view = self.other_view
+
+        with self.assertRaises(ValidationError) as context:
+            self.catalog_zone.validated_save()
+
+        self.assertEqual(
+            context.exception.message_dict["dns_view"][0],
+            "A catalog zone with members cannot be moved to another view.",
+        )
+
+    def test_a_catalog_zone_without_members_can_move_to_another_view(self):
+        """A catalog zone without members can move to another view."""
+        self.catalog_zone.dns_view = self.other_view
+
+        self.catalog_zone.validated_save()
+
+    def test_deleting_a_member_withdraws_it(self):
+        """Deleting a member withdraws its PTR record."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+
+        zone.delete()
+
+        self.assertEqual(member_ptr_records(self.catalog_zone), set())
+
+    def test_bulk_deleting_members_withdraws_them(self):
+        """Bulk deleting members withdraws their PTR records.
+
+        This is the `QuerySet.delete()` path Nautobot's bulk delete job uses.
+        """
+        create_zone("first.example", catalog_zone=self.catalog_zone)
+        create_zone("second.example", catalog_zone=self.catalog_zone)
+
+        DNSZone.objects.filter(catalog_zone=self.catalog_zone).delete()
+
+        self.assertEqual(member_ptr_records(self.catalog_zone), set())
+
+    def test_a_catalog_with_members_cannot_be_deleted(self):
+        """A catalog with members cannot be deleted, and its records survive.
+
+        `PROTECT` on `catalog_zone` refuses the delete.
+        """
+        create_zone("member.example", catalog_zone=self.catalog_zone)
+
+        with self.assertRaises(ProtectedError):
+            self.catalog_zone.delete()
+
+        self.assertTrue(DNSZone.objects.filter(pk=self.catalog_zone.pk).exists())
+        self.assertEqual(PTRRecord.objects.filter(zone=self.catalog_zone).count(), 1)
+        self.assertTrue(TXTRecord.objects.filter(zone=self.catalog_zone, name="version").exists())
+
+    def test_a_refused_bulk_delete_keeps_the_catalog_records(self):
+        """A refused bulk delete keeps the catalog's records.
+
+        The record purge is rolled back with the refused delete.
+        """
+        create_zone("member.example", catalog_zone=self.catalog_zone)
+
+        with self.assertRaises(ProtectedError):
+            DNSZone.objects.filter(pk=self.catalog_zone.pk).delete()
+
+        self.assertEqual(PTRRecord.objects.filter(zone=self.catalog_zone).count(), 1)
+        self.assertTrue(NSRecord.objects.filter(zone=self.catalog_zone).exists())
+
+    def test_update_refuses_the_membership_fields(self):
+        """`update()` refuses the membership fields.
+
+        An update would store a membership the catalog never publishes.
+        """
+        zone = create_zone("member.example")
+
+        with self.assertRaises(ValidationError) as context:
+            DNSZone.objects.filter(pk=zone.pk).update(catalog_zone=self.catalog_zone)
+
+        self.assertEqual(
+            context.exception.messages[0],
+            "These fields cannot be written through update() or bulk_update(); save each zone instead: catalog_zone.",
+        )
+
+    def test_bulk_update_refuses_the_membership_fields(self):
+        """`bulk_update()` refuses the membership fields, and stores nothing.
+
+        A relabel would leave the PTR record published where nothing can find it to withdraw, and
+        adding a zone would store a membership the catalog never publishes.
+        """
+        member = create_zone("member.example", catalog_zone=self.catalog_zone)
+        outsider = create_zone("outsider.example")
+        member.member_label = "relabelled"
+        outsider.catalog_zone = self.catalog_zone
+
+        test_cases = [
+            (member, "member_label"),
+            (outsider, "catalog_zone"),
+            (outsider, "catalog_zone_id"),
+        ]
+
+        for zone, field in test_cases:
+            with self.subTest(field=field):
+                stored = DNSZone.objects.values("catalog_zone_id", "member_label").get(pk=zone.pk)
+
+                with self.assertRaises(ValidationError):
+                    DNSZone.objects.bulk_update([zone], [field])
+
+                self.assertEqual(DNSZone.objects.values("catalog_zone_id", "member_label").get(pk=zone.pk), stored)
+
+    def test_queryset_renames_refuse_a_member(self):
+        """`update()` and `bulk_update()` refuse to rename a member, and store nothing.
+
+        The member's PTR record names it, and a rename gives it a new label.
+        """
+        member = create_zone("member.example", catalog_zone=self.catalog_zone)
+        member.name = "renamed.example"
+        published = member_ptr_records(self.catalog_zone)
+
+        test_cases = [
+            ("update", lambda: DNSZone.objects.filter(pk=member.pk).update(name="renamed.example")),
+            ("bulk_update", lambda: DNSZone.objects.bulk_update([member], ["name"])),
+        ]
+
+        for method, rename_fn in test_cases:
+            with self.subTest(method=method):
+                with self.assertRaises(ValidationError):
+                    rename_fn()
+
+                self.assertEqual(DNSZone.objects.get(pk=member.pk).name, "member.example")
+                self.assertEqual(member_ptr_records(self.catalog_zone), published)
+
+    def test_queryset_renames_allow_a_zone_outside_a_catalog(self):
+        """`update()` and `bulk_update()` rename a zone in no catalog."""
+        outsider = create_zone("outsider.example")
+
+        DNSZone.objects.filter(pk=outsider.pk).update(name="renamed.example")
+        outsider.name = "renamed-again.example"
+        DNSZone.objects.bulk_update([outsider], ["name"])
+
+        self.assertEqual(DNSZone.objects.get(pk=outsider.pk).name, "renamed-again.example")
+
+    def test_queryset_view_moves_refuse_members_and_catalogs_with_members(self):
+        """`update()` and `bulk_update()` refuse to move a member, or a catalog with members, to another view.
+
+        A catalog and its members must share a view, which only `save()` checks.
+        """
+        member = create_zone("member.example", catalog_zone=self.catalog_zone)
+        member.dns_view = self.other_view
+        catalog = DNSZone.objects.get(pk=self.catalog_zone.pk)
+        catalog.dns_view = self.other_view
+
+        test_cases = [
+            ("member", "update", lambda: DNSZone.objects.filter(pk=member.pk).update(dns_view=self.other_view)),
+            ("member", "bulk_update", lambda: DNSZone.objects.bulk_update([member], ["dns_view"])),
+            ("catalog", "update", lambda: DNSZone.objects.filter(pk=catalog.pk).update(dns_view=self.other_view)),
+            ("catalog", "bulk_update", lambda: DNSZone.objects.bulk_update([catalog], ["dns_view"])),
+        ]
+
+        for zone, method, move_fn in test_cases:
+            with self.subTest(zone=zone, method=method):
+                with self.assertRaises(ValidationError):
+                    move_fn()
+
+                self.assertFalse(DNSZone.objects.filter(dns_view=self.other_view).exists())
+
+    def test_queryset_view_moves_allow_zones_outside_a_catalog_and_empty_catalogs(self):
+        """`update()` and `bulk_update()` move a zone in no catalog, and a catalog without members, to another view."""
+        outsider = create_zone("outsider.example")
+
+        DNSZone.objects.filter(pk=outsider.pk).update(dns_view=self.other_view)
+        self.other_catalog.dns_view = self.other_view
+        DNSZone.objects.bulk_update([self.other_catalog], ["dns_view"])
+
+        self.assertEqual(
+            set(DNSZone.objects.filter(dns_view=self.other_view).values_list("pk", flat=True)),
+            {outsider.pk, self.other_catalog.pk},
+        )
+
+    def test_bulk_create_refuses_a_member(self):
+        """`bulk_create()` refuses a member.
+
+        It reaches no `save()`, so the member would get neither a label nor a PTR record.
+        """
+        zone = DNSZone(name="member.example", catalog_zone=self.catalog_zone)
+
+        with self.assertRaises(ValidationError):
+            DNSZone.objects.bulk_create([zone])
+
+    def test_bulk_create_accepts_zones_outside_a_catalog(self):
+        """`bulk_create()` accepts zones outside a catalog."""
+        DNSZone.objects.bulk_create([DNSZone(name="member.example")])
+
+        self.assertTrue(DNSZone.objects.filter(name="member.example").exists())
+
+    def test_the_database_refuses_a_bulk_add_through_the_related_manager(self):
+        """The database refuses `members.add()` without `bulk=False`.
+
+        It updates through the base manager, past the queryset guard, and stores no label.
+        """
+        zone = create_zone("member.example")
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self.catalog_zone.members.add(zone)
+
+    def test_the_related_manager_saves_each_zone_without_bulk(self):
+        """`members.add()` and `members.remove()` with `bulk=False` publish and withdraw the member."""
+        zone = create_zone("member.example")
+
+        self.catalog_zone.members.add(zone, bulk=False)
+        zone.refresh_from_db()
+        self.assertEqual(member_ptr_records(self.catalog_zone), {(zone.ptr_record_name, "member.example")})
+
+        self.catalog_zone.members.remove(zone, bulk=False)
+        self.assertEqual(member_ptr_records(self.catalog_zone), set())
+
+    def test_adding_is_recorded_against_the_member_zone(self):
+        """Adding a zone to a catalog is recorded as a change of the zone."""
+        zone = create_zone("member.example")
+
+        with web_request_context(self.user):
+            zone.catalog_zone = self.catalog_zone
+            zone.validated_save()
+
+        change = ObjectChange.objects.get(changed_object_id=zone.pk)
+        self.assertEqual(change.object_data_v2["catalog_zone"]["id"], str(self.catalog_zone.pk))
+        self.assertEqual(change.object_data_v2["member_label"], zone.member_label)
+
+    def test_adding_records_no_change_against_the_catalog_zone(self):
+        """Adding a zone records no change against the catalog zone, only against its PTR record."""
+        zone = create_zone("member.example")
+
+        with web_request_context(self.user):
+            zone.catalog_zone = self.catalog_zone
+            zone.validated_save()
+
+        self.assertFalse(ObjectChange.objects.filter(changed_object_id=self.catalog_zone.pk).exists())
+        ptr_type = ContentType.objects.get_for_model(PTRRecord)
+        self.assertEqual(
+            list(ObjectChange.objects.filter(changed_object_type=ptr_type).values_list("action", "object_repr")),
+            [("create", "member.example")],
+        )
+
+    def test_renaming_a_member_records_a_withdrawal_and_an_addition(self):
+        """Renaming a member records its old PTR record deleted and a new one created."""
+        zone = create_zone("member.example", catalog_zone=self.catalog_zone)
+
+        with web_request_context(self.user):
+            zone.name = "renamed.example"
+            zone.validated_save()
+
+        ptr_type = ContentType.objects.get_for_model(PTRRecord)
+        self.assertEqual(
+            set(ObjectChange.objects.filter(changed_object_type=ptr_type).values_list("action", "object_repr")),
+            {("delete", "member.example"), ("create", "renamed.example")},
+        )

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load form_helpers %}
+
+{% block content %}
+    <form action="" method="post" enctype="multipart/form-data" class="h-100 vstack">
+        {% csrf_token %}
+        <div class="row justify-content-center">
+            <h3 class="mb-16">{% block title %}{{ title }}{% endblock %}</h3>
+            <div class="col-xl-8 col-lg-10">
+                {% if form.non_field_errors %}
+                    <div class="card border-danger">
+                        <div class="card-header bg-danger-subtle border-danger text-body">
+                            <strong>Errors</strong>
+                        </div>
+                        <div class="card-body">
+                            {{ form.non_field_errors }}
+                        </div>
+                    </div>
+                {% endif %}
+                <div class="card">
+                    <div class="card-header"><strong>Catalog Membership</strong></div>
+                    <div class="card-body">
+                        {% render_form form %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="nb-form-sticky-footer">
+            <button type="submit" name="_save" class="btn btn-primary">
+                <span aria-hidden="true" class="mdi mdi-check me-4"></span><!--
+                    -->Save
+            </button>
+            {% if add_another %}
+                <button type="submit" name="_addanother" class="btn btn-primary">
+                    <span aria-hidden="true" class="mdi mdi-check me-4"></span><!--
+                        -->Save and Add Another
+                </button>
+            {% endif %}
+            <a href="{{ return_url }}" class="btn btn-secondary">
+                <span aria-hidden="true" class="mdi mdi-close me-4"></span><!--
+                    -->Cancel
+            </a>
+        </div>
+    </form>
+{% endblock %}
