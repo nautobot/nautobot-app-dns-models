@@ -16,6 +16,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -618,6 +619,46 @@ class DNSZoneAPITestCase(APIViewTestCases.APIViewTestCase):
         zone = _create_zone(name="helper-default.example")
 
         self.assertEqual(zone.dns_view, expected_default_view)
+
+
+class DNSDelegationAPITestCase(APIViewTestCases.APIViewTestCase):
+    """Test the Nautobot DNSDelegation API."""
+
+    model = DNSDelegation
+    view_namespace = "plugins-api:nautobot_dns_models"
+    bulk_update_data = {
+        "description": "Example bulk description",
+    }
+
+    @classmethod
+    def setUpTestData(cls):
+        zone = _create_zone(name="example.com")
+        for name in ("apps", "mail", "lab"):
+            DNSDelegation.objects.create(zone=zone, name=name)
+
+        cls.create_data = [
+            {"name": "dev", "zone": zone.pk},
+            {"name": "test", "zone": zone.pk, "description": "Test subdomain"},
+            {"name": "prod", "zone": zone.pk},
+        ]
+
+    def test_absolute_name_is_stored_relative_to_the_zone(self):
+        """Regression test: the API validates a copy of the object, so normalizing only in `clean()` was lost."""
+        self.add_permissions(
+            "nautobot_dns_models.add_dnsdelegation",
+            "nautobot_dns_models.view_dnsdelegation",
+            "nautobot_dns_models.view_dnszone",
+        )
+        zone = DNSZone.objects.get(name="example.com")
+        url = reverse("plugins-api:nautobot_dns_models-api:dnsdelegation-list")
+
+        response = self.client.post(
+            url, data={"name": "corp.Example.com.", "zone": zone.pk}, format="json", **self.header
+        )
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["name"], "corp")
+        self.assertEqual(DNSDelegation.objects.get(pk=response.data["id"]).fqdn, "corp.example.com")
 
 
 class NSRecordAPITestCase(APIViewTestCases.APIViewTestCase):

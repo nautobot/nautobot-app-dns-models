@@ -39,7 +39,7 @@ Each zone's `parent` is the most specific other zone in the same [DNS view](dnsv
 The parent is derived from zone names and cannot be edited: it is the *closest encloser* ([RFC 9499](https://www.rfc-editor.org/rfc/rfc9499.html)), the longest existing ancestor of the zone's name, among the zones in Nautobot. Names are compared ignoring letter case ([RFC 4343](https://www.rfc-editor.org/rfc/rfc4343.html)), as zone name uniqueness does. Zones in different DNS views are never related.
 
 !!! note
-    In RFC terms, a *parent zone* is the zone that delegates a *child zone*. This field does not imply delegation: when a zone in between exists only outside Nautobot, the closest encloser in Nautobot is not the zone that delegates this one.
+    In RFC terms, a *parent zone* is the zone that delegates a *child zone*. This field does not imply delegation: when a zone in between exists only outside Nautobot, the closest encloser in Nautobot is not the zone that delegates this one. Delegations themselves are modeled by [DNS delegations](dnsdelegation.md) in the delegating zone.
 
 Zones can be created in any order, and the hierarchy is kept current as zones change:
 

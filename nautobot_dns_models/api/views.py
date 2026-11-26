@@ -6,6 +6,7 @@ from nautobot_dns_models.api.serializers import (
     AAAARecordSerializer,
     ARecordSerializer,
     CNAMERecordSerializer,
+    DNSDelegationSerializer,
     DNSRegistrarSerializer,
     DNSRegistrationSerializer,
     DNSViewPrefixAssignmentSerializer,
@@ -21,6 +22,7 @@ from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSDelegationFilterSet,
     DNSRegistrarFilterSet,
     DNSRegistrationFilterSet,
     DNSViewFilterSet,
@@ -36,6 +38,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -92,6 +95,16 @@ class DNSZoneViewSet(NautobotModelViewSet):
     queryset = DNSZone.objects.select_related("dns_view", "parent__dns_view").order_by("dns_view__name", "name")
     serializer_class = DNSZoneSerializer
     filterset_class = DNSZoneFilterSet
+
+    lookup_field = "pk"
+
+
+class DNSDelegationViewSet(NautobotModelViewSet):
+    """DNSDelegation API ViewSet."""
+
+    queryset = DNSDelegation.objects.select_related("zone")
+    serializer_class = DNSDelegationSerializer
+    filterset_class = DNSDelegationFilterSet
 
     lookup_field = "pk"
 

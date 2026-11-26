@@ -17,6 +17,7 @@ from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSDelegationFilterSet,
     DNSRegistrarFilterSet,
     DNSRegistrationFilterSet,
     DNSViewFilterSet,
@@ -32,6 +33,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -470,6 +472,38 @@ class DNSZoneFilterTestCase(FilterTestCases.FilterTestCase, FilterTestCases.Tena
         """Without a requesting user, can_change matches no zone, and its negation every zone."""
         self.assertFalse(self.filterset({"can_change": True}, self.queryset).qs.exists())
         self.assertQuerySetEqualAndNotEmpty(self.filterset({"can_change": False}, self.queryset).qs, self.queryset)
+
+
+class DNSDelegationFilterTestCase(FilterTestCases.FilterTestCase):
+    """DNSDelegation Filter Test Case."""
+
+    queryset = DNSDelegation.objects.all()
+    filterset = DNSDelegationFilterSet
+
+    generic_filter_tests = (
+        ("id",),
+        ("created",),
+        ("last_updated",),
+        ("name",),
+        ("description",),
+        ("zone", "zone__id"),
+        ("zone", "zone__name"),
+    )
+
+    @classmethod
+    def setUpTestData(cls):
+        """Setup test data for DNSDelegation Model."""
+        example = DNSZone.objects.create(name="example.com")
+        DNSDelegation.objects.create(zone=example, name="apps", description="Applications")
+        DNSDelegation.objects.create(zone=example, name="mail", description="Mail")
+        DNSDelegation.objects.create(zone=DNSZone.objects.create(name="example.net"), name="lab", description="Lab")
+        DNSDelegation.objects.create(zone=DNSZone.objects.create(name="example.org"), name="dev", description="Dev")
+
+    def test_search(self):
+        self.assertQuerySetEqual(
+            self.filterset({"q": "example.net"}, self.queryset).qs, DNSDelegation.objects.filter(name="lab")
+        )
+        self.assertEqual(self.filterset({"q": "example.com"}, self.queryset).qs.count(), 2)
 
 
 class NSRecordFilterTestCase(TestCase):

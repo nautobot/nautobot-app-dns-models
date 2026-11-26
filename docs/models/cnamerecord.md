@@ -9,6 +9,7 @@ When CNAME exclusivity is enabled (via the `CNAME_RESTRICTION_ENABLED` configura
 - Name comparison is exact:
     - A zone‑qualified `name` such as `host.example.com` is distinct from the relative `host` under zone `example.com`.
     - A trailing dot is ignored (e.g., `host.example.com.` is treated as `host.example.com`).
+- A CNAME also cannot co‑exist with a [DNS delegation](dnsdelegation.md) of the same `name` in the same `zone`, in either order. This comparison ignores letter case, because delegation names are unique within a zone ignoring case.
 
 Additional constraints:
 

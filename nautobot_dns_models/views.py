@@ -14,6 +14,8 @@ from nautobot.apps import views
 from nautobot.apps.forms import ConfirmationForm, restrict_form_fields
 from nautobot.apps.ui import (
     ButtonColorChoices,
+    DataTablePanel,
+    KeyValueTablePanel,
     ObjectDetailContent,
     ObjectFieldsPanel,
     ObjectsTablePanel,
@@ -33,6 +35,7 @@ from nautobot_dns_models.api.serializers import (
     AAAARecordSerializer,
     ARecordSerializer,
     CNAMERecordSerializer,
+    DNSDelegationSerializer,
     DNSRegistrarSerializer,
     DNSRegistrationSerializer,
     DNSViewSerializer,
@@ -43,11 +46,12 @@ from nautobot_dns_models.api.serializers import (
     SRVRecordSerializer,
     TXTRecordSerializer,
 )
-from nautobot_dns_models.choices import DNSZoneTypeChoices
+from nautobot_dns_models.choices import DNSZoneTypeChoices, NameServerRelationshipChoices
 from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSDelegationFilterSet,
     DNSRegistrarFilterSet,
     DNSRegistrationFilterSet,
     DNSViewFilterSet,
@@ -70,6 +74,9 @@ from nautobot_dns_models.forms import (
     CNAMERecordBulkEditForm,
     CNAMERecordFilterForm,
     CNAMERecordForm,
+    DNSDelegationBulkEditForm,
+    DNSDelegationFilterForm,
+    DNSDelegationForm,
     DNSRegistrarBulkEditForm,
     DNSRegistrarFilterForm,
     DNSRegistrarForm,
@@ -102,6 +109,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSDelegation,
     DNSRegistrar,
     DNSRegistration,
     DNSView,
@@ -117,6 +125,7 @@ from nautobot_dns_models.tables import (
     ARecordTable,
     CatalogMemberZoneTable,
     CNAMERecordTable,
+    DNSDelegationTable,
     DNSRegistrarTable,
     DNSRegistrationTable,
     DNSViewTable,
@@ -411,6 +420,16 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                 system_managed=True,
             ),
             ObjectsTablePanel(
+                weight=350,
+                section=SectionChoices.LEFT_HALF,
+                table_filter="zone",
+                table_class=DNSDelegationTable,
+                table_title="Delegations",
+                exclude_columns=["zone"],
+                select_related_fields=["zone"],
+                max_display_count=5,
+            ),
+            ObjectsTablePanel(
                 weight=400,
                 section=SectionChoices.LEFT_HALF,
                 table_filter="parent",
@@ -506,6 +525,13 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
                         record_model=CNAMERecord,
                         link_name="plugins:nautobot_dns_models:zone_cname_records_add",
                         required_permissions=["nautobot_dns_models.add_cnamerecord"],
+                    ),
+                    AddRecordButton(
+                        weight=350,
+                        record_model=DNSDelegation,
+                        link_name="plugins:nautobot_dns_models:zone_dns_delegations_add",
+                        label="Delegation",
+                        required_permissions=["nautobot_dns_models.add_dnsdelegation"],
                     ),
                     AddRecordButton(
                         weight=400,
@@ -709,6 +735,117 @@ class DNSZoneUIViewSet(views.NautobotUIViewSet):
         with transaction.atomic():
             zone.validated_save()
             DNSZone.objects.restrict(request.user, "change").get(pk=zone.pk)
+
+
+class GlueRecordsTablePanel(ObjectsTablePanel):
+    """A table of a delegation's glue records, shown only when there are some."""
+
+    def should_render(self, context):
+        """Render only when the delegation has glue records of this panel's type that the user may view."""
+        if not super().should_render(context):
+            return False
+        glue_records = getattr(get_obj_from_context(context), self.table_attribute)
+        return glue_records.restrict(context["request"].user, "view").exists()
+
+
+class DNSDelegationUIViewSet(views.NautobotUIViewSet):
+    """DNSDelegation UI ViewSet."""
+
+    form_class = DNSDelegationForm
+    bulk_update_form_class = DNSDelegationBulkEditForm
+    filterset_class = DNSDelegationFilterSet
+    filterset_form_class = DNSDelegationFilterForm
+    serializer_class = DNSDelegationSerializer
+    lookup_field = "pk"
+    queryset = DNSDelegation.objects.select_related("zone")
+    table_class = DNSDelegationTable
+
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+            ),
+            KeyValueTablePanel(
+                weight=200,
+                section=SectionChoices.LEFT_HALF,
+                label="Delegated Domain",
+                context_data_key="delegated_domain",
+            ),
+            DataTablePanel(
+                weight=100,
+                section=SectionChoices.RIGHT_HALF,
+                label="Name Servers",
+                context_data_key="name_servers",
+                columns=["server", "relationship", "addresses"],
+                column_headers=["Name Server", "Relationship", "Addresses"],
+            ),
+            ObjectsTablePanel(
+                weight=200,
+                section=SectionChoices.RIGHT_HALF,
+                table_attribute="ns_records",
+                related_field_name="zone",
+                table_class=NSRecordTable,
+                table_title="NS Records",
+                exclude_columns=["zone"],
+                add_button_route=None,
+                enable_related_link=False,
+            ),
+            GlueRecordsTablePanel(
+                weight=300,
+                section=SectionChoices.RIGHT_HALF,
+                table_attribute="glue_a_records",
+                related_field_name="zone",
+                table_class=ARecordTable,
+                table_title="Glue A Records",
+                exclude_columns=["zone"],
+                add_button_route=None,
+                enable_related_link=False,
+            ),
+            GlueRecordsTablePanel(
+                weight=400,
+                section=SectionChoices.RIGHT_HALF,
+                table_attribute="glue_aaaa_records",
+                related_field_name="zone",
+                table_class=AAAARecordTable,
+                table_title="Glue AAAA Records",
+                exclude_columns=["zone"],
+                add_button_route=None,
+                enable_related_link=False,
+            ),
+        ],
+    )
+
+    def get_extra_context(self, request, instance=None):
+        """Add the delegated domain and a per-name-server summary for the detail view."""
+        context = super().get_extra_context(request, instance)
+        if self.action == "retrieve" and instance is not None:
+            user = request.user
+            context["delegated_domain"] = {
+                "FQDN": instance.fqdn,
+                "Child zone": instance.get_child_zone(user=user),
+            }
+            context["name_servers"] = [
+                self._name_server_row(instance, ns_record.server, user)
+                for ns_record in instance.ns_records.restrict(user, "view").order_by("server")
+            ]
+        return context
+
+    @staticmethod
+    def _name_server_row(delegation, server, user):
+        """Summarize one name server; an in-domain server without glue shows "No glue"."""
+        relationship = delegation.classify_name_server(server)
+        addresses = ", ".join(
+            str(record.ip_address.host) for record in delegation.get_name_server_addresses(server, user=user)
+        )
+        if not addresses and relationship == NameServerRelationshipChoices.IN_DOMAIN:
+            addresses = "No glue"
+        return {
+            "server": server,
+            "relationship": NameServerRelationshipChoices.as_dict()[relationship],
+            "addresses": addresses or "—",
+        }
 
 
 class NSRecordUIViewSet(views.NautobotUIViewSet):

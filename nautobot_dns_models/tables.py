@@ -270,6 +270,40 @@ class CatalogMemberZoneTable(CatalogActionsTableMixin, BaseTable):  # pylint: di
         default_columns = ("name", "ptr_record_name", "actions")
 
 
+class DNSDelegationTable(BaseTable):
+    """Table for DNS Delegation list view."""
+
+    pk = ToggleColumn()
+    name = tables.Column(linkify=True)
+    zone = tables.Column(linkify=True)
+    fqdn = tables.Column(accessor="fqdn", verbose_name="FQDN", orderable=False)
+    actions = ButtonsColumn(
+        models.DNSDelegation,
+        buttons=("changelog", "edit", "delete"),
+    )
+
+    class Meta(BaseTable.Meta):
+        """Meta attributes."""
+
+        model = models.DNSDelegation
+        fields = (
+            "pk",
+            "name",
+            "zone",
+            "fqdn",
+            "description",
+            "actions",
+        )
+        default_columns = (
+            "pk",
+            "name",
+            "zone",
+            "fqdn",
+            "description",
+            "actions",
+        )
+
+
 class NSRecordTable(DNSRecordTable):
     """Table for list view."""
 
