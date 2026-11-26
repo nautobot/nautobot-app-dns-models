@@ -642,7 +642,12 @@ class DNSZoneFilterForm(NautobotFilterForm, TenancyFilterForm):
 class DNSDelegationForm(NautobotModelForm):
     """DNSDelegation creation/edit form."""
 
-    zone = DynamicModelChoiceField(queryset=models.DNSZone.objects.all())
+    zone = DynamicModelChoiceField(
+        queryset=models.DNSZone.objects.all(),
+        query_params={
+            "type__n": DNSZoneTypeChoices.TYPE_CATALOG,
+        },
+    )
 
     class Meta:
         """Meta attributes."""

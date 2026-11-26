@@ -9,12 +9,13 @@ from nautobot.extras.registry import registry
 from nautobot.ipam.models import IPAddress, Namespace, Prefix
 
 from nautobot_dns_models import custom_validators
+from nautobot_dns_models.choices import DNSZoneTypeChoices
 from nautobot_dns_models.models import ARecord, CNAMERecord, DNSDelegation, DNSZone, NSRecord, TXTRecord
 
 
-def _create_zone(name):
+def _create_zone(name, **kwargs):
     return DNSZone.objects.create(
-        name=name, filename=f"{name}.zone", soa_mname="ns1.example.net", soa_rname="hostmaster@example.net"
+        name=name, filename=f"{name}.zone", soa_mname="ns1.example.net", soa_rname="hostmaster@example.net", **kwargs
     )
 
 
@@ -158,6 +159,10 @@ class DNSZoneDelegatedRuleTestCase(DNSComplianceRuleTestCase):
         NSRecord.objects.create(name="apps", server="ns1.partner.net", zone=self.zone)
         DNSDelegation(zone=self.zone, name="apps").validated_save()
         self.assert_compliant(_create_zone("dev.apps.example.com"), custom_validators.DNSZoneDelegatedRule.name)
+
+    def test_catalog_zone_below_another_zone_is_not_reported(self):
+        catalog_zone = _create_zone("catalog.example.com", type=DNSZoneTypeChoices.TYPE_CATALOG)
+        self.assert_compliant(catalog_zone, custom_validators.DNSZoneDelegatedRule.name)
 
     def test_zone_below_a_cut_marked_only_by_ns_records_is_not_reported(self):
         NSRecord.objects.create(name="apps", server="ns1.partner.net", zone=self.zone)

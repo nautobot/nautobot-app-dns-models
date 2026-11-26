@@ -1554,11 +1554,14 @@ class DNSDelegation(PrimaryModel):
             self.name = self.name[: -(len(zone.name.rstrip(".")) + 2)]
 
     def clean(self):
-        """Validate the owner name: below the zone apex, well formed, and not shared with a CNAME."""
+        """Validate the zone and owner name: not a catalog zone, below the apex, well formed, and not a CNAME's name."""
         super().clean()
 
         self._normalize_name()
         zone = getattr(self, "zone", None)
+
+        if zone is not None and zone.is_catalog_zone:  # pylint: disable=no-member
+            raise ValidationError({"zone": "Catalog zones cannot contain delegations."})
 
         if self.name in ("", "@"):
             raise ValidationError({"name": "A delegation must be below the zone apex, e.g. `apps`."})

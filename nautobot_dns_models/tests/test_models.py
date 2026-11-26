@@ -1515,6 +1515,12 @@ class DNSDelegationTestCase(TestCase):
         self.assertEqual(delegation.fqdn, "apps.example.com")
         self.assertEqual(str(delegation), "apps.example.com")
 
+    def test_rejects_a_catalog_zone(self):
+        catalog_zone = create_zone("catalog.example", type=DNSZoneTypeChoices.TYPE_CATALOG)
+        with self.assertRaises(ValidationError) as context:
+            DNSDelegation(zone=catalog_zone, name="apps").full_clean()
+        self.assertIn("zone", context.exception.message_dict)
+
     def test_rejects_the_zone_apex(self):
         for name in ("@", ""):
             with self.subTest(name=name), self.assertRaises(ValidationError):

@@ -162,6 +162,9 @@ class DNSZoneDelegatedRule(DNSComplianceRule):
     def audit(self):
         """Report a zone whose parent zone has neither NS records nor a delegation at the zone's name."""
         zone = self.instance
+        if zone.is_catalog_zone:
+            # Catalog zones are not meant to be reached by recursive resolution, so need no delegation (RFC 9432 §4).
+            return
         # Exclude this zone: while a renamed zone is validated, the database still holds its old name.
         parent = DNSZone.get_enclosing_zone(zone.name, zone.dns_view_id, exclude_pk=zone.pk)
         if parent is None:
