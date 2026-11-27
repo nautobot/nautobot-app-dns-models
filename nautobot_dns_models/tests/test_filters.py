@@ -1099,6 +1099,11 @@ class DNSForwarderFilterTestCase(FilterTestCases.FilterTestCase):
         )
         self.assertEqual(self.filterset({"q": "Resolver"}, self.queryset).qs.count(), 3)
 
+    def test_search_matches_the_ipam_address(self):
+        self.assertQuerySetEqual(
+            self.filterset({"q": "192.0.2.2"}, self.queryset).qs, [DNSForwarder.objects.get(name="Resolver 2")]
+        )
+
 
 class DNSForwardingRuleFilterTestCase(FilterTestCases.FilterTestCase):
     """DNSForwardingRule Filter Test Case."""

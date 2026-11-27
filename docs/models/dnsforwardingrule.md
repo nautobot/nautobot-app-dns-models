@@ -7,7 +7,7 @@ A DNS forwarding rule states that, within a [DNS view](dnsview.md), queries for 
 - `forwarders` (list of DNSForwarder): The forwarders that resolve the queries. Read-only in the REST API; see [Assigning forwarders](#assigning-forwarders).
 - `description` (string): Description of the rule.
 
-Each `(name, dns_view)` pair is unique. When DNS validation is enabled (via the `DNS_VALIDATION_LEVEL` configuration), each label of `name` must be 1 to 63 bytes in wire format ([RFC 1035 §3.1](https://www.rfc-editor.org/rfc/rfc1035.html#section-3.1)).
+Names are unique within a DNS view, ignoring letter case, so `corp.example.com` and `CORP.example.com` cannot both exist in one view. When DNS validation is enabled (via the `DNS_VALIDATION_LEVEL` configuration), each label of `name` must be 1 to 63 bytes in wire format ([RFC 1035 §3.1](https://www.rfc-editor.org/rfc/rfc1035.html#section-3.1)).
 
 The DNS view detail page lists its forwarding rules, and each forwarder's detail page lists the rules that use it.
 

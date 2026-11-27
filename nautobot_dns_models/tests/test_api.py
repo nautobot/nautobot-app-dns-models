@@ -1552,6 +1552,7 @@ class DNSForwardingRuleForwarderAssignmentAPITestCase(APIViewTestCases.APIViewTe
         cls.create_data = [
             {"forwarding_rule": rules[1].pk, "forwarder": forwarders[0].pk},
             {"forwarding_rule": rules[1].pk, "forwarder": forwarders[2].pk},
+            {"forwarding_rule": rules[2].pk, "forwarder": forwarders[2].pk},
         ]
 
     def test_assignment_changes_are_change_logged(self):

@@ -5,6 +5,7 @@ import uuid
 import django.core.serializers.json
 import django.core.validators
 import django.db.models.deletion
+import django.db.models.functions.text
 import nautobot.core.models.fields
 import nautobot.extras.models.mixins
 from django.db import migrations, models
@@ -152,8 +153,14 @@ class Migration(migrations.Migration):
                 to="nautobot_dns_models.dnsforwarder",
             ),
         ),
-        migrations.AlterUniqueTogether(
-            name="dnsforwardingrule",
-            unique_together={("name", "dns_view")},
+        migrations.AddConstraint(
+            model_name="dnsforwardingrule",
+            constraint=models.UniqueConstraint(
+                django.db.models.functions.text.Lower("name"),
+                models.F("dns_view"),
+                name="nautobot_dns_models_dnsforwardingrule_name_ci_unique",
+                violation_error_code="dns_forwarding_rule_name_not_unique",
+                violation_error_message="A DNS forwarding rule with this name (ignoring letter case) already exists in this view.",
+            ),
         ),
     ]

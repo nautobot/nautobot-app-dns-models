@@ -379,16 +379,24 @@ class SRVRecordFilterSet(DNSRecordFilterSet):
         fields = "__all__"
 
 
+def search_forwarder(queryset, name, value):  # pylint: disable=unused-argument
+    """Search forwarders by name, description, literal address, or IPAM IP address."""
+    query = Q(name__icontains=value) | Q(description__icontains=value) | Q(address__icontains=value)
+
+    try:
+        ip_value = ip_address_preprocessor(value)
+    except ValueError:
+        pass
+    else:
+        query |= Q(ip_address__host__net_host=ip_value)
+
+    return queryset.filter(query)
+
+
 class DNSForwarderFilterSet(NautobotFilterSet):
     """Filter for DNSForwarder."""
 
-    q = SearchFilter(
-        filter_predicates={
-            "name": "icontains",
-            "address": "icontains",
-            "description": "icontains",
-        }
-    )
+    q = django_filters.CharFilter(method=search_forwarder, label="Search")
     forwarding_rules = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=models.DNSForwardingRule.objects.all(),
         to_field_name="name",

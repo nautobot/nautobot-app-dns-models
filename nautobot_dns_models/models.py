@@ -60,6 +60,7 @@ TXT_RDATA_MAX_OCTETS = 2**16 - 1
 DNS_ZONE_NAME_UNIQUE_ERROR_CODE = "dns_zone_name_not_unique"
 MEMBER_LABEL_UNIQUE_ERROR_CODE = "member_label_not_unique"
 DNS_DELEGATION_NAME_UNIQUE_ERROR_CODE = "dns_delegation_name_not_unique"
+DNS_FORWARDING_RULE_NAME_UNIQUE_ERROR_CODE = "dns_forwarding_rule_name_not_unique"
 
 
 def dns_wire_label_length(label):
@@ -1709,10 +1710,6 @@ class DNSForwarder(PrimaryModel):
         """Stringify instance."""
         return self.name
 
-    def _normalize_address(self):
-        """Store an empty literal address as NULL; forms and the REST API submit `""` for an empty field."""
-        self.address = self.address or None
-
     def clean(self):
         """Require exactly one address source.
 
@@ -1721,13 +1718,12 @@ class DNSForwarder(PrimaryModel):
         """
         super().clean()
 
-        self._normalize_address()
-        if (self.ip_address_id is None) == (self.address is None):
+        if bool(self.ip_address_id) == bool(self.address):
             raise ValidationError({"address": "Set exactly one of IP Address (from IPAM) or Address (literal)."})
 
     def save(self, *args, **kwargs):
-        """Normalize the address, also for writes that validate a copy of the object, such as the REST API."""
-        self._normalize_address()
+        """Store an empty literal address as NULL; forms and the REST API submit `""` for an empty field."""
+        self.address = self.address or None
         super().save(*args, **kwargs)
 
     def get_address(self):
@@ -1770,19 +1766,41 @@ class DNSForwardingRule(PrimaryModel):
     )
     description = models.TextField(help_text="Description of the forwarding rule.", blank=True)
 
+    # The case-insensitive UniqueConstraint has no `fields`, so Nautobot cannot derive the natural key from it.
     natural_key_field_names = ["name", "dns_view"]
 
     class Meta:
         """Meta attributes for DNSForwardingRule."""
 
         ordering = ["dns_view__name", "name"]
-        unique_together = [["name", "dns_view"]]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                "dns_view",
+                name="nautobot_dns_models_dnsforwardingrule_name_ci_unique",
+                violation_error_code=DNS_FORWARDING_RULE_NAME_UNIQUE_ERROR_CODE,
+                violation_error_message="A DNS forwarding rule with this name (ignoring letter case) already exists in this view.",
+            ),
+        ]
         verbose_name = "DNS Forwarding Rule"
         verbose_name_plural = "DNS Forwarding Rules"
 
     def __str__(self):
         """Stringify instance."""
         return f"{self.name} ({self.dns_view})"
+
+    def validate_constraints(self, exclude=None):
+        """Report a name that collides with another forwarding rule in the same view as an error on `name`."""
+        try:
+            super().validate_constraints(exclude=exclude)
+        except ValidationError as error:
+            errors = error.update_error_dict({})
+            for non_field_error in errors.pop(NON_FIELD_ERRORS, []):
+                field = (
+                    "name" if non_field_error.code == DNS_FORWARDING_RULE_NAME_UNIQUE_ERROR_CODE else NON_FIELD_ERRORS
+                )
+                errors.setdefault(field, []).append(non_field_error)
+            raise ValidationError(errors) from error
 
     def clean(self):
         """Validate the domain's labels per RFC 1035 §3.1; the root domain `.` is allowed."""

@@ -2961,8 +2961,15 @@ class DNSForwardingRuleTestCase(TestCase):
         with self.assertRaises(ValidationError):
             DNSForwardingRule(name="corp..example.com").full_clean()
 
-    def test_name_is_unique_per_view(self):
+    def test_name_is_unique_per_view_ignoring_case(self):
         DNSForwardingRule(name="corp.example.com").validated_save()
-        with self.assertRaises(ValidationError):
-            DNSForwardingRule(name="corp.example.com").validated_save()
-        DNSForwardingRule(name="corp.example.com", dns_view=DNSView.objects.create(name="Other")).validated_save()
+        for name in ("corp.example.com", "CORP.example.com"):
+            with self.subTest(name=name), self.assertRaises(ValidationError) as context:
+                DNSForwardingRule(name=name).validated_save()
+            self.assertIn("ignoring letter case", str(context.exception.message_dict["name"]))
+        DNSForwardingRule(name="CORP.example.com", dns_view=DNSView.objects.create(name="Other")).validated_save()
+
+    def test_database_rejects_a_name_differing_only_by_case(self):
+        DNSForwardingRule(name="corp.example.com").validated_save()
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            DNSForwardingRule.objects.create(name="CORP.example.com")
