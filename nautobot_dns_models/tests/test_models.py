@@ -2896,14 +2896,14 @@ class DNSForwarderTestCase(TestCase):
     def test_address_from_ipam(self):
         forwarder = DNSForwarder(name="Corp resolver", ip_address=self.ip_address)
         forwarder.validated_save()
-        self.assertEqual(forwarder.get_address(), "192.0.2.53")
+        self.assertEqual(forwarder.effective_address, "192.0.2.53")
         self.assertEqual(forwarder.port, 53)
         self.assertEqual(str(forwarder), "Corp resolver")
 
     def test_literal_address(self):
         forwarder = DNSForwarder(name="Quad9", address="2620:fe::fe", port=853)
         forwarder.validated_save()
-        self.assertEqual(forwarder.get_address(), "2620:fe::fe")
+        self.assertEqual(forwarder.effective_address, "2620:fe::fe")
 
     def test_empty_literal_address_counts_as_no_address(self):
         """Regression test: forms and the REST API submit `""` for an empty Address field."""

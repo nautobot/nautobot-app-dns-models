@@ -207,6 +207,9 @@ class DNSForwarderSerializer(NautobotModelSerializer):
     """DNSForwarder Serializer."""
 
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:nautobot_dns_models-api:dnsforwarder-detail")
+    effective_address = serializers.CharField(
+        read_only=True, help_text="IP address of the forwarder, from the IPAM IP Address or the literal Address."
+    )
 
     class Meta:
         """Meta attributes."""

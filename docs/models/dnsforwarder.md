@@ -7,6 +7,7 @@ A DNS forwarder is a name server that resolves queries sent to it by another nam
 - `address` (string, optional): The forwarder's address as a literal IPv4 or IPv6 address, for resolvers that are not tracked in IPAM, such as public resolvers.
 - `port` (integer, default `53`): The port the forwarder listens on, from 1 to 65535.
 - `description` (string): Description of the forwarder.
+- `effective_address` (string, read-only): The forwarder's IP address, taken from `ip_address` or `address`, whichever is set. It is shown as **Effective Address** in the forwarder list, and returned by the REST API and GraphQL, so clients do not need to check both fields.
 
 Exactly one of `ip_address` and `address` must be set; an empty `address` counts as not set. Only `name` must be unique: several forwarders may use the same address and port, for example the same private IP in two IPAM namespaces.
 

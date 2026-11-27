@@ -1665,7 +1665,6 @@ class DNSDelegation(PrimaryModel):
     "custom_links",
     "custom_validators",
     "export_templates",
-    "graphql",
     "relationships",
     "webhooks",
 )
@@ -1726,8 +1725,9 @@ class DNSForwarder(PrimaryModel):
         self.address = self.address or None
         super().save(*args, **kwargs)
 
-    def get_address(self):
-        """Return the forwarder's IP address as a string, from IPAM or from the literal address."""
+    @property
+    def effective_address(self):
+        """The forwarder's IP address as a string, from IPAM or from the literal address."""
         if self.ip_address_id is not None:
             return str(self.ip_address.host)
         return self.address

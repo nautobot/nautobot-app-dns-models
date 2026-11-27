@@ -612,7 +612,7 @@ class DNSForwarderTable(BaseTable):
     pk = ToggleColumn()
     name = tables.Column(linkify=True)
     ip_address = tables.Column(linkify=True, verbose_name="IP Address")
-    address = tables.Column(accessor="get_address", verbose_name="Effective Address", orderable=False)
+    address = tables.Column(accessor="effective_address", verbose_name="Effective Address", orderable=False)
     actions = ButtonsColumn(
         models.DNSForwarder,
         buttons=("changelog", "edit", "delete"),

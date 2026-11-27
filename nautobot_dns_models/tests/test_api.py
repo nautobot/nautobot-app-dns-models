@@ -1462,6 +1462,16 @@ class DNSForwarderAPITestCase(APIViewTestCases.APIViewTestCase):
             {"name": "Lab", "address": "192.0.2.10", "description": "Lab resolver"},
         ]
 
+    def test_effective_address_comes_from_either_source(self):
+        self.add_permissions("nautobot_dns_models.view_dnsforwarder")
+        url = reverse("plugins-api:nautobot_dns_models-api:dnsforwarder-list")
+
+        response = self.client.get(url, {"name": ["Corp resolver", "Quad9"]}, **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        addresses = {result["name"]: result["effective_address"] for result in response.data["results"]}
+        self.assertEqual(addresses, {"Corp resolver": "192.0.2.53", "Quad9": "9.9.9.9"})
+
     def test_rejects_both_address_sources(self):
         self.add_permissions("nautobot_dns_models.add_dnsforwarder", "ipam.view_ipaddress")
         url = reverse("plugins-api:nautobot_dns_models-api:dnsforwarder-list")
