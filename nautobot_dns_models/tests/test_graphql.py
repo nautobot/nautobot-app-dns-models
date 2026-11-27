@@ -4,8 +4,11 @@ from graphene_django.settings import graphene_settings
 from graphql import parse, validate
 from nautobot.apps.graphql import execute_query
 from nautobot.apps.testing import TestCase
+from nautobot.extras.models import Status
+from nautobot.ipam.models import IPAddress, Namespace, Prefix
 
 from nautobot_dns_models.choices import DNSZoneTypeChoices
+from nautobot_dns_models.models import DNSForwarder
 from nautobot_dns_models.tests.fixtures import create_zone
 
 
@@ -63,3 +66,36 @@ class DNSZoneTestCase(GraphQLQueryMixin, TestCase):
         zones = self.run_query(self.ZONES_QUERY, name=["solo.example"])["dns_zones"]
 
         self.assertIsNone(zones[0]["catalog_zone"])
+
+
+class DNSForwarderTestCase(GraphQLQueryMixin, TestCase):
+    """Tests the address a forwarder reports over GraphQL."""
+
+    FORWARDERS_QUERY = """
+        query {
+            dns_forwarders {
+                name
+                effective_address
+            }
+        }
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        status = Status.objects.get(name="Active")
+        namespace = Namespace.objects.get(name="Global")
+        Prefix.objects.create(prefix="192.0.2.0/24", namespace=namespace, type="Pool", status=status)
+        ip_address = IPAddress.objects.create(address="192.0.2.53/32", namespace=namespace, status=status)
+        DNSForwarder.objects.create(name="Corp resolver", ip_address=ip_address)
+        DNSForwarder.objects.create(name="Quad9", address="9.9.9.9")
+
+    def test_effective_address_comes_from_either_source(self):
+        """GraphQL returns the IPAM address or the literal address as `effective_address`."""
+        self.add_permissions("nautobot_dns_models.view_dnsforwarder")
+
+        forwarders = self.run_query(self.FORWARDERS_QUERY)["dns_forwarders"]
+
+        self.assertEqual(
+            {forwarder["name"]: forwarder["effective_address"] for forwarder in forwarders},
+            {"Corp resolver": "192.0.2.53", "Quad9": "9.9.9.9"},
+        )

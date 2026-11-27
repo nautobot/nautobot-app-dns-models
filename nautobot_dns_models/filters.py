@@ -377,3 +377,78 @@ class SRVRecordFilterSet(DNSRecordFilterSet):
 
         model = models.SRVRecord
         fields = "__all__"
+
+
+def search_forwarder(queryset, name, value):  # pylint: disable=unused-argument
+    """Search forwarders by name, description, literal address, or IPAM IP address."""
+    query = Q(name__icontains=value) | Q(description__icontains=value) | Q(address__icontains=value)
+
+    try:
+        ip_value = ip_address_preprocessor(value)
+    except ValueError:
+        pass
+    else:
+        query |= Q(ip_address__host__net_host=ip_value)
+
+    return queryset.filter(query)
+
+
+class DNSForwarderFilterSet(NautobotFilterSet):
+    """Filter for DNSForwarder."""
+
+    q = django_filters.CharFilter(method=search_forwarder, label="Search")
+    forwarding_rules = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=models.DNSForwardingRule.objects.all(),
+        to_field_name="name",
+        label="Forwarding rule (name or ID)",
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSForwarder
+        fields = "__all__"
+
+
+class DNSForwardingRuleFilterSet(NautobotFilterSet):
+    """Filter for DNSForwardingRule."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "name": "icontains",
+            "description": "icontains",
+        }
+    )
+    dns_view = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=models.DNSView.objects.all(),
+        to_field_name="name",
+        label="View (name or ID)",
+    )
+    forwarders = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=models.DNSForwarder.objects.all(),
+        to_field_name="name",
+        label="Forwarder (name or ID)",
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSForwardingRule
+        fields = "__all__"
+
+
+class DNSForwardingRuleForwarderAssignmentFilterSet(NautobotFilterSet):
+    """Filter for DNSForwardingRuleForwarderAssignment."""
+
+    q = SearchFilter(
+        filter_predicates={
+            "forwarding_rule__name": "icontains",
+            "forwarder__name": "icontains",
+        }
+    )
+
+    class Meta:
+        """Meta attributes for filter."""
+
+        model = models.DNSForwardingRuleForwarderAssignment
+        fields = "__all__"

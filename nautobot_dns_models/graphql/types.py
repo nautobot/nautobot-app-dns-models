@@ -7,6 +7,7 @@ from nautobot_dns_models.filters import (
     AAAARecordFilterSet,
     ARecordFilterSet,
     CNAMERecordFilterSet,
+    DNSForwarderFilterSet,
     MXRecordFilterSet,
     NSRecordFilterSet,
     PTRRecordFilterSet,
@@ -17,6 +18,7 @@ from nautobot_dns_models.models import (
     AAAARecord,
     ARecord,
     CNAMERecord,
+    DNSForwarder,
     DNSRecord,
     MXRecord,
     NSRecord,
@@ -117,6 +119,20 @@ class SRVRecordType(DNSRecordType):
         filterset_class = SRVRecordFilterSet
 
 
+class DNSForwarderType(OptimizedNautobotObjectType):
+    """Graphql Type Object for the DNSForwarder model."""
+
+    effective_address = graphene.String(
+        description="IP address of the forwarder, from the IPAM IP Address or the literal Address."
+    )
+
+    class Meta:
+        """Metadata for the DNSForwarder."""
+
+        model = DNSForwarder
+        filterset_class = DNSForwarderFilterSet
+
+
 graphql_types = [
     NSRecordType,
     ARecordType,
@@ -126,4 +142,5 @@ graphql_types = [
     TXTRecordType,
     PTRRecordType,
     SRVRecordType,
+    DNSForwarderType,
 ]

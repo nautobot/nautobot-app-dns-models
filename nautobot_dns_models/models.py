@@ -11,7 +11,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator, validat
 from django.db import models, transaction
 from django.db.models import ProtectedError, Q
 from django.db.models.functions import Lower
-from nautobot.apps.models import BaseManager, BaseModel, PrimaryModel, extras_features
+from nautobot.apps.models import BaseManager, BaseModel, ChangeLoggedModel, PrimaryModel, extras_features
 from nautobot.core.models.fields import ForeignKeyWithAutoRelatedName
 from nautobot.extras.models import StatusField
 from nautobot.ipam.choices import IPAddressVersionChoices
@@ -60,6 +60,7 @@ TXT_RDATA_MAX_OCTETS = 2**16 - 1
 DNS_ZONE_NAME_UNIQUE_ERROR_CODE = "dns_zone_name_not_unique"
 MEMBER_LABEL_UNIQUE_ERROR_CODE = "member_label_not_unique"
 DNS_DELEGATION_NAME_UNIQUE_ERROR_CODE = "dns_delegation_name_not_unique"
+DNS_FORWARDING_RULE_NAME_UNIQUE_ERROR_CODE = "dns_forwarding_rule_name_not_unique"
 
 
 def dns_wire_label_length(label):
@@ -1657,3 +1658,177 @@ class DNSDelegation(PrimaryModel):
             Q(name__iexact=server_key) | Q(name__iexact=f"{server_key}."), dns_view_id=self.zone.dns_view_id
         ).first() or DNSZone.get_enclosing_zone(server_key, self.zone.dns_view_id)
         return get_address_records(zone, server, user=user) if zone else []
+
+
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "relationships",
+    "webhooks",
+)
+class DNSForwarder(PrimaryModel):
+    """A name server that resolves queries forwarded to it (RFC 9499 §6).
+
+    The address is either an IPAM IP Address or a literal address, for resolvers that are not tracked in IPAM.
+    """
+
+    name = models.CharField(max_length=200, unique=True, help_text="Name of the forwarder.")
+    ip_address = models.ForeignKey(
+        to="ipam.IPAddress",
+        on_delete=models.PROTECT,
+        related_name="dns_forwarders",
+        blank=True,
+        null=True,
+        help_text="IPAM IP Address of the forwarder. Leave empty to enter a literal address instead.",
+        verbose_name="IP Address",
+    )
+    address = models.GenericIPAddressField(
+        blank=True,
+        null=True,
+        help_text="Literal IP address of the forwarder, for addresses not tracked in IPAM.",
+    )
+    port = models.PositiveIntegerField(
+        default=53,
+        validators=[MinValueValidator(1), MaxValueValidator(65535)],
+        help_text="Port the forwarder listens on.",
+    )
+    description = models.TextField(help_text="Description of the forwarder.", blank=True)
+
+    natural_key_field_names = ["name"]
+
+    class Meta:
+        """Meta attributes for DNSForwarder."""
+
+        ordering = ["name"]
+        verbose_name = "DNS Forwarder"
+        verbose_name_plural = "DNS Forwarders"
+
+    def __str__(self):
+        """Stringify instance."""
+        return self.name
+
+    def clean(self):
+        """Require exactly one address source.
+
+        Forwarders are unique only by name: the same address and port may appear more than once, for example the
+        same private IP in two IPAM namespaces.
+        """
+        super().clean()
+
+        if bool(self.ip_address_id) == bool(self.address):
+            raise ValidationError({"address": "Set exactly one of IP Address (from IPAM) or Address (literal)."})
+
+    def save(self, *args, **kwargs):
+        """Store an empty literal address as NULL; forms and the REST API submit `""` for an empty field."""
+        self.address = self.address or None
+        super().save(*args, **kwargs)
+
+    @property
+    def effective_address(self):
+        """The forwarder's IP address as a string, from IPAM or from the literal address."""
+        if self.ip_address_id is not None:
+            return str(self.ip_address.host)
+        return self.address
+
+
+@extras_features(
+    "custom_fields",
+    "custom_links",
+    "custom_validators",
+    "export_templates",
+    "graphql",
+    "relationships",
+    "webhooks",
+)
+class DNSForwardingRule(PrimaryModel):
+    """Queries for a domain, in a DNS View, are resolved by sending them to the rule's forwarders."""
+
+    name = models.CharField(
+        max_length=200,
+        help_text="Domain whose queries are forwarded, e.g. corp.example.com. Use `.` to forward all queries.",
+    )
+    dns_view = ForeignKeyWithAutoRelatedName(
+        DNSView,
+        on_delete=models.PROTECT,
+        help_text="The DNS View this forwarding rule belongs to.",
+        verbose_name="View",
+        default=get_default_view_pk,
+    )
+    forwarders = models.ManyToManyField(
+        to=DNSForwarder,
+        related_name="forwarding_rules",
+        through="DNSForwardingRuleForwarderAssignment",
+        through_fields=("forwarding_rule", "forwarder"),
+        blank=True,
+        help_text="Forwarders that resolve the queries.",
+    )
+    description = models.TextField(help_text="Description of the forwarding rule.", blank=True)
+
+    # The case-insensitive UniqueConstraint has no `fields`, so Nautobot cannot derive the natural key from it.
+    natural_key_field_names = ["name", "dns_view"]
+
+    class Meta:
+        """Meta attributes for DNSForwardingRule."""
+
+        ordering = ["dns_view__name", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                "dns_view",
+                name="nautobot_dns_models_dnsforwardingrule_name_ci_unique",
+                violation_error_code=DNS_FORWARDING_RULE_NAME_UNIQUE_ERROR_CODE,
+                violation_error_message="A DNS forwarding rule with this name (ignoring letter case) already exists in this view.",
+            ),
+        ]
+        verbose_name = "DNS Forwarding Rule"
+        verbose_name_plural = "DNS Forwarding Rules"
+
+    def __str__(self):
+        """Stringify instance."""
+        return f"{self.name} ({self.dns_view})"
+
+    def validate_constraints(self, exclude=None):
+        """Report a name that collides with another forwarding rule in the same view as an error on `name`."""
+        try:
+            super().validate_constraints(exclude=exclude)
+        except ValidationError as error:
+            errors = error.update_error_dict({})
+            for non_field_error in errors.pop(NON_FIELD_ERRORS, []):
+                field = (
+                    "name" if non_field_error.code == DNS_FORWARDING_RULE_NAME_UNIQUE_ERROR_CODE else NON_FIELD_ERRORS
+                )
+                errors.setdefault(field, []).append(non_field_error)
+            raise ValidationError(errors) from error
+
+    def clean(self):
+        """Validate the domain's labels per RFC 1035 §3.1; the root domain `.` is allowed."""
+        super().clean()
+        if self.name == ".":
+            return
+        if getattr(constance_config, "nautobot_dns_models__DNS_VALIDATION_LEVEL") == "wire-format":
+            for label in self.name.split("."):
+                DNSModel._validate_dns_label(label, field="name")  # pylint: disable=protected-access
+
+
+@extras_features("graphql")
+class DNSForwardingRuleForwarderAssignment(ChangeLoggedModel, BaseModel):
+    """Through model for the DNSForwardingRule and DNSForwarder many-to-many relationship.
+
+    Change-logged, so assignments made through its REST API endpoint appear in the change log.
+    """
+
+    forwarding_rule = ForeignKeyWithAutoRelatedName(DNSForwardingRule, on_delete=models.CASCADE)
+    forwarder = ForeignKeyWithAutoRelatedName(DNSForwarder, on_delete=models.CASCADE)
+
+    class Meta:
+        """Meta attributes for DNSForwardingRuleForwarderAssignment."""
+
+        unique_together = [["forwarding_rule", "forwarder"]]
+        verbose_name = "DNS Forwarding Rule Forwarder Assignment"
+        verbose_name_plural = "DNS Forwarding Rule Forwarder Assignments"
+
+    def __str__(self):
+        """Stringify instance."""
+        return f"{self.forwarding_rule}: {self.forwarder}"
